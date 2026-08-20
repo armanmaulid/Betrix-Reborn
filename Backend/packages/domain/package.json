@@ -1,0 +1,24 @@
+{
+  "name": "@betrix/domain",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run --exclude '**/dist/**'",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@betrix/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

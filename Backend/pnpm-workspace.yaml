@@ -1,0 +1,12 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+overrides:
+  typescript: '^5.8.2'
+  '@types/node': '^22.13.9'
+
+allowBuilds:
+  esbuild: true
+  bcrypt: true
+

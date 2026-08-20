@@ -1,0 +1,137 @@
+import { IAiGateway, AiCompletionRequest, AiCompletionResponse, AiStreamCallbacks, ThinkingFilter } from '@betrix/domain';
+import { AppError } from '@betrix/core';
+
+export class AiGatewayClient implements IAiGateway {
+  private readonly baseUrl: string;
+  private readonly apiKey: string;
+  private readonly timeoutMs: number;
+
+  constructor(baseUrl: string, apiKey: string, timeoutMs: number = 60000) {
+    this.baseUrl = baseUrl.replace(/\/+$/, '');
+    this.apiKey = apiKey;
+    this.timeoutMs = timeoutMs;
+  }
+
+  async complete(request: AiCompletionRequest): Promise<AiCompletionResponse> {
+    let reply = '';
+    let thinking = '';
+    let inputTokens = 0;
+    let outputTokens = 0;
+    let latencyMs = 0;
+
+    await this.stream(request, {
+      onThink: (chunk) => {
+        thinking += chunk;
+      },
+      onDelta: (chunk) => {
+        reply += chunk;
+      },
+      onDone: (meta) => {
+        inputTokens = meta.inputTokens;
+        outputTokens = meta.outputTokens;
+        latencyMs = meta.latencyMs;
+      }
+    });
+
+    return {
+      reply: reply.trim() || (thinking.trim() ? 'Analysis complete.' : 'Analysis complete.'),
+      thinking: thinking.trim() || undefined,
+      inputTokens,
+      outputTokens,
+      latencyMs
+    };
+  }
+
+  async stream(request: AiCompletionRequest, callbacks: AiStreamCallbacks): Promise<void> {
+    const startTime = Date.now();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    const targetBaseUrl = (request.baseUrl || this.baseUrl).replace(/\/+$/, '');
+    const targetApiKey = request.apiKey || this.apiKey;
+
+    try {
+      const response = await fetch(`${targetBaseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(targetApiKey ? { Authorization: `Bearer ${targetApiKey}` } : {})
+        },
+        body: JSON.stringify({
+          model: request.model,
+          messages: request.messages,
+          max_tokens: request.maxTokens,
+          temperature: request.temperature ?? 0.7,
+          stream: true
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new AppError(`AI Gateway stream error (${response.status}): ${errorText}`, response.status);
+      }
+
+      if (!response.body) {
+        throw new AppError('AI Gateway response body is empty', 502);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let fullContent = '';
+
+      const router = ThinkingFilter.createStreamRouter({
+        onThink: (chunk) => callbacks.onThink?.(chunk),
+        onDelta: (chunk) => callbacks.onDelta?.(chunk)
+      });
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith(':')) continue;
+          if (trimmed === 'data: [DONE]') continue;
+
+          if (trimmed.startsWith('data: ')) {
+            try {
+              const parsed = JSON.parse(trimmed.substring(6));
+              const delta = parsed.choices?.[0]?.delta;
+              if (delta?.reasoning_content) {
+                callbacks.onThink?.(delta.reasoning_content);
+              }
+              if (delta?.content) {
+                fullContent += delta.content;
+                router.push(delta.content);
+              }
+            } catch {
+              // Ignore partial JSON parse errors in SSE stream
+            }
+          }
+        }
+      }
+
+      router.flush();
+      const latencyMs = Date.now() - startTime;
+      const inputTokens = Math.ceil(JSON.stringify(request.messages).length / 4);
+      const outputTokens = Math.ceil(fullContent.length / 4);
+
+      callbacks.onDone?.({ inputTokens, outputTokens, latencyMs });
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        callbacks.onError?.(new AppError('AI Gateway stream timed out', 504));
+      } else {
+        callbacks.onError?.(err);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+}

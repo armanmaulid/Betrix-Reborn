@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: betrix_reborn_postgres
+    environment:
+      POSTGRES_USER: betrix
+      POSTGRES_PASSWORD: betrixpass
+      POSTGRES_DB: betrix
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_reborn:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U betrix"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: betrix_reborn_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata_reborn:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  srh:
+    image: hiett/serverless-redis-http:latest
+    container_name: betrix_reborn_srh
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: local_dev_token
+      SRH_CONNECTION_STRING: redis://redis:6379
+    ports:
+      - "8079:80"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata_reborn:
+  redisdata_reborn:

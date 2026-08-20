@@ -1,0 +1,1 @@
+ALTER TABLE "ohlc_symbols" ADD CONSTRAINT "ohlc_symbols_symbol_symbols_symbol_fk" FOREIGN KEY ("symbol") REFERENCES "public"."symbols"("symbol") ON DELETE cascade ON UPDATE no action;
