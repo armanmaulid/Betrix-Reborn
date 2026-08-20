@@ -26,19 +26,19 @@
     "@betrix/domain": "workspace:*",
     "@betrix/infra": "workspace:*",
     "drizzle-orm": "^0.45.2",
-    "node-cron": "^4.0.5",
-    "pg": "^8.18.0",
+    "node-cron": "^4.6.0",
+    "pg": "^8.23.0",
     "pino": "^10.3.1",
     "pino-pretty": "^13.1.3",
-    "ws": "^8.19.0"
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
     "@types/node-cron": "^3.0.11",
-    "@types/pg": "^8.16.0",
+    "@types/pg": "^8.23.1",
     "@types/ws": "^8.18.1",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }
