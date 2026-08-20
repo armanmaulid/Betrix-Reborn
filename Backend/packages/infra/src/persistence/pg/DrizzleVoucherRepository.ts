@@ -1,4 +1,4 @@
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { Nullable, PaginatedResult, PaginationParams } from '@betrix/core';
 import { CreditVoucher, IVoucherRepository } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
@@ -70,7 +70,7 @@ export class DrizzleVoucherRepository implements IVoucherRepository {
         redeemedById: userId,
         redeemedAt: new Date()
       })
-      .where(eq(creditVouchers.id, voucherId))
+      .where(and(eq(creditVouchers.id, voucherId), eq(creditVouchers.isRedeemed, false)))
       .returning({ id: creditVouchers.id });
 
     return result.length > 0;

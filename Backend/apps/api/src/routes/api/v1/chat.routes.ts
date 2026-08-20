@@ -146,7 +146,7 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.deleteChatSessionUseCase.execute(request.user.userId, request.params.sessionId);
+      const result = await useCases.deleteChatSessionUseCase.execute(request.params.sessionId, request.user.userId);
       return reply.send({
         success: true,
         data: result
@@ -167,7 +167,7 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const markdown = await useCases.exportChatUseCase.execute(request.user.userId, request.params.sessionId);
+      const markdown = await useCases.exportChatUseCase.execute(request.params.sessionId, request.user.userId);
 
       reply.header('Content-Type', 'text/markdown; charset=utf-8');
       reply.header('Content-Disposition', `attachment; filename="chat-${request.params.sessionId}.md"`);

@@ -6,7 +6,7 @@ export interface IMessageRepository {
   findById(id: string): Promise<Nullable<Message>>;
   findInbox(userId: string, pagination: PaginationParams): Promise<PaginatedResult<Message>>;
   findSent(userId: string, pagination: PaginationParams): Promise<PaginatedResult<Message>>;
-  findThread(threadId: string): Promise<Message[]>;
+  findThread(threadId: string, userId: string): Promise<Message[]>;
   markAsRead(id: string, userId: string): Promise<boolean>;
   softDelete(id: string, userId: string): Promise<boolean>;
   getNotificationPreference(userId: string): Promise<Nullable<NotificationPreference>>;

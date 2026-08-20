@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import { IMessageRepository, Message, NotificationPreference, Nullable, PaginatedResult, PaginationParams } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { messages, notificationPreferences } from '../drizzle/schema.js';
@@ -102,11 +102,16 @@ export class DrizzleMessageRepository implements IMessageRepository {
     };
   }
 
-  async findThread(threadId: string): Promise<Message[]> {
+  async findThread(threadId: string, userId: string): Promise<Message[]> {
     const rows = await this.db
       .select()
       .from(messages)
-      .where(eq(messages.threadId, threadId))
+      .where(
+        and(
+          eq(messages.threadId, threadId),
+          or(eq(messages.fromUserId, userId), eq(messages.toUserId, userId))
+        )
+      )
       .orderBy(messages.createdAt);
 
     return rows.map((r) => this.mapMessageToDomain(r));

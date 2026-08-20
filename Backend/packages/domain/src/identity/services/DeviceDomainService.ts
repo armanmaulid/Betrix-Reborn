@@ -44,6 +44,24 @@ export class DeviceDomainService {
       lastSeenAt: new Date(),
       createdAt: new Date()
     });
-    return deviceRepo.save(newDevice);
+
+    // Authoritative check: deviceRepo.save() below performs an atomic
+    // upsert at the database level (see DrizzleDeviceRepository.save) and
+    // is the sole source of truth for who actually owns this fingerprint
+    // after a concurrent race. It returns the row as it exists in the
+    // database post-write, which reflects the actual winner even if this
+    // call was not the winner.
+    const saved = await deviceRepo.save(newDevice);
+
+    // If another concurrent request won the race, the row returned by
+    // the atomic upsert belongs to a different user than the one this
+    // call is registering. Surface that as the same ConflictError the
+    // pre-check would have thrown had it seen the winner first, instead
+    // of silently returning a Device that misrepresents its owner.
+    if (saved.userId !== userId) {
+      throw new ConflictError('This device is already bound to another registered account.');
+    }
+
+    return saved;
   }
 }

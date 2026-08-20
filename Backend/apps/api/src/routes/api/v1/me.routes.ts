@@ -187,7 +187,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const messages = await useCases.getThreadUseCase.execute(request.params.threadId);
+      const messages = await useCases.getThreadUseCase.execute(request.params.threadId, request.user.userId);
       return reply.send({
         success: true,
         data: messages.map((m) => m.toJSON())

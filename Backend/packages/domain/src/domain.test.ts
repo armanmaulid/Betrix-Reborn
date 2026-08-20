@@ -334,13 +334,13 @@ describe('Domain - Entity Rich Behaviors (Phase B)', () => {
       expect(expired.isExpired()).toBe(true);
     });
 
-    it('serializes to JSON with all properties', () => {
+    it('serializes to JSON without exposing the session token', () => {
       const now = new Date();
       const session = new Session({ id: 's1', userId: 'u1', token: 'tok123', deviceFingerprint: 'fp', ip: '127.0.0.1', userAgent: 'Chrome/120', expiresAt: new Date(now.getTime() + 86400000), createdAt: now });
       const json = session.toJSON();
       expect(json.id).toBe('s1');
       expect(json.userId).toBe('u1');
-      expect(json.token).toBe('tok123');
+      expect('token' in json).toBe(false);
       expect(json.ip).toBe('127.0.0.1');
       expect(json.userAgent).toBe('Chrome/120');
     });

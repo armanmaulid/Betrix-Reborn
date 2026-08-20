@@ -46,6 +46,12 @@ export class GoogleOAuthUseCase {
       throw new ValidationError('Invalid Google OAuth token.');
     }
 
+    if (!payload.email_verified) {
+      throw new ForbiddenError(
+        'This Google account\'s email is not verified. Please verify your email with Google and try again.'
+      );
+    }
+
     const email = payload.email.toLowerCase().trim();
     const googleId = payload.sub;
     const fingerprint = dto.deviceFingerprint;

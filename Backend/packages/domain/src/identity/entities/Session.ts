@@ -40,7 +40,6 @@ export class Session {
     return {
       id: this.id,
       userId: this.userId,
-      token: this.token,
       deviceFingerprint: this.deviceFingerprint,
       ip: this.ip,
       userAgent: this.userAgent,

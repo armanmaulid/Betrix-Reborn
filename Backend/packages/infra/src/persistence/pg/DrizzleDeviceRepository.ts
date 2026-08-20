@@ -38,6 +38,13 @@ export class DrizzleDeviceRepository implements IDeviceRepository {
       })
       .onConflictDoUpdate({
         target: devices.fingerprint,
+        // Deliberately do NOT set userId here. On a genuine fingerprint
+        // collision this row already belongs to whichever account
+        // registered it first; this upsert only refreshes lastSeenAt so
+        // repeat logins from the true owner keep the row current. The
+        // caller (DeviceDomainService.registerDevice) is responsible for
+        // comparing the returned row's userId against the userId it
+        // intended to register and treating a mismatch as a conflict.
         set: {
           lastSeenAt: new Date()
         }
