@@ -15,6 +15,7 @@ import {
   DrizzleChatRepository,
   DrizzleCreditRepository,
   DrizzleSymbolRepository,
+  DrizzleStreamSymbolRepository,
   DrizzleNewsRepository,
   DrizzleMessageRepository,
   DrizzleAdminActionRepository,
@@ -39,6 +40,7 @@ import {
   MarketDataService,
   NewsService,
   ContextInjectionService,
+  WorkerManagerService,
   RegisterUseCase,
   LoginUseCase,
   GoogleOAuthUseCase,
@@ -66,6 +68,7 @@ import {
   UpdateAgentUseCase,
   DeleteAgentUseCase,
   SetDefaultAgentUseCase,
+  TestAgentUseCase,
   GetSymbolsUseCase,
   GetPricesUseCase,
   GetOHLCUseCase,
@@ -82,17 +85,27 @@ import {
   GetAdminUsersUseCase,
   GetAdminUserDetailUseCase,
   UpdateAdminUserUseCase,
+  CreateAdminUserUseCase,
   DeleteAdminUserUseCase,
   ResetUserPasswordUseCase,
   CreateVoucherUseCase,
   ListVouchersUseCase,
   RevokeVoucherUseCase,
+  BatchRevokeVouchersUseCase,
   GetSystemMetricsUseCase,
   GetAnalyticsUseCase,
   GetAuditLogsUseCase,
   ExportAuditLogsUseCase,
   BroadcastMessageUseCase,
   SystemCleanupUseCase,
+  GetAdminUserChatHistoryUseCase,
+  ListWorkersUseCase,
+  ControlWorkerUseCase,
+  SaveSymbolUseCase,
+  DeleteSymbolUseCase,
+  GetStreamSymbolsUseCase,
+  SaveStreamSymbolUseCase,
+  DeleteStreamSymbolUseCase,
   ChatLoggingHandler
 } from '@betrix/application';
 import { EventDispatcher, INotifier } from '@betrix/domain';
@@ -113,6 +126,7 @@ export interface AppContainer {
     chatRepo: DrizzleChatRepository;
     creditRepo: DrizzleCreditRepository;
     symbolRepo: DrizzleSymbolRepository;
+    streamSymbolRepo: DrizzleStreamSymbolRepository;
     newsRepo: DrizzleNewsRepository;
     messageRepo: DrizzleMessageRepository;
     adminActionRepo: DrizzleAdminActionRepository;
@@ -137,6 +151,7 @@ export interface AppContainer {
     marketDataService: MarketDataService;
     newsService: NewsService;
     contextInjectionService: ContextInjectionService;
+    workerManagerService: WorkerManagerService;
   };
   useCases: {
     // Identity
@@ -169,6 +184,7 @@ export interface AppContainer {
     updateAgentUseCase: UpdateAgentUseCase;
     deleteAgentUseCase: DeleteAgentUseCase;
     setDefaultAgentUseCase: SetDefaultAgentUseCase;
+    testAgentUseCase: TestAgentUseCase;
 
     // Market
     getSymbolsUseCase: GetSymbolsUseCase;
@@ -193,17 +209,27 @@ export interface AppContainer {
     getAdminUsersUseCase: GetAdminUsersUseCase;
     getAdminUserDetailUseCase: GetAdminUserDetailUseCase;
     updateAdminUserUseCase: UpdateAdminUserUseCase;
+    createAdminUserUseCase: CreateAdminUserUseCase;
     deleteAdminUserUseCase: DeleteAdminUserUseCase;
     resetUserPasswordUseCase: ResetUserPasswordUseCase;
     createVoucherUseCase: CreateVoucherUseCase;
     listVouchersUseCase: ListVouchersUseCase;
     revokeVoucherUseCase: RevokeVoucherUseCase;
+    batchRevokeVouchersUseCase: BatchRevokeVouchersUseCase;
     getSystemMetricsUseCase: GetSystemMetricsUseCase;
     getAnalyticsUseCase: GetAnalyticsUseCase;
     getAuditLogsUseCase: GetAuditLogsUseCase;
     exportAuditLogsUseCase: ExportAuditLogsUseCase;
     broadcastMessageUseCase: BroadcastMessageUseCase;
     systemCleanupUseCase: SystemCleanupUseCase;
+    getAdminUserChatHistoryUseCase: GetAdminUserChatHistoryUseCase;
+    listWorkersUseCase: ListWorkersUseCase;
+    controlWorkerUseCase: ControlWorkerUseCase;
+    saveSymbolUseCase: SaveSymbolUseCase;
+    deleteSymbolUseCase: DeleteSymbolUseCase;
+    getStreamSymbolsUseCase: GetStreamSymbolsUseCase;
+    saveStreamSymbolUseCase: SaveStreamSymbolUseCase;
+    deleteStreamSymbolUseCase: DeleteStreamSymbolUseCase;
   };
   eventDispatcher: EventDispatcher;
 }
@@ -234,6 +260,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const chatRepo = new DrizzleChatRepository(db);
   const creditRepo = new DrizzleCreditRepository(db);
   const symbolRepo = new DrizzleSymbolRepository(db);
+  const streamSymbolRepo = new DrizzleStreamSymbolRepository(db);
   const newsRepo = new DrizzleNewsRepository(db);
   const messageRepo = new DrizzleMessageRepository(db);
   const adminActionRepo = new DrizzleAdminActionRepository(db);
@@ -281,6 +308,14 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const marketDataService = new MarketDataService(symbolRepo, marketDataRepo, historicalProvider);
   const newsService = new NewsService(newsRepo, newsProvider, notifier);
   const contextInjectionService = new ContextInjectionService(marketDataService, newsService);
+  const workerManagerService = new WorkerManagerService();
+
+  // Wire active Redis market price fetcher into SseHub
+  if (fastify.sseHub && env.NODE_ENV !== 'test' && !process.env.VITEST) {
+    fastify.sseHub.setPriceFetcher(async () => {
+      return marketDataRepo.getAllPrices();
+    });
+  }
 
   // 5. Event Dispatcher & Handlers
   const eventDispatcher = new EventDispatcher();
@@ -292,11 +327,12 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
 
   const mockGoogleVerifier = {
     verifyIdToken: async (token: string) => {
-      if (token.startsWith('mock_') || isDevMode) {
+      // mock_ tokens accepted only in dev/test; never derive identity from arbitrary input
+      if (isDevMode && token.startsWith('mock_')) {
         return {
           sub: 'google_sub_' + token,
-          email: token.includes('@') ? token : 'google_user@betrix.io',
-          name: 'Google Trader',
+          email: `${token.slice(5)}@mock.google`,
+          name: 'Google Trader (Mock)',
           email_verified: true
         };
       }
@@ -332,6 +368,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const updateAgentUseCase = new UpdateAgentUseCase(agentRepo);
   const deleteAgentUseCase = new DeleteAgentUseCase(agentRepo);
   const setDefaultAgentUseCase = new SetDefaultAgentUseCase(agentRepo);
+  const testAgentUseCase = new TestAgentUseCase(agentRepo, aiGateway);
 
   const getSymbolsUseCase = new GetSymbolsUseCase(marketDataService);
   const getPricesUseCase = new GetPricesUseCase(marketDataService);
@@ -351,18 +388,28 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
 
   const getAdminUsersUseCase = new GetAdminUsersUseCase(userRepo);
   const getAdminUserDetailUseCase = new GetAdminUserDetailUseCase(userRepo, sessionRepo, deviceRepo, usageRepo);
-  const updateAdminUserUseCase = new UpdateAdminUserUseCase(userRepo, adminActionRepo);
+  const updateAdminUserUseCase = new UpdateAdminUserUseCase(userRepo, adminActionRepo, sessionRepo);
+  const createAdminUserUseCase = new CreateAdminUserUseCase(userRepo, adminActionRepo, authService);
   const deleteAdminUserUseCase = new DeleteAdminUserUseCase(userRepo, adminActionRepo);
   const resetUserPasswordUseCase = new ResetUserPasswordUseCase(userRepo, sessionRepo, adminActionRepo, authService);
   const createVoucherUseCase = new CreateVoucherUseCase(voucherRepo, adminActionRepo);
   const listVouchersUseCase = new ListVouchersUseCase(voucherRepo);
   const revokeVoucherUseCase = new RevokeVoucherUseCase(voucherRepo, adminActionRepo);
+  const batchRevokeVouchersUseCase = new BatchRevokeVouchersUseCase(voucherRepo, adminActionRepo);
   const getSystemMetricsUseCase = new GetSystemMetricsUseCase(analyticsRepo);
   const getAnalyticsUseCase = new GetAnalyticsUseCase(analyticsRepo);
   const getAuditLogsUseCase = new GetAuditLogsUseCase(adminActionRepo);
   const exportAuditLogsUseCase = new ExportAuditLogsUseCase(adminActionRepo);
   const broadcastMessageUseCase = new BroadcastMessageUseCase(userRepo, messageRepo, adminActionRepo, notifier);
   const systemCleanupUseCase = new SystemCleanupUseCase(sessionRepo, verificationRepo, loginAttemptRepo);
+  const getAdminUserChatHistoryUseCase = new GetAdminUserChatHistoryUseCase(userRepo, chatRepo, adminActionRepo);
+  const listWorkersUseCase = new ListWorkersUseCase(workerManagerService);
+  const controlWorkerUseCase = new ControlWorkerUseCase(workerManagerService, adminActionRepo);
+  const saveSymbolUseCase = new SaveSymbolUseCase(symbolRepo, adminActionRepo);
+  const deleteSymbolUseCase = new DeleteSymbolUseCase(symbolRepo, adminActionRepo);
+  const getStreamSymbolsUseCase = new GetStreamSymbolsUseCase(streamSymbolRepo);
+  const saveStreamSymbolUseCase = new SaveStreamSymbolUseCase(streamSymbolRepo, adminActionRepo);
+  const deleteStreamSymbolUseCase = new DeleteStreamSymbolUseCase(streamSymbolRepo, adminActionRepo);
 
   const container: AppContainer = {
     config: appConfig,
@@ -380,6 +427,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
       chatRepo,
       creditRepo,
       symbolRepo,
+      streamSymbolRepo,
       newsRepo,
       messageRepo,
       adminActionRepo,
@@ -403,7 +451,8 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
       captchaService,
       marketDataService,
       newsService,
-      contextInjectionService
+      contextInjectionService,
+      workerManagerService
     },
     useCases: {
       registerUseCase,
@@ -433,6 +482,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
       updateAgentUseCase,
       deleteAgentUseCase,
       setDefaultAgentUseCase,
+      testAgentUseCase,
       getSymbolsUseCase,
       getPricesUseCase,
       getOHLCUseCase,
@@ -449,17 +499,27 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
       getAdminUsersUseCase,
       getAdminUserDetailUseCase,
       updateAdminUserUseCase,
+      createAdminUserUseCase,
       deleteAdminUserUseCase,
       resetUserPasswordUseCase,
       createVoucherUseCase,
       listVouchersUseCase,
       revokeVoucherUseCase,
+      batchRevokeVouchersUseCase,
       getSystemMetricsUseCase,
       getAnalyticsUseCase,
       getAuditLogsUseCase,
       exportAuditLogsUseCase,
       broadcastMessageUseCase,
-      systemCleanupUseCase
+      systemCleanupUseCase,
+      getAdminUserChatHistoryUseCase,
+      listWorkersUseCase,
+      controlWorkerUseCase,
+      saveSymbolUseCase,
+      deleteSymbolUseCase,
+      getStreamSymbolsUseCase,
+      saveStreamSymbolUseCase,
+      deleteStreamSymbolUseCase
     },
     eventDispatcher
   };

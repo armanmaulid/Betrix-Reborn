@@ -14,7 +14,8 @@ import {
   AuthService,
   MarketDataService,
   NewsService,
-  ContextInjectionService
+  ContextInjectionService,
+  WorkerManagerService
 } from './services/index.js';
 import {
   RegisterUseCase,
@@ -42,7 +43,8 @@ import {
   ListModelsUseCase,
   CreateAgentUseCase,
   ListAgentsUseCase,
-  SetDefaultAgentUseCase
+  SetDefaultAgentUseCase,
+  TestAgentUseCase
 } from './use-cases/intelligence/index.js';
 import {
   GetSymbolsUseCase,
@@ -67,6 +69,7 @@ import {
   GetAdminUsersUseCase,
   GetAdminUserDetailUseCase,
   UpdateAdminUserUseCase,
+  CreateAdminUserUseCase,
   DeleteAdminUserUseCase,
   ResetUserPasswordUseCase,
   CreateVoucherUseCase,
@@ -77,7 +80,8 @@ import {
   GetAuditLogsUseCase,
   ExportAuditLogsUseCase,
   BroadcastMessageUseCase,
-  SystemCleanupUseCase
+  SystemCleanupUseCase,
+  GetAdminUserChatHistoryUseCase
 } from './use-cases/admin/index.js';
 import { ChatLoggingHandler } from './handlers/ChatLoggingHandler.js';
 import {
@@ -353,6 +357,41 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       });
       expect(fallbackResult.contextBlock).toContain('Notice: Live/Historical candle data for XAUUSD is currently unavailable');
     });
+
+    it('WorkerManagerService auto-discovers and controls modular background workers', async () => {
+      const onStartMock = vi.fn();
+      const onPauseMock = vi.fn();
+
+      const customWorker = {
+        id: 'custom-ai-sentiment',
+        name: 'Custom AI Sentiment Worker',
+        category: 'intelligence' as const,
+        description: 'Analyzes financial sentiment.',
+        interval: '5m',
+        defaultStatus: 'running' as const,
+        initialProcessedCount: 42,
+        onStart: onStartMock,
+        onPause: onPauseMock
+      };
+
+      const manager = new WorkerManagerService([customWorker]);
+      const workers = manager.getAllWorkers();
+
+      expect(workers).toHaveLength(1);
+      expect(workers[0].id).toBe('custom-ai-sentiment');
+      expect(workers[0].status).toBe('running');
+      expect(workers[0].processedCount).toBe(42);
+
+      // Pause worker
+      const paused = await manager.controlWorker('custom-ai-sentiment', 'pause');
+      expect(paused.status).toBe('paused');
+      expect(onPauseMock).toHaveBeenCalled();
+
+      // Start worker
+      const restarted = await manager.controlWorker('custom-ai-sentiment', 'start');
+      expect(restarted.status).toBe('running');
+      expect(onStartMock).toHaveBeenCalled();
+    });
   });
 
   // ==========================================
@@ -470,12 +509,26 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
             return updated.credits;
           }
           return 0;
+        }),
+        reserveCredits: vi.fn(async (uid: string, amount: number) => {
+          const u = mockUsersDb.get(uid);
+          return !!u && u.credits >= amount;
+        }),
+        settleReservation: vi.fn(async (uid: string, _reserved: number, actualCost: number) => {
+          const u = mockUsersDb.get(uid);
+          if (u) {
+            const updated = u.withDeductedCredits(actualCost);
+            mockUsersDb.set(uid, updated);
+            return updated.credits;
+          }
+          return 0;
         })
       };
 
       mockChatRepo = {
         save: vi.fn(async (msg) => msg),
         findBySessionId: vi.fn(async () => []),
+        findRecentBySessionId: vi.fn(async () => []),
         findByUserId: vi.fn(async () => ({ data: [], total: 0, page: 1, limit: 20, totalPages: 1 })),
         deleteSession: vi.fn(async () => 2)
       };
@@ -779,7 +832,15 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       const agents: any[] = [];
       const mockAgentRepo = {
         findById: vi.fn().mockImplementation((id: string) => agents.find((a) => a.id === id) || null),
-        findAll: vi.fn().mockImplementation((activeOnly: boolean) => activeOnly ? agents.filter((a) => a.isActive) : agents),
+        findAll: vi.fn().mockImplementation((filter: any) => {
+          const activeOnly = typeof filter === 'boolean' ? filter : filter?.activeOnly ?? false;
+          const visibility = typeof filter === 'object' ? filter?.visibility : undefined;
+          return agents.filter((a) => {
+            if (activeOnly && !a.isActive) return false;
+            if (visibility && a.visibility !== visibility) return false;
+            return true;
+          });
+        }),
         findDefault: vi.fn().mockImplementation(() => agents.find((a) => a.isDefault) || null),
         save: vi.fn().mockImplementation((agent: any) => {
           agents.push(agent);
@@ -800,17 +861,184 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
         taskType: 'trade_reasoning',
         creditsPer1kTokens: 2,
         isDefault: true,
-        isActive: true
+        isActive: true,
+        visibility: 'public'
       });
 
       expect(created.id).toBe('scalper-pro');
       expect(created.creditsPer1kTokens).toBe(2);
+      expect(created.visibility).toBe('public');
+
+      // Create a private internal QA agent
+      await createAgent.execute({
+        id: 'qa-experimental',
+        name: 'QA Experimental Model',
+        modelName: 'internal/exp-model',
+        taskType: 'trade_reasoning',
+        creditsPer1kTokens: 1,
+        isDefault: false,
+        isActive: true,
+        visibility: 'private'
+      });
 
       const listModels = new ListModelsUseCase(mockAgentRepo as any);
-      const models = await listModels.execute();
-      expect(models.length).toBeGreaterThan(0);
-      expect(models[0].id).toBe('scalper-pro');
-      expect(models[0].modelName).toBe('dahono/deepseek-v4-pro-0813');
+      const publicModels = await listModels.execute();
+      // Public list should only have scalper-pro, not qa-experimental
+      expect(publicModels.length).toBe(1);
+      expect(publicModels[0].id).toBe('scalper-pro');
+
+      const listAgents = new ListAgentsUseCase(mockAgentRepo as any);
+      // Admin list (false) gets all agents (public + private)
+      const allAgents = await listAgents.execute(false);
+      expect(allAgents.length).toBe(2);
+    });
+
+    it('GetAdminUserChatHistoryUseCase retrieves user chat history and logs VIEW_USER_CHAT audit action', async () => {
+      const mockAdminActionRepo = {
+        save: vi.fn().mockResolvedValue({})
+      };
+
+      const chatHistoryUseCase = new GetAdminUserChatHistoryUseCase(
+        mockUserRepo,
+        mockChatRepo,
+        mockAdminActionRepo as any
+      );
+
+      // 1. Success case without sessionId
+      const result = await chatHistoryUseCase.execute('admin-1', 'usr-1', { page: 1, limit: 20 });
+      expect(result).toBeDefined();
+      expect(mockChatRepo.findByUserId).toHaveBeenCalledWith('usr-1', { page: 1, limit: 20 });
+      expect(mockAdminActionRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'VIEW_USER_CHAT',
+          targetId: 'usr-1',
+          adminId: 'admin-1'
+        })
+      );
+
+      // 2. Success case with sessionId
+      await chatHistoryUseCase.execute('admin-1', 'usr-1', { page: 1, limit: 20 }, 'sess-xyz');
+      expect(mockChatRepo.findBySessionId).toHaveBeenCalledWith('sess-xyz', 'usr-1');
+
+      // 3. Not found error for invalid user
+      await expect(
+        chatHistoryUseCase.execute('admin-1', 'nonexistent-user', { page: 1, limit: 20 })
+      ).rejects.toThrow('User not found.');
+    });
+
+    it('TestAgentUseCase executes ephemeral QA test prompt without credit deduction or chat history persistence', async () => {
+      const mockAgent = {
+        id: 'test-qa-agent',
+        name: 'QA Test Agent',
+        modelName: 'deepseek-v4-pro',
+        systemPrompt: 'Default system prompt',
+        temperature: 70,
+        maxTokens: 4096,
+        baseUrl: null,
+        apiKey: null
+      };
+
+      const mockAgentRepo = {
+        findById: vi.fn().mockImplementation((id: string) => id === 'test-qa-agent' ? mockAgent : null)
+      };
+
+      const mockAiGateway = {
+        complete: vi.fn().mockResolvedValue({
+          reply: 'Analysis completed successfully with confluence on EURUSD.',
+          thinking: 'Step 1: Check market structure. Step 2: Confluence confirmed.',
+          inputTokens: 120,
+          outputTokens: 85,
+          latencyMs: 340
+        })
+      };
+
+      const testAgentUseCase = new TestAgentUseCase(mockAgentRepo as any, mockAiGateway as any);
+
+      const result = await testAgentUseCase.execute('test-qa-agent', {
+        message: 'Analyze EURUSD D1 setup',
+        temperatureOverride: 0.5,
+        systemPromptOverride: 'Overridden custom instruction'
+      });
+
+      expect(result.agentId).toBe('test-qa-agent');
+      expect(result.reply).toContain('Analysis completed successfully');
+      expect(result.thinking).toContain('Step 1: Check market structure');
+      expect(result.usage.totalTokens).toBe(205);
+      expect(result.usage.latencyMs).toBe(340);
+
+      expect(mockAiGateway.complete).toHaveBeenCalledWith({
+        model: 'deepseek-v4-pro',
+        messages: [
+          { role: 'system', content: 'Overridden custom instruction' },
+          { role: 'user', content: 'Analyze EURUSD D1 setup' }
+        ],
+        temperature: 0.5,
+        maxTokens: 4096,
+        baseUrl: undefined,
+        apiKey: undefined
+      });
+    });
+
+    it('CreateAdminUserUseCase and UpdateAdminUserUseCase handle commercial user tiers', async () => {
+      let savedUser: any = null;
+      const localMockUserRepo = {
+        findByEmail: vi.fn().mockResolvedValue(null),
+        findById: vi.fn().mockImplementation((id: string) => Promise.resolve(savedUser)),
+        save: vi.fn().mockImplementation((u: any) => {
+          savedUser = u;
+          return Promise.resolve(u);
+        }),
+        update: vi.fn().mockImplementation((u: any) => {
+          savedUser = u;
+          return Promise.resolve(u);
+        }),
+        updateCredits: vi.fn().mockResolvedValue(true)
+      };
+
+      const localMockAdminActionRepo = {
+        save: vi.fn().mockResolvedValue({})
+      };
+
+      const localMockAuthService = {
+        hashPassword: vi.fn().mockResolvedValue('hashed_pwd')
+      };
+
+      const localMockSessionRepo = {
+        deleteByUserId: vi.fn().mockResolvedValue(true)
+      };
+
+      // 1. Create Pro User
+      const createUserUseCase = new CreateAdminUserUseCase(
+        localMockUserRepo as any,
+        localMockAdminActionRepo as any,
+        localMockAuthService as any
+      );
+
+      const created = await createUserUseCase.execute('admin-1', {
+        email: 'pro-trader@betrix.io',
+        name: 'Pro Trader',
+        tier: 'pro',
+        credits: 5000
+      });
+
+      expect(created.user.tier).toBe('pro');
+      expect(created.user.credits).toBe(5000);
+      expect(localMockUserRepo.save).toHaveBeenCalled();
+
+      // 2. Update to VIP Tier
+      const updateUserUseCase = new UpdateAdminUserUseCase(
+        localMockUserRepo as any,
+        localMockAdminActionRepo as any,
+        localMockSessionRepo as any
+      );
+
+      const updated = await updateUserUseCase.execute('admin-1', created.user.id, {
+        tier: 'vip'
+      });
+
+      expect(updated.tier).toBe('vip');
+      expect(localMockUserRepo.update).toHaveBeenCalled();
     });
   });
 });
+

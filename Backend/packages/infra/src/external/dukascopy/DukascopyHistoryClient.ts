@@ -100,10 +100,9 @@ export class DukascopyHistoryClient implements IHistoricalProvider {
         });
       }
     } catch (err: any) {
-      // Dukascopy API unreachable — fail fast with clear error (no synthetic fallback)
-      console.error(`[DukascopyHistoryClient] Fetch failed for ${symUpper} ${dukaTimeframe}: ${err.message}`);
+      // Dukascopy API unreachable or symbol not supported — fail fast with clear error
       throw new NotFoundError(
-        `OHLC data unavailable for ${symUpper} (${dukaTimeframe}). Dukascopy API unreachable: ${err.message}`
+        `OHLC data unavailable for ${symUpper} (${dukaTimeframe}). Dukascopy API: ${err.message}`
       );
     }
 

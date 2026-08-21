@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "tier" varchar(50) DEFAULT 'free' NOT NULL;

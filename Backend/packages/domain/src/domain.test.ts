@@ -24,7 +24,8 @@ import {
   ChatMessage,
   Device,
   Message,
-  MarketTimeCalculator
+  MarketTimeCalculator,
+  BackgroundWorker
 } from './index.js';
 
 describe('Domain - Identity & Access', () => {
@@ -86,6 +87,33 @@ describe('Domain - Identity & Access', () => {
     const updated = user.withDeductedCredits(30);
     expect(updated.credits).toBe(70);
     expect(user.credits).toBe(100); // Immutability preserved
+  });
+
+  it('should default User tier to free and support commercial tiers in toJSON', () => {
+    const userDefault = new User({
+      id: 'u-free',
+      email: 'free@betrix.io',
+      isAdmin: false,
+      status: 'active',
+      emailVerified: true,
+      credits: 100,
+      createdAt: new Date()
+    });
+    expect(userDefault.tier).toBe('free');
+    expect(userDefault.toJSON().tier).toBe('free');
+
+    const userVip = new User({
+      id: 'u-vip',
+      email: 'vip@betrix.io',
+      isAdmin: false,
+      status: 'active',
+      tier: 'vip',
+      emailVerified: true,
+      credits: 100000,
+      createdAt: new Date()
+    });
+    expect(userVip.tier).toBe('vip');
+    expect(userVip.toJSON().tier).toBe('vip');
   });
 });
 
@@ -457,5 +485,47 @@ describe('Domain - News & Shared Kernel', () => {
 
     await dispatcher.dispatch('TEST_EVENT', { data: 'hello' });
     expect(handler).toHaveBeenCalledWith({ data: 'hello' });
+  });
+
+  describe('Domain - BackgroundWorker Entity', () => {
+    it('enforces worker validation invariants and lifecycle transitions', () => {
+      expect(() => new BackgroundWorker({ id: '', name: '', category: 'market', description: '', interval: '10s' })).toThrow(ValidationError);
+
+      const worker = new BackgroundWorker({
+        id: 'test-worker',
+        name: 'Test Worker',
+        category: 'market',
+        description: 'Test worker description',
+        interval: '10s',
+        status: 'running',
+        processedCount: 10
+      });
+
+      expect(worker.status).toBe('running');
+      expect(worker.uptimeSeconds).toBeGreaterThanOrEqual(0);
+
+      worker.pause();
+      expect(worker.status).toBe('paused');
+      expect(worker.uptimeSeconds).toBe(0);
+
+      worker.start();
+      expect(worker.status).toBe('running');
+
+      worker.recordExecution(5);
+      expect(worker.processedCount).toBe(15);
+
+      worker.recordError('Connection failed');
+      expect(worker.status).toBe('error');
+      expect(worker.errorCount).toBe(1);
+      expect(worker.lastError).toBe('Connection failed');
+
+      worker.restart();
+      expect(worker.status).toBe('running');
+      expect(worker.processedCount).toBe(16);
+
+      const json = worker.toJSON();
+      expect(json.id).toBe('test-worker');
+      expect(json.status).toBe('running');
+    });
   });
 });

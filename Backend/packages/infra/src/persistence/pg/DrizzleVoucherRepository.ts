@@ -1,6 +1,6 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { Nullable, PaginatedResult, PaginationParams } from '@betrix/core';
-import { CreditVoucher, IVoucherRepository } from '@betrix/domain';
+import { CreditVoucher, IVoucherRepository, VoucherFilter, VoucherSort } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { creditVouchers } from '../drizzle/schema.js';
 
@@ -85,20 +85,30 @@ export class DrizzleVoucherRepository implements IVoucherRepository {
     return result.length > 0;
   }
 
-  async findAll(pagination: PaginationParams): Promise<PaginatedResult<CreditVoucher>> {
+  async findAll(pagination: PaginationParams, filter?: VoucherFilter, sort?: VoucherSort): Promise<PaginatedResult<CreditVoucher>> {
     const offset = (pagination.page - 1) * pagination.limit;
+    const whereClause = filter?.isRedeemed !== undefined ? eq(creditVouchers.isRedeemed, filter.isRedeemed) : undefined;
 
-    const countResult = await this.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(creditVouchers);
+    const sortColumn =
+      sort?.sortBy === 'amount' ? creditVouchers.amount
+      : sort?.sortBy === 'redeemedAt' ? creditVouchers.redeemedAt
+      : creditVouchers.createdAt;
+    const order = sort?.sortOrder === 'asc' ? asc : desc;
+
+    const [countResult, rows] = await Promise.all([
+      this.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(creditVouchers)
+        .where(whereClause),
+      this.db
+        .select()
+        .from(creditVouchers)
+        .where(whereClause)
+        .orderBy(order(sortColumn))
+        .limit(pagination.limit)
+        .offset(offset)
+    ]);
     const total = countResult[0]?.count ?? 0;
-
-    const rows = await this.db
-      .select()
-      .from(creditVouchers)
-      .orderBy(desc(creditVouchers.createdAt))
-      .limit(pagination.limit)
-      .offset(offset);
 
     return {
       data: rows.map((r) => this.mapToDomain(r)),

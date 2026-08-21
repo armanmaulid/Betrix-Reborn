@@ -52,13 +52,21 @@ const authPluginCallback: FastifyPluginAsync = async (fastify) => {
     if (!session || session.userId !== userId) {
       throw new UnauthorizedError('Session has expired or been revoked. Please log in again.');
     }
+
+    // Re-check live user state — bans/suspensions apply immediately, not at token expiry
+    const user = await fastify.container.repositories.userRepo.findById(userId);
+    if (!user || user.status !== 'active') {
+      throw new UnauthorizedError('Account is not active. Please contact support.');
+    }
   });
 
   // 3. Decorate fastify.requireAdmin (Role-Based Access Control)
   fastify.decorate('requireAdmin', async (request: FastifyRequest, reply: FastifyReply) => {
     await fastify.authenticate(request, reply);
 
-    if (!request.user.isAdmin) {
+    // Authoritative role check from DB — JWT claim can be up to 7 days stale
+    const user = await fastify.container.repositories.userRepo.findById(request.user.userId);
+    if (!user?.isAdmin) {
       throw new ForbiddenError('Administrative privileges required for this action.');
     }
   });

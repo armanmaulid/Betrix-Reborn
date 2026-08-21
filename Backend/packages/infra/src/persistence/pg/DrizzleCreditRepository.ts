@@ -1,4 +1,4 @@
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { ICreditRepository, CreditTransaction } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { creditTransactions, users } from '../drizzle/schema.js';
@@ -82,6 +82,40 @@ export class DrizzleCreditRepository implements ICreditRepository {
       });
 
       return updatedUser[0]?.credits ?? 0;
+    });
+  }
+
+  async reserveCredits(userId: string, amount: number): Promise<boolean> {
+    const result = await this.db
+      .update(users)
+      .set({ reservedCredits: sql`${users.reservedCredits} + ${amount}` })
+      .where(and(eq(users.id, userId), sql`${users.credits} - ${users.reservedCredits} >= ${amount}`))
+      .returning({ reservedCredits: users.reservedCredits });
+    return result.length > 0;
+  }
+
+  async settleReservation(userId: string, reservedAmount: number, actualCost: number, action: string): Promise<number> {
+    return await this.db.transaction(async (tx) => {
+      // Charge actual cost (floor 0), release exactly this reservation.
+      // ponytail: actualCost > reservedAmount is allowed to under-charge — ceiling
+      // is maxTokens-aware reservation set by the caller. Fine at current rates.
+      const updated = await tx
+        .update(users)
+        .set({
+          credits: sql`GREATEST(0, ${users.credits} - ${actualCost})`,
+          reservedCredits: sql`GREATEST(0, ${users.reservedCredits} - ${reservedAmount})`
+        })
+        .where(eq(users.id, userId))
+        .returning({ credits: users.credits });
+
+      await tx.insert(creditTransactions).values({
+        userId,
+        amount: -actualCost,
+        action,
+        createdAt: new Date()
+      });
+
+      return updated[0]?.credits ?? 0;
     });
   }
 

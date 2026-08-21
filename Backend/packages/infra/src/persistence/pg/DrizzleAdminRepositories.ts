@@ -7,6 +7,7 @@ import {
   AdminAction,
   SystemMetrics,
   UserAnalytics,
+  AnalyticsQueryOptions,
   PaginatedResult,
   PaginationParams
 } from '@betrix/domain';
@@ -77,8 +78,12 @@ export class DrizzleAdminActionRepository implements IAdminActionRepository {
     };
   }
 
-  async exportAll(): Promise<AdminAction[]> {
-    const rows = await this.db.select().from(adminActions).orderBy(desc(adminActions.createdAt));
+  async exportAll(actionType?: string): Promise<AdminAction[]> {
+    const whereClause = actionType ? eq(adminActions.action, actionType) : undefined;
+    const query = whereClause
+      ? this.db.select().from(adminActions).where(whereClause).orderBy(desc(adminActions.createdAt))
+      : this.db.select().from(adminActions).orderBy(desc(adminActions.createdAt));
+    const rows = await query;
     return rows.map((r) => this.mapToDomain(r));
   }
 }
@@ -151,23 +156,145 @@ export class DrizzleAnalyticsRepository implements IAnalyticsRepository {
     };
   }
 
-  async getUserAnalytics(): Promise<UserAnalytics> {
-    const topModels = await this.db
-      .select({
-        model: chatMessages.modelUsed,
-        count: sql<number>`cast(count(*) as integer)`
-      })
-      .from(chatMessages)
-      .groupBy(chatMessages.modelUsed)
-      .orderBy(sql`count desc`)
-      .limit(5);
+  async getUserAnalytics(options?: AnalyticsQueryOptions): Promise<UserAnalytics> {
+    const period = options?.period || 'daily';
+
+    const [
+      newTodayRes,
+      newWeekRes,
+      newMonthRes,
+      active24hRes,
+      activeWeekRes,
+      activeMonthRes,
+      topModels
+    ] = await Promise.all([
+      // New users today (UTC)
+      this.db
+        .select({ count: sql<number>`cast(count(*) as integer)` })
+        .from(users)
+        .where(sql`${users.createdAt} >= date_trunc('day', now() at time zone 'utc')`),
+
+      // New users rolling 7 days
+      this.db
+        .select({ count: sql<number>`cast(count(*) as integer)` })
+        .from(users)
+        .where(sql`${users.createdAt} >= (now() - interval '7 days')`),
+
+      // New users rolling 30 days
+      this.db
+        .select({ count: sql<number>`cast(count(*) as integer)` })
+        .from(users)
+        .where(sql`${users.createdAt} >= (now() - interval '30 days')`),
+
+      // Active users 24h
+      this.db
+        .select({ count: sql<number>`cast(count(distinct ${users.id}) as integer)` })
+        .from(users)
+        .where(
+          sql`${users.lastActive} >= (now() - interval '24 hours') or ${users.id} in (select ${sessions.userId} from ${sessions} where ${sessions.createdAt} >= now() - interval '24 hours') or ${users.id} in (select ${chatMessages.userId} from ${chatMessages} where ${chatMessages.createdAt} >= now() - interval '24 hours')`
+        ),
+
+      // Active users 7 days
+      this.db
+        .select({ count: sql<number>`cast(count(distinct ${users.id}) as integer)` })
+        .from(users)
+        .where(
+          sql`${users.lastActive} >= (now() - interval '7 days') or ${users.id} in (select ${sessions.userId} from ${sessions} where ${sessions.createdAt} >= now() - interval '7 days') or ${users.id} in (select ${chatMessages.userId} from ${chatMessages} where ${chatMessages.createdAt} >= now() - interval '7 days')`
+        ),
+
+      // Active users 30 days
+      this.db
+        .select({ count: sql<number>`cast(count(distinct ${users.id}) as integer)` })
+        .from(users)
+        .where(
+          sql`${users.lastActive} >= (now() - interval '30 days') or ${users.id} in (select ${sessions.userId} from ${sessions} where ${sessions.createdAt} >= now() - interval '30 days') or ${users.id} in (select ${chatMessages.userId} from ${chatMessages} where ${chatMessages.createdAt} >= now() - interval '30 days')`
+        ),
+
+      // Top AI Models
+      this.db
+        .select({
+          model: chatMessages.modelUsed,
+          count: sql<number>`cast(count(*) as integer)`
+        })
+        .from(chatMessages)
+        .groupBy(chatMessages.modelUsed)
+        .orderBy(sql`count desc`)
+        .limit(5)
+    ]);
+
+    // Token Usage Time-Series based on period
+    let tokenUsageRows: { date: string; tokens: number }[] = [];
+
+    if (period === 'weekly') {
+      tokenUsageRows = await this.db
+        .select({
+          date: sql<string>`to_char(date_trunc('week', ${chatMessages.createdAt}), 'YYYY-MM-DD')`,
+          tokens: sql<number>`cast(coalesce(sum(${chatMessages.inputTokens} + ${chatMessages.outputTokens}), 0) as integer)`
+        })
+        .from(chatMessages)
+        .where(sql`${chatMessages.createdAt} >= now() - interval '12 weeks'`)
+        .groupBy(sql`date_trunc('week', ${chatMessages.createdAt})`)
+        .orderBy(sql`date_trunc('week', ${chatMessages.createdAt}) asc`);
+    } else if (period === 'monthly') {
+      tokenUsageRows = await this.db
+        .select({
+          date: sql<string>`to_char(date_trunc('month', ${chatMessages.createdAt}), 'YYYY-MM')`,
+          tokens: sql<number>`cast(coalesce(sum(${chatMessages.inputTokens} + ${chatMessages.outputTokens}), 0) as integer)`
+        })
+        .from(chatMessages)
+        .where(sql`${chatMessages.createdAt} >= now() - interval '12 months'`)
+        .groupBy(sql`date_trunc('month', ${chatMessages.createdAt})`)
+        .orderBy(sql`date_trunc('month', ${chatMessages.createdAt}) asc`);
+    } else if (period === 'all') {
+      tokenUsageRows = await this.db
+        .select({
+          date: sql<string>`to_char(${chatMessages.createdAt}, 'YYYY-MM')`,
+          tokens: sql<number>`cast(coalesce(sum(${chatMessages.inputTokens} + ${chatMessages.outputTokens}), 0) as integer)`
+        })
+        .from(chatMessages)
+        .groupBy(sql`to_char(${chatMessages.createdAt}, 'YYYY-MM')`)
+        .orderBy(sql`to_char(${chatMessages.createdAt}, 'YYYY-MM') asc`);
+    } else if (period === 'custom' && (options?.startDate || options?.endDate)) {
+      let whereSql = sql`1=1`;
+      if (options.startDate && options.endDate) {
+        whereSql = sql`${chatMessages.createdAt} >= ${options.startDate}::timestamptz and ${chatMessages.createdAt} <= ${options.endDate}::timestamptz`;
+      } else if (options.startDate) {
+        whereSql = sql`${chatMessages.createdAt} >= ${options.startDate}::timestamptz`;
+      } else if (options.endDate) {
+        whereSql = sql`${chatMessages.createdAt} <= ${options.endDate}::timestamptz`;
+      }
+
+      tokenUsageRows = await this.db
+        .select({
+          date: sql<string>`to_char(${chatMessages.createdAt}, 'YYYY-MM-DD')`,
+          tokens: sql<number>`cast(coalesce(sum(${chatMessages.inputTokens} + ${chatMessages.outputTokens}), 0) as integer)`
+        })
+        .from(chatMessages)
+        .where(whereSql)
+        .groupBy(sql`to_char(${chatMessages.createdAt}, 'YYYY-MM-DD')`)
+        .orderBy(sql`to_char(${chatMessages.createdAt}, 'YYYY-MM-DD') asc`);
+    } else {
+      // Default: daily rolling 14 days
+      tokenUsageRows = await this.db
+        .select({
+          date: sql<string>`to_char(${chatMessages.createdAt}, 'YYYY-MM-DD')`,
+          tokens: sql<number>`cast(coalesce(sum(${chatMessages.inputTokens} + ${chatMessages.outputTokens}), 0) as integer)`
+        })
+        .from(chatMessages)
+        .where(sql`${chatMessages.createdAt} >= now() - interval '14 days'`)
+        .groupBy(sql`to_char(${chatMessages.createdAt}, 'YYYY-MM-DD')`)
+        .orderBy(sql`to_char(${chatMessages.createdAt}, 'YYYY-MM-DD') asc`);
+    }
 
     return {
-      newUsersToday: 0,
-      newUsersThisWeek: 0,
-      activeUsers24h: 0,
+      newUsersToday: newTodayRes[0]?.count || 0,
+      newUsersThisWeek: newWeekRes[0]?.count || 0,
+      newUsersThisMonth: newMonthRes[0]?.count || 0,
+      activeUsers24h: active24hRes[0]?.count || 0,
+      activeUsersWeekly: activeWeekRes[0]?.count || 0,
+      activeUsersMonthly: activeMonthRes[0]?.count || 0,
       topModels,
-      dailyTokenUsage: []
+      dailyTokenUsage: tokenUsageRows
     };
   }
 }

@@ -1,5 +1,5 @@
-import { eq, desc } from 'drizzle-orm';
-import { IAiAgentRepository, AiAgent, Nullable } from '@betrix/domain';
+import { eq, desc, and } from 'drizzle-orm';
+import { IAiAgentRepository, AgentFilter, AiAgent, Nullable } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { aiAgents } from '../drizzle/schema.js';
 
@@ -22,15 +22,27 @@ export class DrizzleAiAgentRepository implements IAiAgentRepository {
       supportsThinking: row.supportsThinking,
       isDefault: row.isDefault,
       isActive: row.isActive,
+      visibility: (row.visibility as 'public' | 'private') || 'public',
       description: row.description,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt
     });
   }
 
-  async findAll(activeOnly: boolean = false): Promise<AiAgent[]> {
-    const query = activeOnly
-      ? this.db.select().from(aiAgents).where(eq(aiAgents.isActive, true))
+  async findAll(filter: AgentFilter | boolean = false): Promise<AiAgent[]> {
+    const activeOnly = typeof filter === 'boolean' ? filter : filter.activeOnly ?? false;
+    const visibility = typeof filter === 'object' ? filter.visibility : undefined;
+
+    const conditions = [];
+    if (activeOnly) {
+      conditions.push(eq(aiAgents.isActive, true));
+    }
+    if (visibility) {
+      conditions.push(eq(aiAgents.visibility, visibility));
+    }
+
+    const query = conditions.length > 0
+      ? this.db.select().from(aiAgents).where(and(...conditions))
       : this.db.select().from(aiAgents);
 
     const rows = await query.orderBy(desc(aiAgents.isDefault), aiAgents.name);
@@ -48,14 +60,34 @@ export class DrizzleAiAgentRepository implements IAiAgentRepository {
   }
 
   async findDefault(): Promise<Nullable<AiAgent>> {
-    const rows = await this.db
+    // 1. Try public active default
+    const defaultPublicRows = await this.db
+      .select()
+      .from(aiAgents)
+      .where(and(eq(aiAgents.isDefault, true), eq(aiAgents.isActive, true), eq(aiAgents.visibility, 'public')))
+      .limit(1);
+
+    if (defaultPublicRows[0]) return this.mapToDomain(defaultPublicRows[0]);
+
+    // 2. Try any default
+    const defaultRows = await this.db
       .select()
       .from(aiAgents)
       .where(eq(aiAgents.isDefault, true))
       .limit(1);
 
-    if (rows[0]) return this.mapToDomain(rows[0]);
+    if (defaultRows[0]) return this.mapToDomain(defaultRows[0]);
 
+    // 3. Try any active public agent
+    const activePublicRows = await this.db
+      .select()
+      .from(aiAgents)
+      .where(and(eq(aiAgents.isActive, true), eq(aiAgents.visibility, 'public')))
+      .limit(1);
+
+    if (activePublicRows[0]) return this.mapToDomain(activePublicRows[0]);
+
+    // 4. Try any active agent
     const activeRows = await this.db
       .select()
       .from(aiAgents)
@@ -90,6 +122,7 @@ export class DrizzleAiAgentRepository implements IAiAgentRepository {
         supportsThinking: agent.supportsThinking,
         isDefault: agent.isDefault,
         isActive: agent.isActive,
+        visibility: agent.visibility,
         description: agent.description,
         createdAt: agent.createdAt,
         updatedAt: agent.updatedAt
@@ -110,6 +143,7 @@ export class DrizzleAiAgentRepository implements IAiAgentRepository {
           supportsThinking: agent.supportsThinking,
           isDefault: agent.isDefault,
           isActive: agent.isActive,
+          visibility: agent.visibility,
           description: agent.description,
           updatedAt: new Date()
         }

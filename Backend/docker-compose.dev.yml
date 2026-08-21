@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: betrixpass
       POSTGRES_DB: betrix
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata_reborn:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +21,7 @@ services:
     image: redis:7-alpine
     container_name: betrix_reborn_redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redisdata_reborn:/data
     healthcheck:
@@ -39,7 +39,7 @@ services:
       SRH_TOKEN: local_dev_token
       SRH_CONNECTION_STRING: redis://redis:6379
     ports:
-      - "8079:80"
+      - "127.0.0.1:8079:80"
     depends_on:
       redis:
         condition: service_healthy

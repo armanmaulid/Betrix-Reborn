@@ -40,9 +40,13 @@ export class SendMessageUseCase {
   ) {}
 
   public async execute(userId: string, dto: SendMessageDTO): Promise<SendMessageResult> {
-    // 1. Pre-stream Balance Check (ADR-29)
-    const currentBalance = await this.creditRepo.getBalance(userId);
-    if (currentBalance < 1) {
+    // 1. Atomic credit reservation (Bug 8 fix — no check-then-deduct race)
+    const maxTokens = dto.maxTokens || 8192;
+    // Worst case: input (message + history + system prompt) + maxTokens output, at agent rate
+    const estimatedInputTokens = Math.ceil((dto.message.length + 8000) / 4);
+    const reservationAmount = Math.max(1, Math.ceil(((estimatedInputTokens + maxTokens) / 1000)));
+    const reserved = await this.creditRepo.reserveCredits(userId, reservationAmount);
+    if (!reserved) {
       throw new AppError('Insufficient credits to initiate AI chat. Please top up or redeem a voucher.', 402, 'PAYMENT_REQUIRED');
     }
 
@@ -77,20 +81,22 @@ export class SendMessageUseCase {
       systemPromptContent += `\n\n${marketContextBlock}`;
     }
 
-    // 5. Load Conversation History
-    const history = await this.chatRepo.findBySessionId(sessionId, userId);
+    // 5. Load Conversation History (last 10 only — context window)
+    const history = await this.chatRepo.findRecentBySessionId(sessionId, userId, 10);
     const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
       { role: 'system', content: systemPromptContent }
     ];
 
-    for (const item of history.slice(-10)) {
+    for (const item of history) {
       messages.push({ role: 'user', content: item.message });
       messages.push({ role: 'assistant', content: item.reply });
     }
 
     messages.push({ role: 'user', content: dto.message });
 
-    // 6. Call AI Gateway
+    // 6. Call AI Gateway — reservation already held; settle on any outcome
+    let settled = false;
+    try {
     const response = await this.aiGateway.complete({
       model: modelName,
       messages,
@@ -100,19 +106,18 @@ export class SendMessageUseCase {
       apiKey: agent?.apiKey || undefined
     });
 
-    // 7. Calculate & Deduct Credits dynamically from Agent or Policy (ADR-21)
+    // 7. Settle reservation with actual usage (ADR-21)
     const totalTokens = response.inputTokens + response.outputTokens;
     const creditsRate = agent?.creditsPer1kTokens ?? 1;
     const creditsSpent = Math.max(1, Math.ceil((totalTokens / 1000) * creditsRate));
 
-    let remainingCredits = currentBalance;
-    if (creditsSpent > 0) {
-      remainingCredits = await this.creditRepo.deductCredits(
-        userId,
-        creditsSpent,
-        `AI_CHAT:${agent?.id || modelName}:${sessionId}`
-      );
-    }
+    const remainingCredits = await this.creditRepo.settleReservation(
+      userId,
+      reservationAmount,
+      creditsSpent,
+      `AI_CHAT:${agent?.id || modelName}:${sessionId}`
+    );
+    settled = true;
 
     // 8. Persist Chat Message
     const chatMsg = new ChatMessage({
@@ -147,5 +152,11 @@ export class SendMessageUseCase {
       creditsSpent,
       remainingCredits
     };
+    } finally {
+      // Safety net: if anything threw between reserve and settle, release the hold uncharged.
+      if (!settled) {
+        await this.creditRepo.settleReservation(userId, reservationAmount, 0, `AI_CHAT_RELEASE:${sessionId}`).catch(() => {});
+      }
+    }
   }
 }

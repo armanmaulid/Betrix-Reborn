@@ -16,7 +16,7 @@
     "start:news": "node dist/news-worker.js",
     "start:sync": "node dist/sync-worker.js",
     "start:cleanup": "node dist/cleanup-worker.js",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run --exclude '**/dist/**' --passWithNoTests",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

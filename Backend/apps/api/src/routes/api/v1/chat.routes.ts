@@ -203,7 +203,7 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (_request, reply) => {
-      const agents = await useCases.listAgentsUseCase.execute(true);
+      const agents = await useCases.listAgentsUseCase.execute({ activeOnly: true, visibility: 'public' });
       return reply.send({
         success: true,
         data: agents.map((a) => a.toJSON())

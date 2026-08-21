@@ -79,6 +79,19 @@ export class DrizzleChatRepository implements IChatRepository {
     return rows.map((r) => this.mapToDomain(r));
   }
 
+  async findRecentBySessionId(sessionId: string, userId: string, limit: number): Promise<ChatMessage[]> {
+    // Latest N by createdAt, re-reversed to chronological — avoids loading full
+    // session (long sessions carry full LLM replies as text) on every send.
+    const rows = await this.db
+      .select()
+      .from(chatMessages)
+      .where(and(eq(chatMessages.sessionId, sessionId), eq(chatMessages.userId, userId)))
+      .orderBy(desc(chatMessages.createdAt))
+      .limit(limit);
+
+    return rows.reverse().map((r) => this.mapToDomain(r));
+  }
+
   async deleteSession(sessionId: string, userId: string): Promise<number> {
     const deleted = await this.db
       .delete(chatMessages)

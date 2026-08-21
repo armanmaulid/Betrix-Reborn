@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "reserved_credits" integer DEFAULT 0 NOT NULL;

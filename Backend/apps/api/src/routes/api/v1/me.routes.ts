@@ -69,7 +69,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.changePasswordUseCase.execute(request.user.userId, request.body);
+      const result = await useCases.changePasswordUseCase.execute(request.user.userId, request.body, request.user.sessionId);
       return reply.send({
         success: true,
         data: result

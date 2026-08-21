@@ -13,9 +13,17 @@ export interface SseClient {
 export class SseHub {
   private clients = new Map<string, SseClient>();
   private heartbeatTimer: NodeJS.Timeout | null = null;
+  private marketTickerTimer: NodeJS.Timeout | null = null;
+  private lastPriceSnapshot = new Map<string, number>();
+  private priceFetcher: (() => Promise<PriceTick[]>) | null = null;
 
   constructor() {
     this.startHeartbeat();
+  }
+
+  public setPriceFetcher(fetcher: () => Promise<PriceTick[]>): void {
+    this.priceFetcher = fetcher;
+    this.startMarketTicker();
   }
 
   public addClient(
@@ -101,6 +109,11 @@ export class SseHub {
       this.heartbeatTimer = null;
     }
 
+    if (this.marketTickerTimer) {
+      clearInterval(this.marketTickerTimer);
+      this.marketTickerTimer = null;
+    }
+
     for (const client of this.clients.values()) {
       try {
         this.sendEvent(client, 'close', { message: 'Server shutting down' });
@@ -135,6 +148,37 @@ export class SseHub {
         }
       }
     }, 25000); // 25s heartbeat
+  }
+
+  private startMarketTicker(): void {
+    if (this.marketTickerTimer) return;
+
+    this.marketTickerTimer = setInterval(async () => {
+      if (!this.priceFetcher || this.clients.size === 0) return;
+
+      let hasMarketClient = false;
+      for (const client of this.clients.values()) {
+        if (client.channel === 'market') {
+          hasMarketClient = true;
+          break;
+        }
+      }
+      if (!hasMarketClient) return;
+
+      try {
+        const prices = await this.priceFetcher();
+        for (const tick of prices) {
+          const sym = tick.symbol.toUpperCase();
+          const prevBid = this.lastPriceSnapshot.get(sym);
+          if (prevBid !== tick.bid) {
+            this.lastPriceSnapshot.set(sym, tick.bid);
+            this.broadcastMarketTick(tick);
+          }
+        }
+      } catch {
+        // Ignore background polling errors
+      }
+    }, 1000);
   }
 }
 

@@ -5,6 +5,12 @@ import fastifySwaggerUi from '@fastify/swagger-ui';
 import { env } from '@betrix/config';
 
 const swaggerPluginCallback: FastifyPluginAsync = async (fastify) => {
+  // Full interactive API map is a dev tool — never expose it in production
+  if (env.NODE_ENV === 'production') {
+    fastify.log.info('Swagger UI disabled in production');
+    return;
+  }
+
   // 1. Register OpenAPI Specification Generator
   await fastify.register(fastifySwagger, {
     openapi: {

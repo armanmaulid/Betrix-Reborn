@@ -1,5 +1,7 @@
 import { Nullable, Optional } from '@betrix/core';
 
+export type UserTier = 'free' | 'starter' | 'pro' | 'premium' | 'vip';
+
 export interface UserProps {
   id: string;
   email: string;
@@ -7,6 +9,7 @@ export interface UserProps {
   name?: Nullable<string>;
   isAdmin: boolean;
   status: 'active' | 'suspended' | 'banned';
+  tier?: UserTier;
   emailVerified: boolean;
   credits: number;
   googleId?: Nullable<string>;
@@ -27,6 +30,7 @@ export class User {
   public readonly name: Nullable<string>;
   public readonly isAdmin: boolean;
   public readonly status: 'active' | 'suspended' | 'banned';
+  public readonly tier: UserTier;
   public readonly emailVerified: boolean;
   public readonly credits: number;
   public readonly googleId: Nullable<string>;
@@ -46,6 +50,7 @@ export class User {
     this.name = props.name ?? null;
     this.isAdmin = props.isAdmin;
     this.status = props.status;
+    this.tier = props.tier ?? 'free';
     this.emailVerified = props.emailVerified;
     this.credits = props.credits;
     this.googleId = props.googleId ?? null;
@@ -103,6 +108,7 @@ export class User {
       name: this.name,
       isAdmin: this.isAdmin,
       status: this.status,
+      tier: this.tier,
       emailVerified: this.emailVerified,
       credits: this.credits,
       googleId: this.googleId,

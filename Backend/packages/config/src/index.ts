@@ -38,6 +38,12 @@ export const EnvSchema = Type.Object({
 
 export type EnvConfig = Static<typeof EnvSchema>;
 
+// Fail fast: JWT_SECRET must be set and strong — never fall back to a known value.
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret || jwtSecret.length < 32) {
+  throw new Error('JWT_SECRET must be set (min 32 chars) — refusing to start with a default secret');
+}
+
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: Number(process.env.PORT) || 3000,
@@ -45,7 +51,7 @@ export const env = {
   DATABASE_URL: process.env.DATABASE_URL || 'postgresql://betrix:betrixpass@localhost:5432/betrix_reborn',
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL || 'http://localhost:8079',
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN || 'local_dev_token',
-  JWT_SECRET: process.env.JWT_SECRET || 'supersecretjwtkeythatisminimumthirtytwocharslong123!',
+  JWT_SECRET: jwtSecret,
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',

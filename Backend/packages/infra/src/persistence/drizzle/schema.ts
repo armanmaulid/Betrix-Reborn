@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, boolean, integer, timestamp, bigint, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, boolean, integer, timestamp, bigint, jsonb, index } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -7,8 +7,10 @@ export const users = pgTable('users', {
   name: varchar('name', { length: 255 }),
   isAdmin: boolean('is_admin').default(false).notNull(),
   status: varchar('status', { length: 50 }).default('active').notNull(),
+  tier: varchar('tier', { length: 50 }).default('free').notNull(),
   emailVerified: boolean('email_verified').default(false).notNull(),
   credits: integer('credits').default(100).notNull(),
+  reservedCredits: integer('reserved_credits').default(0).notNull(),
   googleId: varchar('google_id', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
   address: text('address'),
@@ -51,7 +53,10 @@ export const chatMessages = pgTable('chat_messages', {
   inputTokens: integer('input_tokens').default(0).notNull(),
   outputTokens: integer('output_tokens').default(0).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
-});
+}, (t) => [
+  index('chat_messages_user_created_idx').on(t.userId, t.createdAt),
+  index('chat_messages_session_user_idx').on(t.sessionId, t.userId)
+]);
 
 export const aiAgents = pgTable('ai_agents', {
   id: varchar('id', { length: 100 }).primaryKey(),
@@ -68,6 +73,7 @@ export const aiAgents = pgTable('ai_agents', {
   supportsThinking: boolean('supports_thinking').notNull().default(true),
   isDefault: boolean('is_default').notNull().default(false),
   isActive: boolean('is_active').notNull().default(true),
+  visibility: varchar('visibility', { length: 20 }).notNull().default('public'),
   description: text('description'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
@@ -124,7 +130,10 @@ export const newsArticles = pgTable('news_articles', {
   tags: text('tags').array(),
   image: text('image'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
-});
+}, (t) => [
+  index('news_articles_datetime_idx').on(t.datetime),
+  index('news_articles_category_datetime_idx').on(t.category, t.datetime)
+]);
 
 export const messages = pgTable('messages', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -137,7 +146,11 @@ export const messages = pgTable('messages', {
   readAt: timestamp('read_at', { withTimezone: true }),
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
-});
+}, (t) => [
+  index('messages_to_created_idx').on(t.toUserId, t.createdAt),
+  index('messages_from_created_idx').on(t.fromUserId, t.createdAt),
+  index('messages_thread_idx').on(t.threadId)
+]);
 
 export const notificationPreferences = pgTable('notification_preferences', {
   userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).primaryKey(),
@@ -155,7 +168,9 @@ export const activityLogs = pgTable('activity_logs', {
   ip: varchar('ip', { length: 100 }),
   userAgent: text('user_agent'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
-});
+}, (t) => [
+  index('activity_logs_user_created_idx').on(t.userId, t.createdAt)
+]);
 
 export const adminActions = pgTable('admin_actions', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -167,14 +182,18 @@ export const adminActions = pgTable('admin_actions', {
   ip: varchar('ip', { length: 100 }),
   userAgent: text('user_agent'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
-});
+}, (t) => [
+  index('admin_actions_action_created_idx').on(t.action, t.createdAt)
+]);
 
 export const failedLoginAttempts = pgTable('failed_login_attempts', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: varchar('email', { length: 255 }).notNull(),
   ip: varchar('ip', { length: 100 }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
-});
+}, (t) => [
+  index('failed_login_email_created_idx').on(t.email, t.createdAt)
+]);
 
 export const verificationTokens = pgTable('verification_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),

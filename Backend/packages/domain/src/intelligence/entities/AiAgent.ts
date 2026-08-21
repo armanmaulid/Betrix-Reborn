@@ -15,6 +15,7 @@ export interface AiAgentProps {
   supportsThinking?: boolean;
   isDefault?: boolean;
   isActive?: boolean;
+  visibility?: 'public' | 'private';
   description?: Nullable<string>;
   createdAt?: Date;
   updatedAt?: Date;
@@ -35,6 +36,7 @@ export class AiAgent {
   public readonly supportsThinking: boolean;
   public readonly isDefault: boolean;
   public readonly isActive: boolean;
+  public readonly visibility: 'public' | 'private';
   public readonly description: Nullable<string>;
   public readonly createdAt: Date;
   public readonly updatedAt: Date;
@@ -54,6 +56,7 @@ export class AiAgent {
     this.supportsThinking = props.supportsThinking ?? true;
     this.isDefault = props.isDefault ?? false;
     this.isActive = props.isActive ?? true;
+    this.visibility = props.visibility ?? 'public';
     this.description = props.description ?? null;
     this.createdAt = props.createdAt ?? new Date();
     this.updatedAt = props.updatedAt ?? new Date();
@@ -92,6 +95,7 @@ export class AiAgent {
       supportsThinking: this.supportsThinking,
       isDefault: this.isDefault,
       isActive: this.isActive,
+      visibility: this.visibility,
       description: this.description,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt

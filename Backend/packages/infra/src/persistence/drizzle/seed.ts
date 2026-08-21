@@ -1,8 +1,11 @@
 import dotenv from 'dotenv';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createPgPool, createDrizzleClient } from './client.js';
-import { symbols, aiAgents, streamSymbols, ohlcSymbols } from './schema.js';
+import { eq } from 'drizzle-orm';
+import { symbols, aiAgents, streamSymbols, ohlcSymbols, users } from './schema.js';
+import { hashPassword } from '@betrix/core';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -261,11 +264,52 @@ export async function seedOhlcSymbols(connectionString?: string) {
   await pool.end();
 }
 
+export async function seedAdmin(connectionString?: string) {
+  const conn = connectionString || process.env.DATABASE_URL;
+  if (!conn) throw new Error('DATABASE_URL must be set to seed the admin account');
+  const pool = createPgPool(conn, 1);
+  const db = createDrizzleClient(pool);
+
+  // Skip if any admin already exists — never overwrite a live account.
+  const existing = await db.select({ id: users.id }).from(users).where(eq(users.isAdmin, true)).limit(1);
+  if (existing.length > 0) {
+    console.log('Admin account already exists — skipping admin seed.');
+    await pool.end();
+    return;
+  }
+
+  const email = process.env.ADMIN_EMAIL || 'admin@betrix.io';
+  const password = process.env.ADMIN_PASSWORD || crypto.randomBytes(16).toString('hex');
+
+  console.log('Seeding default administrator account...');
+  const passwordHash = await hashPassword(password);
+
+  await db.insert(users).values({
+    email,
+    passwordHash,
+    name: 'Root Administrator',
+    isAdmin: true,
+    status: 'active',
+    emailVerified: true,
+    credits: 1000000,
+    createdAt: new Date()
+  }).onConflictDoNothing({ target: users.email });
+
+  if (process.env.ADMIN_PASSWORD) {
+    console.log(`Seeded administrator: ${email}`);
+  } else {
+    // Generated password: print once, never stored anywhere else.
+    console.log(`Seeded administrator: ${email} / ${password} (generated — save it now, shown once)`);
+  }
+  await pool.end();
+}
+
 export async function seedAll(connectionString?: string) {
   await seedSymbols(connectionString);
   await seedStreamSymbols(connectionString);
   await seedOhlcSymbols(connectionString);
   await seedAgents(connectionString);
+  await seedAdmin(connectionString);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

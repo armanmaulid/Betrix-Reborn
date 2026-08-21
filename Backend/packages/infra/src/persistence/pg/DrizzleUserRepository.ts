@@ -1,4 +1,4 @@
-import { eq, ilike, or, sql } from 'drizzle-orm';
+import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import { IUserRepository, User, Nullable, PaginatedResult, PaginationParams } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { users } from '../drizzle/schema.js';
@@ -14,6 +14,7 @@ export class DrizzleUserRepository implements IUserRepository {
       name: row.name,
       isAdmin: row.isAdmin,
       status: row.status as 'active' | 'suspended' | 'banned',
+      tier: (row.tier as any) || 'free',
       emailVerified: row.emailVerified,
       credits: row.credits,
       googleId: row.googleId,
@@ -53,6 +54,7 @@ export class DrizzleUserRepository implements IUserRepository {
         name: user.name,
         isAdmin: user.isAdmin,
         status: user.status,
+        tier: user.tier || 'free',
         emailVerified: user.emailVerified,
         credits: user.credits,
         googleId: user.googleId,
@@ -79,6 +81,7 @@ export class DrizzleUserRepository implements IUserRepository {
         name: user.name,
         isAdmin: user.isAdmin,
         status: user.status,
+        tier: user.tier || 'free',
         emailVerified: user.emailVerified,
         credits: user.credits,
         googleId: user.googleId,
@@ -119,11 +122,18 @@ export class DrizzleUserRepository implements IUserRepository {
     return updated.length > 0;
   }
 
-  async findAll(pagination: PaginationParams, search?: string): Promise<PaginatedResult<User>> {
+  async findAll(pagination: PaginationParams, search?: string, tier?: string): Promise<PaginatedResult<User>> {
     const offset = (pagination.page - 1) * pagination.limit;
-    const whereClause = search
-      ? or(ilike(users.email, `%${search}%`), ilike(users.name, `%${search}%`))
-      : undefined;
+    // Escape LIKE wildcards so user input can't force unbounded full scans
+    const escaped = search?.replace(/[%_\\]/g, '\\$&');
+    const conditions = [];
+    if (escaped) {
+      conditions.push(or(ilike(users.email, `%${escaped}%`), ilike(users.name, `%${escaped}%`)));
+    }
+    if (tier) {
+      conditions.push(eq(users.tier, tier));
+    }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const [countResult, rows] = await Promise.all([
       this.db

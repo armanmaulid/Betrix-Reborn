@@ -6,4 +6,14 @@ export interface ICreditRepository {
   deductCredits(userId: string, amount: number, action: string): Promise<number>;
   addCredits(userId: string, amount: number, action: string): Promise<number>;
   getHistory(userId: string, limit?: number): Promise<CreditTransaction[]>;
+  /**
+   * Atomically reserve credits before an expensive operation.
+   * Fails (returns false) if available = credits - reservedCredits < amount.
+   */
+  reserveCredits(userId: string, amount: number): Promise<boolean>;
+  /**
+   * Settle a reservation: charge actualCost (may exceed reservation — clamped at available),
+   * clear the reservation, record the transaction. Returns new balance.
+   */
+  settleReservation(userId: string, reservedAmount: number, actualCost: number, action: string): Promise<number>;
 }

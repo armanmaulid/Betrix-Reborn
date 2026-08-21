@@ -43,11 +43,15 @@ export class StreamMessageUseCase {
     dto: StreamMessageDTO,
     callbacks: StreamMessageCallbacks
   ): Promise<void> {
-    // 1. Balance Pre-check (ADR-29)
-    const currentBalance = await this.creditRepo.getBalance(userId);
-    if (currentBalance < 1) {
+    // 1. Atomic credit reservation (Bug 8 fix — no check-then-deduct race)
+    const maxTokens = dto.maxTokens || 8192;
+    const estimatedInputTokens = Math.ceil((dto.message.length + 8000) / 4);
+    const reservationAmount = Math.max(1, Math.ceil(((estimatedInputTokens + maxTokens) / 1000)));
+    const reserved = await this.creditRepo.reserveCredits(userId, reservationAmount);
+    if (!reserved) {
       throw new AppError('Insufficient credits to initiate AI chat. Please top up or redeem a voucher.', 402, 'PAYMENT_REQUIRED');
     }
+    let settled = false;
 
     // 2. Resolve Dynamic Agent from Database (Zero Backend Restart)
     let agent: AiAgent | null = null;
@@ -80,13 +84,13 @@ export class StreamMessageUseCase {
       systemPromptContent += `\n\n${marketContextBlock}`;
     }
 
-    // 5. Conversation History
-    const history = await this.chatRepo.findBySessionId(sessionId, userId);
+    // 5. Conversation History (last 10 only — context window)
+    const history = await this.chatRepo.findRecentBySessionId(sessionId, userId, 10);
     const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
       { role: 'system', content: systemPromptContent }
     ];
 
-    for (const item of history.slice(-10)) {
+    for (const item of history) {
       messages.push({ role: 'user', content: item.message });
       messages.push({ role: 'assistant', content: item.reply });
     }
@@ -96,6 +100,7 @@ export class StreamMessageUseCase {
     let fullReply = '';
 
     // 6. Stream from AI Gateway with dual think/delta callbacks
+    try {
     await this.aiGateway.stream(
       {
         model: modelName,
@@ -117,6 +122,13 @@ export class StreamMessageUseCase {
           const totalTokens = meta.inputTokens + meta.outputTokens;
           const creditsRate = agent?.creditsPer1kTokens ?? 1;
           const creditsSpent = Math.max(1, Math.ceil((totalTokens / 1000) * creditsRate));
+          settled = true;
+
+          // Settle reservation with actual usage — fire-and-forget safe now:
+          // even if this throws, the finally below releases the hold.
+          void this.creditRepo
+            .settleReservation(userId, reservationAmount, creditsSpent, `AI_CHAT:${agent?.id || modelName}:${sessionId}`)
+            .catch(() => {});
 
           // Emit onDone SSE event with metadata
           callbacks.onDone?.({
@@ -150,5 +162,11 @@ export class StreamMessageUseCase {
         }
       }
     );
+    } finally {
+      // Release the hold if stream failed/aborted before onDone fired.
+      if (!settled) {
+        await this.creditRepo.settleReservation(userId, reservationAmount, 0, `AI_CHAT_RELEASE:${sessionId}`).catch(() => {});
+      }
+    }
   }
 }

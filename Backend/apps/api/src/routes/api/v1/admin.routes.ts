@@ -2,8 +2,12 @@ import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import {
   AdminUsersQuerySchema,
   UpdateAdminUserSchema,
+  CreateAdminUserSchema,
   ResetUserPasswordSchema,
+  AdminUserChatHistoryQuerySchema,
   CreateVoucherSchema,
+  ListVouchersQuerySchema,
+  BatchRevokeVouchersSchema,
   BroadcastMessageSchema,
   AuditLogQuerySchema,
   SystemCleanupSchema,
@@ -11,7 +15,12 @@ import {
   PaginationQuerySchema,
   CreateAgentSchema,
   UpdateAgentSchema,
-  AgentIdParamSchema
+  AgentIdParamSchema,
+  TestAgentSchema,
+  AnalyticsQuerySchema,
+  ControlWorkerSchema,
+  SaveSymbolSchema,
+  SaveStreamSymbolSchema
 } from '@betrix/application';
 import { Type } from '@sinclair/typebox';
 
@@ -20,6 +29,34 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
 
   // Protect all /admin/* routes with Admin RBAC guard
   fastify.addHook('preHandler', fastify.requireAdmin);
+
+  // 0. POST /admin/users — Create a user directly from the admin panel
+  fastify.post(
+    '/users',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Create a new user (password optional — generated if omitted)',
+        body: CreateAdminUserSchema,
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const { user, generatedPassword } = await useCases.createAdminUserUseCase.execute(
+        request.user.userId,
+        request.body,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+      return reply.status(201).send({
+        success: true,
+        data: {
+          user: user.toJSON(),
+          // Shown once in the admin UI — not stored anywhere in plaintext
+          generatedPassword
+        }
+      });
+    }
+  );
 
   // 1. GET /admin/users — List and filter users
   fastify.get(
@@ -37,7 +74,8 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       const limit = request.query.limit || 20;
       const paginated = await useCases.getAdminUsersUseCase.execute(
         { page, limit },
-        request.query.search
+        request.query.search,
+        request.query.tier
       );
       return reply.send({
         success: true,
@@ -70,7 +108,8 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
         data: {
           user: detail.user.toJSON(),
           devices: detail.devices.map((d) => d.toJSON()),
-          sessions: detail.sessions.map((s) => s.toJSON())
+          sessions: detail.sessions.map((s) => s.toJSON()),
+          usageSummary: detail.usageSummary
         }
       });
     }
@@ -146,6 +185,49 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     }
   );
 
+  // 5b. GET /admin/users/:id/chat-history — Get chat history of a specific user with audit logging
+  fastify.get(
+    '/users/:id/chat-history',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Get chat history of a specific user with audit logging',
+        params: IdParamSchema,
+        querystring: AdminUserChatHistoryQuerySchema,
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const page = request.query.page || 1;
+      const limit = request.query.limit || 20;
+      const result = await useCases.getAdminUserChatHistoryUseCase.execute(
+        request.user.userId,
+        request.params.id,
+        { page, limit },
+        request.query.sessionId,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+
+      if (Array.isArray(result)) {
+        return reply.send({
+          success: true,
+          data: result.map((m) => m.toJSON())
+        });
+      }
+
+      return reply.send({
+        success: true,
+        data: result.data.map((m) => m.toJSON()),
+        meta: {
+          page: result.page,
+          limit: result.limit,
+          total: result.total,
+          totalPages: result.totalPages
+        }
+      });
+    }
+  );
+
   // --- VOUCHERS MANAGEMENT (ADR-29) ---
 
   // 6. POST /admin/vouchers — Create new credit voucher
@@ -168,21 +250,24 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     }
   );
 
-  // 7. GET /admin/vouchers — List credit vouchers
+  // 7. GET /admin/vouchers — List credit vouchers (filter + sort)
   fastify.get(
     '/vouchers',
     {
       schema: {
         tags: ['Admin'],
-        summary: 'List credit vouchers',
-        querystring: PaginationQuerySchema,
+        summary: 'List credit vouchers with status filter and sorting',
+        querystring: ListVouchersQuerySchema,
         security: [{ bearerAuth: [] }]
       }
     },
     async (request, reply) => {
-      const page = request.query.page || 1;
-      const limit = request.query.limit || 20;
-      const paginated = await useCases.listVouchersUseCase.execute({ page, limit });
+      const { page, limit, isRedeemed, sortBy, sortOrder } = request.query;
+      const paginated = await useCases.listVouchersUseCase.execute(
+        { page: page || 1, limit: limit || 20 },
+        isRedeemed !== undefined ? { isRedeemed } : undefined,
+        { sortBy, sortOrder }
+      );
       return reply.send({
         success: true,
         data: paginated.data.map((v) => v.toJSON()),
@@ -192,6 +277,30 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
           total: paginated.total,
           totalPages: paginated.totalPages
         }
+      });
+    }
+  );
+
+  // 7b. POST /admin/vouchers/batch-revoke — Revoke multiple vouchers
+  fastify.post(
+    '/vouchers/batch-revoke',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Revoke (delete) multiple vouchers in one call',
+        body: BatchRevokeVouchersSchema,
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const { revoked, failed } = await useCases.batchRevokeVouchersUseCase.execute(
+        request.user.userId,
+        request.body.ids,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+      return reply.send({
+        success: true,
+        data: { revoked, failed }
       });
     }
   );
@@ -244,11 +353,12 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       schema: {
         tags: ['Admin'],
         summary: 'Get user growth, credits consumed, and active session analytics',
+        querystring: AnalyticsQuerySchema,
         security: [{ bearerAuth: [] }]
       }
     },
     async (request, reply) => {
-      const analytics = await useCases.getAnalyticsUseCase.execute();
+      const analytics = await useCases.getAnalyticsUseCase.execute(request.query as any);
       return reply.send({
         success: true,
         data: analytics
@@ -270,9 +380,10 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     async (request, reply) => {
       const page = request.query.page || 1;
       const limit = request.query.limit || 20;
+      const action = request.query.actionType || request.query.action;
       const paginated = await useCases.getAuditLogsUseCase.execute(
         { page, limit },
-        request.query.actionType
+        action
       );
       return reply.send({
         success: true,
@@ -295,14 +406,17 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
         tags: ['Admin'],
         summary: 'Export audit logs as CSV or JSON',
         querystring: Type.Object({
-          format: Type.Optional(Type.Union([Type.Literal('csv'), Type.Literal('json')], { default: 'csv' }))
+          format: Type.Optional(Type.Union([Type.Literal('csv'), Type.Literal('json')], { default: 'csv' })),
+          action: Type.Optional(Type.String()),
+          actionType: Type.Optional(Type.String())
         }),
         security: [{ bearerAuth: [] }]
       }
     },
     async (request, reply) => {
       const format = (request.query.format as 'csv' | 'json') || 'csv';
-      const result = await useCases.exportAuditLogsUseCase.execute(format);
+      const action = request.query.actionType || request.query.action;
+      const result = await useCases.exportAuditLogsUseCase.execute(format, action);
       reply.header('Content-Type', format === 'json' ? 'application/json' : 'text/csv; charset=utf-8');
       reply.header('Content-Disposition', `attachment; filename="${result.filename}"`);
       return reply.send(result.content);
@@ -465,6 +579,250 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       return reply.send({
         success: true,
         data: { isDefault: success }
+      });
+    }
+  );
+
+  // 21. POST /admin/agents/:id/test — Execute ephemeral QA test prompt (Admin Test Console)
+  fastify.post(
+    '/agents/:id/test',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Execute ephemeral test completion against AI agent without credit deduction',
+        params: AgentIdParamSchema,
+        body: TestAgentSchema,
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const result = await useCases.testAgentUseCase.execute(
+        request.params.id,
+        request.body
+      );
+      return reply.send({
+        success: true,
+        data: result
+      });
+    }
+  );
+
+  // 22. GET /admin/workers — List background workers and pipeline state
+  fastify.get(
+    '/workers',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'List background workers and real-time pipeline status',
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const workers = await useCases.listWorkersUseCase.execute();
+      return reply.send({
+        success: true,
+        data: workers
+      });
+    }
+  );
+
+  // 23. POST /admin/workers/:id/control — Control background worker state
+  fastify.post(
+    '/workers/:id/control',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Control background worker state (start, pause, stop, restart)',
+        params: IdParamSchema,
+        body: ControlWorkerSchema,
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const updated = await useCases.controlWorkerUseCase.execute(
+        request.user.userId,
+        request.params.id,
+        request.body,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+      return reply.send({
+        success: true,
+        data: updated
+      });
+    }
+  );
+
+  // 24. POST /admin/news/poll — Trigger immediate Finnhub news poll
+  fastify.post(
+    '/news/poll',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Manually poll and store latest Finnhub market news articles',
+        body: Type.Optional(
+          Type.Object({
+            category: Type.Optional(Type.String({ default: 'general' }))
+          })
+        ),
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const category = (request.body as any)?.category || 'general';
+      const articles = await useCases.fetchNewsUseCase.execute(category);
+      return reply.send({
+        success: true,
+        data: {
+          polledCount: articles.length,
+          category,
+          articles: articles.map((a) => a.toJSON())
+        }
+      });
+    }
+  );
+
+  // 25. POST /admin/symbols — Add or update instrument symbol in database
+  fastify.post(
+    '/symbols',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Add or update market instrument symbol in database',
+        body: SaveSymbolSchema,
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const saved = await useCases.saveSymbolUseCase.execute(
+        request.user.userId,
+        request.body,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+      return reply.send({
+        success: true,
+        data: saved.toJSON()
+      });
+    }
+  );
+
+  // 26. PATCH /admin/symbols/:symbol — Update instrument symbol
+  fastify.patch(
+    '/symbols/:symbol',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Update existing market instrument symbol',
+        params: Type.Object({ symbol: Type.String() }),
+        body: SaveSymbolSchema,
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const saved = await useCases.saveSymbolUseCase.execute(
+        request.user.userId,
+        { ...request.body, symbol: request.params.symbol },
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+      return reply.send({
+        success: true,
+        data: saved.toJSON()
+      });
+    }
+  );
+
+  // 27. DELETE /admin/symbols/:symbol — Remove instrument symbol from database
+  fastify.delete(
+    '/symbols/:symbol',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Delete market instrument symbol from database',
+        params: Type.Object({ symbol: Type.String() }),
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const deleted = await useCases.deleteSymbolUseCase.execute(
+        request.user.userId,
+        request.params.symbol,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+      return reply.send({
+        success: true,
+        data: { deleted }
+      });
+    }
+  );
+
+  // 28. POST /admin/stream-symbols — Add or update Finnhub WebSocket stream symbol in stream_symbols table
+  fastify.post(
+    '/stream-symbols',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Add or update Finnhub WebSocket stream symbol in stream_symbols table',
+        body: SaveStreamSymbolSchema,
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const saved = await useCases.saveStreamSymbolUseCase.execute(
+        request.user.userId,
+        request.body,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+      return reply.send({
+        success: true,
+        data: saved
+      });
+    }
+  );
+
+  // 29. PATCH /admin/stream-symbols/:symbol — Update stream symbol
+  fastify.patch(
+    '/stream-symbols/:symbol',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Update existing Finnhub WebSocket stream symbol',
+        params: Type.Object({ symbol: Type.String() }),
+        body: SaveStreamSymbolSchema,
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const saved = await useCases.saveStreamSymbolUseCase.execute(
+        request.user.userId,
+        { ...request.body, symbol: request.params.symbol },
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+      return reply.send({
+        success: true,
+        data: saved
+      });
+    }
+  );
+
+  // 30. DELETE /admin/stream-symbols/:symbol — Delete stream symbol from stream_symbols table
+  fastify.delete(
+    '/stream-symbols/:symbol',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Delete stream symbol from stream_symbols table',
+        params: Type.Object({ symbol: Type.String() }),
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const deleted = await useCases.deleteStreamSymbolUseCase.execute(
+        request.user.userId,
+        request.params.symbol,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+      return reply.send({
+        success: true,
+        data: { deleted }
       });
     }
   );

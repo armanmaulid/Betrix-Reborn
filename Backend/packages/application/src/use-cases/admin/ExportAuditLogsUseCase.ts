@@ -3,8 +3,8 @@ import { IAdminActionRepository } from '@betrix/domain';
 export class ExportAuditLogsUseCase {
   constructor(private readonly adminActionRepo: IAdminActionRepository) {}
 
-  public async execute(format: 'json' | 'csv' = 'json'): Promise<{ format: string; content: string; filename: string }> {
-    const logs = await this.adminActionRepo.exportAll();
+  public async execute(format: 'json' | 'csv' = 'json', actionType?: string): Promise<{ format: string; content: string; filename: string }> {
+    const logs = await this.adminActionRepo.exportAll(actionType);
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `betrix_audit_logs_${timestamp}.${format}`;
 

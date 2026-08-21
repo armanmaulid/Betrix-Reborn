@@ -54,6 +54,7 @@ export * from './messaging/repositories/IMessageRepository.js';
 
 // Admin Bounded Context
 export * from './admin/entities/AdminAction.js';
+export * from './admin/entities/BackgroundWorker.js';
 export * from './admin/repositories/IAdminRepositories.js';
 
 // Shared Kernel

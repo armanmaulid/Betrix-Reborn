@@ -1,6 +1,24 @@
 import { PaginatedResult, PaginationParams } from '@betrix/core';
 import { AdminAction } from '../entities/AdminAction.js';
 
+export type WorkerStatus = 'running' | 'paused' | 'stopped' | 'idle' | 'error';
+export type WorkerAction = 'start' | 'pause' | 'stop' | 'restart';
+
+export interface BackgroundWorkerInfo {
+  id: string;
+  name: string;
+  category: 'market' | 'news' | 'maintenance' | 'intelligence';
+  description: string;
+  status: WorkerStatus;
+  interval: string;
+  uptimeSeconds: number;
+  lastRunAt: string | null;
+  nextRunAt: string | null;
+  processedCount: number;
+  errorCount: number;
+  lastError: string | null;
+}
+
 export interface SystemMetrics {
   totalUsers: number;
   activeSessions: number;
@@ -14,15 +32,24 @@ export interface SystemMetrics {
 export interface UserAnalytics {
   newUsersToday: number;
   newUsersThisWeek: number;
+  newUsersThisMonth: number;
   activeUsers24h: number;
+  activeUsersWeekly: number;
+  activeUsersMonthly: number;
   topModels: { model: string; count: number }[];
   dailyTokenUsage: { date: string; tokens: number }[];
+}
+
+export interface AnalyticsQueryOptions {
+  period?: 'daily' | 'weekly' | 'monthly' | 'custom' | 'all';
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface IAdminActionRepository {
   save(action: AdminAction): Promise<AdminAction>;
   findAll(pagination: PaginationParams, actionType?: string): Promise<PaginatedResult<AdminAction>>;
-  exportAll(): Promise<AdminAction[]>;
+  exportAll(actionType?: string): Promise<AdminAction[]>;
 }
 
 export interface IActivityLogRepository {
@@ -32,7 +59,7 @@ export interface IActivityLogRepository {
 
 export interface IAnalyticsRepository {
   getSystemMetrics(): Promise<SystemMetrics>;
-  getUserAnalytics(): Promise<UserAnalytics>;
+  getUserAnalytics(options?: AnalyticsQueryOptions): Promise<UserAnalytics>;
 }
 
 export interface IUsageRepository {

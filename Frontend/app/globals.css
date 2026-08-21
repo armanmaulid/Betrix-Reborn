@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+:root {
+  --background: #000000;
+  --foreground: #E8E8E8;
+  --accent: #FF8000;
+  --accent-dim: #B35900;
+  --positive: #00D964;
+  --negative: #FF3B30;
+  --info: #4A9EFF;
+  --border: #1A1A1A;
+  --surface: #0A0A0A;
+  --surface-hover: #141414;
+  --muted: #1A1A1A;
+  --muted-foreground: #888888;
+  --card: #0A0A0A;
+  --card-foreground: #E8E8E8;
+  --popover: #0A0A0A;
+  --popover-foreground: #E8E8E8;
+  --primary: #FF8000;
+  --primary-foreground: #000000;
+  --secondary: #141414;
+  --secondary-foreground: #E8E8E8;
+  --destructive: #FF3B30;
+  --destructive-foreground: #FFFFFF;
+  --input: #1A1A1A;
+  --ring: #FF8000;
+  --radius: 0.2rem;
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-info: var(--info);
+  --color-border: var(--border);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', Menlo, Consolas, Monaco, monospace;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Monospace numerals and tabular numbers for financial terminal accuracy */
+.tabular-nums,
+.font-mono,
+[data-financial-num] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom terminal scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+::-webkit-scrollbar-thumb {
+  background: #1A1A1A;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B35900;
+}

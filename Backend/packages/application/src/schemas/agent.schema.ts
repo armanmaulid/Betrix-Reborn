@@ -15,6 +15,7 @@ export const CreateAgentSchema = Type.Object({
   supportsThinking: Type.Optional(Type.Boolean({ default: true })),
   isDefault: Type.Optional(Type.Boolean({ default: false })),
   isActive: Type.Optional(Type.Boolean({ default: true })),
+  visibility: Type.Optional(Type.Union([Type.Literal('public'), Type.Literal('private')], { default: 'public' })),
   description: Type.Optional(Type.String())
 });
 
@@ -32,6 +33,7 @@ export const UpdateAgentSchema = Type.Object({
   supportsThinking: Type.Optional(Type.Boolean()),
   isDefault: Type.Optional(Type.Boolean()),
   isActive: Type.Optional(Type.Boolean()),
+  visibility: Type.Optional(Type.Union([Type.Literal('public'), Type.Literal('private')])),
   description: Type.Optional(Type.Union([Type.String(), Type.Null()]))
 });
 
@@ -39,5 +41,14 @@ export const AgentIdParamSchema = Type.Object({
   id: Type.String({ minLength: 1 })
 });
 
+export const TestAgentSchema = Type.Object({
+  message: Type.String({ minLength: 1, maxLength: 4000 }),
+  systemPromptOverride: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  temperatureOverride: Type.Optional(Type.Number({ minimum: 0, maximum: 2 })),
+  maxTokensOverride: Type.Optional(Type.Integer({ minimum: 64, maximum: 65536 }))
+});
+
 export type CreateAgentDto = Static<typeof CreateAgentSchema>;
 export type UpdateAgentDto = Static<typeof UpdateAgentSchema>;
+export type TestAgentDto = Static<typeof TestAgentSchema>;
+

@@ -81,35 +81,34 @@ export class GetPricesUseCase {
       };
     }
 
-    // Return all prices
+    // Return all prices — D1 baselines fetched in parallel
     const allPrices = await this.marketDataService.getAllPrices();
-    const result: EnrichedPriceTick[] = [];
 
-    for (const tick of allPrices) {
-      // Get D1 baseline for 24h change via OHLC
-      let d1Open = tick.last;
-      try {
-        const d1Cached = await this.marketDataService.getOHLC(tick.symbol, 'd1', 1);
-        if (d1Cached && d1Cached.length > 0) {
-          d1Open = d1Cached[d1Cached.length - 1]!.open;
+    const enriched = await Promise.all(
+      allPrices.map(async (tick) => {
+        let d1Open = tick.last;
+        try {
+          const d1Cached = await this.marketDataService.getOHLC(tick.symbol, 'd1', 1);
+          if (d1Cached && d1Cached.length > 0) {
+            d1Open = d1Cached[d1Cached.length - 1]!.open;
+          }
+        } catch {
+          // Use tick.last as fallback
         }
-      } catch {
-        // Use tick.last as fallback
-      }
 
-      const { changeAmount, changePercent } = this.marketDataService.calculate24hChange(tick.last, d1Open);
+        const { changeAmount, changePercent } = this.marketDataService.calculate24hChange(tick.last, d1Open);
+        return {
+          symbol: tick.symbol,
+          bid: tick.bid,
+          ask: tick.ask,
+          last: tick.last,
+          timestamp: tick.timestamp,
+          change24hAmount: changeAmount,
+          change24hPercent: changePercent
+        };
+      })
+    );
 
-      result.push({
-        symbol: tick.symbol,
-        bid: tick.bid,
-        ask: tick.ask,
-        last: tick.last,
-        timestamp: tick.timestamp,
-        change24hAmount: changeAmount,
-        change24hPercent: changePercent
-      });
-    }
-
-    return result;
+    return enriched;
   }
 }

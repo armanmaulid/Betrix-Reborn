@@ -1,0 +1,75 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# 🛡️ MONOREPO ROOT GITIGNORE RULES
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build & Compilation Outputs
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+next-env.d.ts
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Monorepo Orchestration & Caches
+.turbo/
+.swc/
+
+# Environment Variables & Local Secrets
+.env
+.env.*
+!.env.example
+
+# Runtime & System Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS Specific Temporary Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE, Editor & AI Assistants Configurations
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.claude/
+.cursor/
+.windsurf/
+.gemini/
+.agent/
+docs/
+
+# Security, Certificates & Sensitive Keys
+*.pem
+*.key
+*.cert
+*.crt
+
+# Local Developer Scratch Scripts
+Backend/apps/api/src/test-ai-chat-live.ts
+Backend/apps/api/src/test-http-client.ts
+Backend/apps/api/src/test-injections.ts
+Backend/apps/api/src/test-real-all-endpoints.ts
+Backend/apps/api/src/test-real-auth.ts
+Backend/apps/api/src/run-live-http-test.ts

@@ -35,7 +35,18 @@ export class ChangePasswordUseCase {
 
     await this.userRepo.update(updatedUser);
 
-    // Keep current session or revoke other sessions
+    // Revoke all sessions except the current one (stolen-password sessions die now)
+    if (currentSessionToken) {
+      const sessions = await this.sessionRepo.findByUserId(userId);
+      for (const s of sessions) {
+        if (s.token !== currentSessionToken) {
+          await this.sessionRepo.delete(s.token);
+        }
+      }
+    } else {
+      await this.sessionRepo.deleteByUserId(userId);
+    }
+
     return {
       success: true,
       message: 'Password successfully updated.'

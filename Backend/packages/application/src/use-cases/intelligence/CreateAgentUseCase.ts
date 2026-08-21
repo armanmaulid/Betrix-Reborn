@@ -25,6 +25,7 @@ export class CreateAgentUseCase {
       supportsThinking: dto.supportsThinking,
       isDefault: dto.isDefault,
       isActive: dto.isActive,
+      visibility: dto.visibility ?? 'public',
       description: dto.description
     });
 

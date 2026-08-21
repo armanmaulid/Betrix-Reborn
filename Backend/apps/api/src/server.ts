@@ -35,10 +35,10 @@ export async function createServer() {
   await app.register(corsHelmetPlugin);
   await app.register(rateLimitPlugin);
   await app.register(errorHandlerPlugin);
+  await app.register(ssePlugin);
   await app.register(containerPlugin);
   await app.register(authPlugin);
   await app.register(swaggerPlugin);
-  await app.register(ssePlugin);
 
   // 2. Register API Routes
   await app.register(v1Routes, { prefix: '/api/v1' });

@@ -43,6 +43,34 @@
       "when": 1787220338966,
       "tag": "0005_open_terrax",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787300695326,
+      "tag": "0006_sparkling_longshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787302088954,
+      "tag": "0007_conscious_butterfly",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787307000000,
+      "tag": "0008_agent_visibility",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787308600000,
+      "tag": "0009_user_tier",
+      "breakpoints": true
     }
   ]
 }

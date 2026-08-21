@@ -28,6 +28,28 @@ export const marketRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     }
   );
 
+  // 1b. GET /market/stream-symbols — List Finnhub WebSocket stream symbols from stream_symbols table
+  fastify.get(
+    '/stream-symbols',
+    {
+      schema: {
+        tags: ['Market'],
+        summary: 'List verified Finnhub WebSocket stream symbols from stream_symbols table',
+        querystring: Type.Object({
+          activeOnly: Type.Optional(Type.Boolean({ default: false }))
+        })
+      }
+    },
+    async (request, reply) => {
+      const activeOnly = (request.query as any)?.activeOnly === true;
+      const symbols = await useCases.getStreamSymbolsUseCase.execute(activeOnly);
+      return reply.send({
+        success: true,
+        data: symbols
+      });
+    }
+  );
+
   // 2. GET /market/prices — Get real-time price ticks enriched with 24h % changes
   fastify.get(
     '/prices',

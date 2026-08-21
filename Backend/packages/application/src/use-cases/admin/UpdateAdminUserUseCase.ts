@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { NotFoundError } from '@betrix/core';
-import { IUserRepository, IAdminActionRepository, AdminAction, User } from '@betrix/domain';
+import { IUserRepository, IAdminActionRepository, ISessionRepository, AdminAction, User } from '@betrix/domain';
 import { UpdateAdminUserDTO } from '../../schemas/admin.schema.js';
 
 export class UpdateAdminUserUseCase {
   constructor(
     private readonly userRepo: IUserRepository,
-    private readonly adminActionRepo: IAdminActionRepository
+    private readonly adminActionRepo: IAdminActionRepository,
+    private readonly sessionRepo: ISessionRepository
   ) {}
 
   public async execute(
@@ -20,15 +21,30 @@ export class UpdateAdminUserUseCase {
       throw new NotFoundError('User not found.');
     }
 
+    // Never spread stale fields back — only update what the DTO sets.
     const updatedUser = new User({
       ...user,
       name: dto.name !== undefined ? dto.name : user.name,
       isAdmin: dto.isAdmin !== undefined ? dto.isAdmin : user.isAdmin,
       status: dto.status !== undefined ? dto.status : user.status,
-      credits: dto.credits !== undefined ? dto.credits : user.credits
+      tier: dto.tier !== undefined ? dto.tier : user.tier
     });
 
-    const saved = await this.userRepo.update(updatedUser);
+    let saved = await this.userRepo.update(updatedUser);
+
+    // Credits updated separately to avoid lost-update race on balance
+    if (dto.credits !== undefined) {
+      await this.userRepo.updateCredits(targetUserId, dto.credits);
+      saved = new User({ ...saved, credits: dto.credits });
+    }
+
+    // Ban/suspend/demotion take effect immediately — kill existing sessions
+    const accessRevoked =
+      (dto.status !== undefined && dto.status !== 'active') ||
+      (dto.isAdmin !== undefined && !dto.isAdmin && user.isAdmin);
+    if (accessRevoked) {
+      await this.sessionRepo.deleteByUserId(targetUserId);
+    }
 
     // Record audit action
     const action = new AdminAction({

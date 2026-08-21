@@ -44,12 +44,25 @@ export class DrizzleNewsRepository implements INewsRepository {
 
   async saveMany(articles: NewsArticle[]): Promise<number> {
     if (articles.length === 0) return 0;
-    let saved = 0;
-    for (const art of articles) {
-      const res = await this.save(art);
-      if (res) saved++;
-    }
-    return saved;
+    const inserted = await this.db
+      .insert(newsArticles)
+      .values(
+        articles.map((article) => ({
+          id: article.id,
+          source: article.source,
+          headline: article.headline,
+          url: article.url,
+          summary: article.summary,
+          datetime: article.datetime,
+          category: article.category,
+          tags: article.tags,
+          image: article.image,
+          createdAt: article.createdAt
+        }))
+      )
+      .onConflictDoNothing()
+      .returning({ id: newsArticles.id });
+    return inserted.length;
   }
 
   async findById(id: string): Promise<Nullable<NewsArticle>> {

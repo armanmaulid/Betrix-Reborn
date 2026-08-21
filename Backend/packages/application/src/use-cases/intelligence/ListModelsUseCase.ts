@@ -8,7 +8,7 @@ export class ListModelsUseCase {
 
   public async execute(): Promise<any[]> {
     if (this.agentRepo) {
-      const agents = await this.agentRepo.findAll(true);
+      const agents = await this.agentRepo.findAll({ activeOnly: true, visibility: 'public' });
       if (agents.length > 0) {
         return agents.map((agent) => ({
           id: agent.id,
@@ -23,6 +23,7 @@ export class ListModelsUseCase {
           supportsThinking: agent.supportsThinking,
           isDefault: agent.isDefault,
           isActive: agent.isActive,
+          visibility: agent.visibility,
           description: agent.description || `Dynamic AI Agent: ${agent.name}`
         }));
       }

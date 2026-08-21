@@ -10,5 +10,5 @@ export interface IUserRepository {
   delete(id: string): Promise<boolean>;
   updateCredits(id: string, newCredits: number): Promise<boolean>;
   updateStatus(id: string, status: 'active' | 'suspended' | 'banned'): Promise<boolean>;
-  findAll(pagination: PaginationParams, search?: string): Promise<PaginatedResult<User>>;
+  findAll(pagination: PaginationParams, search?: string, tier?: string): Promise<PaginatedResult<User>>;
 }

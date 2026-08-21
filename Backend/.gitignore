@@ -1,23 +1,85 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# 🛡️ FASTIFY & BACKEND MONOREPO PACKAGES GITIGNORE RULES
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Dependencies & Package Managers
 node_modules/
+.pnpm-store/
+.pnp
+.pnp.js
+package-lock.json
+yarn.lock
+
+# TypeScript Compilation Outputs & Build Caches
 dist/
-coverage/
+build/
+*.tsbuildinfo
+.swc/
+
+# Turborepo Build Cache
 .turbo/
-.claude/
-*.log
-logs/
+
+# Environment Variables, Secrets & Database Credentials
 .env
 .env.*
+.env*.local
 !.env.example
-.DS_Store
-*.tsbuildinfo
 
-# Internal documentation — not versioned
-docs/
+# Local Database Dumps & Ephemeral Files
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.sql.bak
 
-# Local dev scratch scripts — kept on disk, not pushed
+# Testing & Coverage Artifacts (Vitest)
+coverage/
+.nyc_output/
+test-results/
+.vitest/
+
+# Runtime Logs & Process Dumps
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+pino-*.log
+
+# Local Developer Scratch Scripts
 apps/api/src/test-ai-chat-live.ts
 apps/api/src/test-http-client.ts
 apps/api/src/test-injections.ts
 apps/api/src/test-real-all-endpoints.ts
 apps/api/src/test-real-auth.ts
 apps/api/src/run-live-http-test.ts
+
+# OS Specific Temporary Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE, Editor & AI Assistants Configurations
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.sublime-workspace
+*.sublime-project
+.claude/
+.cursor/
+.windsurf/
+.gemini/
+
+# Security, Certificates & Private Keys
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12

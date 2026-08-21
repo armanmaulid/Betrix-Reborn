@@ -25,6 +25,7 @@ export class UpdateAgentUseCase {
       supportsThinking: dto.supportsThinking !== undefined ? dto.supportsThinking : existing.supportsThinking,
       isDefault: dto.isDefault !== undefined ? dto.isDefault : existing.isDefault,
       isActive: dto.isActive !== undefined ? dto.isActive : existing.isActive,
+      visibility: dto.visibility !== undefined ? dto.visibility : existing.visibility,
       description: dto.description !== undefined ? dto.description : existing.description,
       createdAt: existing.createdAt,
       updatedAt: new Date()
