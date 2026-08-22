@@ -2,7 +2,10 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BETRIX // ADMIN TERMINAL',
+  title: {
+    default: 'BETRIX // ADMIN TERMINAL',
+    template: 'BETRIX // %s'
+  },
   description: 'Institutional-grade Market Intelligence & Analysis Admin Terminal',
   icons: {
     icon: '/favicon.ico'

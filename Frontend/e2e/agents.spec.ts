@@ -33,6 +33,7 @@ test.describe('E2E AI Agent Management Hub', () => {
               supportsThinking: true,
               isDefault: true,
               isActive: true,
+              visibility: 'public',
               description: 'Flagship reasoning model for real-time market analysis',
               createdAt: '2026-08-01T00:00:00Z',
               updatedAt: '2026-08-20T00:00:00Z'
@@ -46,10 +47,10 @@ test.describe('E2E AI Agent Management Hub', () => {
   test('should render agent fleet catalog with default badge', async ({ page }) => {
     await page.goto('/agents');
 
-    await expect(page.getByText('AI AGENT FLEET & MODEL GOVERNANCE', { exact: true })).toBeVisible();
-    await expect(page.getByText('GPT-4o Master Reasoner', { exact: true })).toBeVisible();
+    await expect(page.getByText('AI AGENT FLEET & MODEL GOVERNANCE')).toBeVisible();
+    await expect(page.getByText('GPT-4o Master Reasoner')).toBeVisible();
     await expect(page.getByText('SYSTEM DEFAULT', { exact: true })).toBeVisible();
-    await expect(page.getByText('deep TIER', { exact: true })).toBeVisible();
-    await expect(page.getByText('DEPLOY NEW MODEL', { exact: true })).toBeVisible();
+    await expect(page.getByText('DEEP TIER')).toBeVisible();
+    await expect(page.getByText('DEPLOY NEW MODEL')).toBeVisible();
   });
 });

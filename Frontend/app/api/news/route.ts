@@ -1,15 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const BACKEND_URL = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+import { BACKEND_URL, getSessionToken, verifySession } from '@/lib/server-auth';
 
 export async function GET(request: NextRequest) {
   try {
+    const token = await getSessionToken();
+    const user = await verifySession(token);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: { message: 'Unauthorized: Admin session required' } },
+        { status: 401 }
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams.toString();
     const targetUrl = `${BACKEND_URL}/news${searchParams ? `?${searchParams}` : ''}`;
 
     const backendRes = await fetch(targetUrl, {
       method: 'GET',
-      headers: { Accept: 'application/json' },
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`
+      },
       cache: 'no-store'
     });
 

@@ -34,7 +34,8 @@ export class GoogleOAuthUseCase {
     private readonly deviceRepo: IDeviceRepository,
     private readonly authService: AuthService,
     private readonly googleVerifier: IGoogleTokenVerifier,
-    private readonly defaultCredits: number = 100
+    private readonly defaultCredits: number = 100,
+    private readonly enforceDeviceBinding: boolean = true
   ) {}
 
   public async execute(
@@ -77,9 +78,11 @@ export class GoogleOAuthUseCase {
         isNewUser = true;
 
         // Check device uniqueness
-        const existingDevice = await this.deviceRepo.findByFingerprint(fingerprint);
-        if (existingDevice) {
-          throw new ConflictError('This physical device is already bound to another account.');
+        if (this.enforceDeviceBinding) {
+          const existingDevice = await this.deviceRepo.findByFingerprint(fingerprint);
+          if (existingDevice) {
+            throw new ConflictError('This physical device is already bound to another account.');
+          }
         }
 
         const newId = randomUUID();
@@ -104,14 +107,16 @@ export class GoogleOAuthUseCase {
       throw new ForbiddenError(`Your account is ${user.status}. Please contact support.`);
     }
 
-    // Device binding check
-    const existingDevice = await this.deviceRepo.findByFingerprint(fingerprint);
-    if (existingDevice && existingDevice.userId !== user.id) {
-      throw new ConflictError('This physical device is already associated with another account.');
-    }
+    // Device binding check - Bypassed for Admin or when DEVICE_ENFORCEMENT=false
+    if (this.enforceDeviceBinding && !user.isAdmin) {
+      const existingDevice = await this.deviceRepo.findByFingerprint(fingerprint);
+      if (existingDevice && existingDevice.userId !== user.id) {
+        throw new ConflictError('This physical device is already associated with another account.');
+      }
 
-    if (!existingDevice) {
-      await DeviceDomainService.registerDevice(this.deviceRepo, user.id, fingerprint);
+      if (!existingDevice) {
+        await DeviceDomainService.registerDevice(this.deviceRepo, user.id, fingerprint);
+      }
     }
 
     const { session, token } = await this.authService.createSession(

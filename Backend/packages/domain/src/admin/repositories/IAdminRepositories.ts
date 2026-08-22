@@ -1,8 +1,6 @@
 import { PaginatedResult, PaginationParams } from '@betrix/core';
 import { AdminAction } from '../entities/AdminAction.js';
-
-export type WorkerStatus = 'running' | 'paused' | 'stopped' | 'idle' | 'error';
-export type WorkerAction = 'start' | 'pause' | 'stop' | 'restart';
+import type { WorkerStatus } from '../entities/BackgroundWorker.js';
 
 export interface BackgroundWorkerInfo {
   id: string;
@@ -27,6 +25,8 @@ export interface SystemMetrics {
   dbPoolActive: number;
   dbPoolIdle: number;
   uptimeSeconds: number;
+  redisStatus?: string;
+  redisLatencyMs?: number;
 }
 
 export interface UserAnalytics {

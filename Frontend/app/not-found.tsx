@@ -3,31 +3,9 @@ import Link from 'next/link';
 import {
   AlertTriangle,
   LayoutDashboard,
-  Users,
-  Ticket,
-  Bot,
-  ShieldAlert,
-  Radio,
-  Wrench,
-  Newspaper,
-  Layers,
-  Activity,
-  ArrowLeft,
   Terminal
 } from 'lucide-react';
-
-const DIRECTORY_ROUTES = [
-  { num: '01', name: 'OPERATIONS DASHBOARD', href: '/dashboard', icon: LayoutDashboard },
-  { num: '02', name: 'USER MANAGEMENT', href: '/users', icon: Users },
-  { num: '03', name: 'CREDIT VOUCHERS', href: '/vouchers', icon: Ticket },
-  { num: '04', name: 'AI AGENTS CATALOG', href: '/agents', icon: Bot },
-  { num: '05', name: 'FINNHUB NEWS FEED', href: '/news', icon: Newspaper },
-  { num: '06', name: 'MARKET CATALOG', href: '/market-data', icon: Layers },
-  { num: '07', name: 'STREAM SYMBOLS', href: '/stream-symbols', icon: Activity },
-  { num: '08', name: 'BROADCAST MESSENGER', href: '/broadcast', icon: Radio },
-  { num: '09', name: 'SYSTEM AUDIT LOGS', href: '/audit-logs', icon: ShieldAlert },
-  { num: '10', name: 'MAINTENANCE & WORKERS', href: '/maintenance', icon: Wrench }
-];
+import { ADMIN_ROUTES } from '@/lib/routes';
 
 export default function NotFound() {
   return (
@@ -90,7 +68,7 @@ export default function NotFound() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            {DIRECTORY_ROUTES.map((route) => {
+            {ADMIN_ROUTES.map((route) => {
               const Icon = route.icon;
               return (
                 <Link

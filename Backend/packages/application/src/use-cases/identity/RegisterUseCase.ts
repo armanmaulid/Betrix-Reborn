@@ -30,7 +30,8 @@ export class RegisterUseCase {
     private readonly authService: AuthService,
     private readonly emailService?: IEmailDispatcher,
     private readonly defaultCredits: number = 100,
-    private readonly isDevMode: boolean = false
+    private readonly isDevMode: boolean = false,
+    private readonly enforceDeviceBinding: boolean = true
   ) {}
 
   public async execute(
@@ -41,9 +42,11 @@ export class RegisterUseCase {
     const fingerprint = dto.deviceFingerprint;
 
     // 1. Check Device Uniqueness (ADR-05)
-    const existingDevice = await this.deviceRepo.findByFingerprint(fingerprint);
-    if (existingDevice) {
-      throw new ConflictError('This physical device is already bound to an existing account.');
+    if (this.enforceDeviceBinding) {
+      const existingDevice = await this.deviceRepo.findByFingerprint(fingerprint);
+      if (existingDevice) {
+        throw new ConflictError('This physical device is already bound to an existing account.');
+      }
     }
 
     // 2. Check Email Uniqueness
@@ -77,7 +80,9 @@ export class RegisterUseCase {
     const savedUser = await this.userRepo.save(newUser);
 
     // 5. Register Device (1:1 Binding)
-    await DeviceDomainService.registerDevice(this.deviceRepo, userId, fingerprint);
+    if (this.enforceDeviceBinding) {
+      await DeviceDomainService.registerDevice(this.deviceRepo, userId, fingerprint);
+    }
 
     // 6. Generate Verification Token
     const vToken = generateSecureToken(32);

@@ -8,6 +8,7 @@
     "build": "next build",
     "build:docker": "next build",
     "start": "next start -p 3001 -H 0.0.0.0",
+    "clean": "node -e \"const fs = require('fs'); fs.rmSync('.next', { recursive: true, force: true }); fs.rmSync('test-results', { recursive: true, force: true });\"",
     "lint": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:e2e": "playwright test"

@@ -1,0 +1,211 @@
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import { Radio, Search, Plus, RefreshCw } from 'lucide-react';
+import {
+  useStreamSymbolsQuery,
+  useRealtimeMarketStream,
+  useSaveStreamSymbolMutation,
+  useDeleteStreamSymbolMutation
+} from '@/modules/market/application/queries/use-market-data';
+import { StreamSymbolTable } from './stream-symbol-table';
+import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-confirm-dialog';
+import { SymbolModal, type SymbolFormData } from './symbol-modal';
+import { useToast } from '@/shared/presentation/ui/terminal-toast';
+import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
+import type { StreamSymbolEntity } from '@market/domain/entities/MarketInstrument';
+
+const CATEGORIES = [
+  { id: 'all', label: 'ALL STREAM SYMBOLS' },
+  { id: 'forex', label: 'FOREX (MAJORS & CROSSES)' },
+  { id: 'metal', label: 'METALS (GOLD/SILVER)' },
+  { id: 'energy', label: 'ENERGY (CRUDE OIL)' },
+  { id: 'crypto', label: 'CRYPTO ASSETS' },
+  { id: 'indices', label: 'GLOBAL INDICES' }
+];
+
+export function StreamSymbolsContainer() {
+  usePageTitle('STREAM SYMBOLS');
+  const { success, error } = useToast();
+
+  const [category, setCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [selectedSymbolForEdit, setSelectedSymbolForEdit] = useState<Partial<SymbolFormData> | null>(null);
+  const [symbolToDelete, setSymbolToDelete] = useState<string | null>(null);
+
+  const {
+    data: streamSymbols = [],
+    isLoading: isSymbolsLoading,
+    isError: isSymbolsError,
+    isRefetching: isSymbolsRefetching,
+    refetch: refetchSymbols
+  } = useStreamSymbolsQuery(false);
+
+  const { priceMap, isConnected } = useRealtimeMarketStream();
+
+  const saveMutation = useSaveStreamSymbolMutation();
+  const deleteMutation = useDeleteStreamSymbolMutation();
+
+  const filteredSymbols = useMemo(() => {
+    return streamSymbols.filter((item) => {
+      const matchesCategory = category === 'all' || item.category.toLowerCase() === category.toLowerCase();
+      const matchesSearch =
+        item.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.finnhubSymbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchesCategory && matchesSearch;
+    });
+  }, [streamSymbols, category, searchQuery]);
+
+  const handleSaveSymbol = async (formData: SymbolFormData) => {
+    try {
+      await saveMutation.mutateAsync({
+        symbol: formData.symbol.toUpperCase(),
+        finnhubSymbol: formData.finnhubSymbol?.toUpperCase() || formData.symbol.toUpperCase(),
+        category: formData.category,
+        description: formData.description,
+        isActive: formData.isActive
+      });
+
+      success(
+        'STREAM SYMBOL SAVED',
+        `Symbol ${formData.symbol.toUpperCase()} has been synced to Finnhub streaming config.`
+      );
+      setIsAddOpen(false);
+      setSelectedSymbolForEdit(null);
+    } catch (err: any) {
+      error('SAVE FAILED', err.message || 'Unable to save stream symbol.');
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!symbolToDelete) return;
+    try {
+      await deleteMutation.mutateAsync(symbolToDelete);
+      success('SYMBOL REMOVED', `Stream symbol ${symbolToDelete} deleted.`);
+      setSymbolToDelete(null);
+    } catch (err: any) {
+      error('DELETE FAILED', err.message || 'Unable to delete stream symbol.');
+    }
+  };
+
+  return (
+    <div className="space-y-4 font-mono">
+      {/* Top Header Bar */}
+      <div className="border border-border bg-surface p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center space-x-2">
+            <Radio className={`w-4 h-4 ${isConnected ? 'text-positive' : 'text-negative animate-pulse'}`} />
+            <h1 className="text-sm font-bold tracking-wider text-accent uppercase">
+              FINNHUB REAL-TIME STREAM SYMBOLS
+            </h1>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Configure dynamic upstream ticker mappings for zero-latency Finnhub WebSocket ingestion
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => refetchSymbols()}
+            disabled={isSymbolsLoading || isSymbolsRefetching}
+            className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+            title="Refresh stream symbols"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSymbolsRefetching ? 'animate-spin' : ''}`} />
+            <span>REFRESH</span>
+          </button>
+          <button
+            onClick={() => {
+              setSelectedSymbolForEdit(null);
+              setIsAddOpen(true);
+            }}
+            className="flex items-center gap-1.5 border border-accent/40 bg-accent/10 hover:bg-accent hover:text-black text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>ADD STREAM SYMBOL</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Filter / Search Bar */}
+      <div className="border border-border bg-black p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          <div className="relative min-w-[200px] flex-1 max-w-xs">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Filter symbol or Finnhub ticker..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-surface border border-border pl-8 pr-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent"
+            />
+          </div>
+
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setCategory(cat.id)}
+                className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap cursor-pointer ${
+                  category === cat.id
+                    ? 'border border-accent bg-accent/20 text-accent'
+                    : 'border border-border bg-surface hover:bg-surface-hover text-muted-foreground'
+                }`}
+              >
+                {cat.id.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Stream Symbol Table */}
+      <StreamSymbolTable
+        symbols={filteredSymbols}
+        priceMap={priceMap}
+        isLoading={isSymbolsLoading}
+        isError={isSymbolsError}
+        onEdit={(sym) => {
+          setSelectedSymbolForEdit({
+            symbol: sym.symbol,
+            description: sym.description || '',
+            category: sym.category,
+            finnhubSymbol: sym.finnhubSymbol,
+            isActive: sym.isActive
+          });
+          setIsAddOpen(true);
+        }}
+        onDelete={(sym) => setSymbolToDelete(sym)}
+      />
+
+      {/* Add / Edit Symbol Modal */}
+      {isAddOpen && (
+        <SymbolModal
+          isOpen={isAddOpen}
+          mode="stream"
+          initialData={selectedSymbolForEdit}
+          onClose={() => {
+            setIsAddOpen(false);
+            setSelectedSymbolForEdit(null);
+          }}
+          onSave={handleSaveSymbol}
+          isPending={saveMutation.isPending}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <DestructiveConfirmDialog
+        isOpen={Boolean(symbolToDelete)}
+        onClose={() => setSymbolToDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="DELETE STREAM SYMBOL"
+        description={`Are you sure you want to permanently remove "${symbolToDelete}" from real-time streaming?`}
+        targetIdentifier={symbolToDelete || ''}
+        confirmButtonText="DELETE SYMBOL"
+        isLoading={deleteMutation.isPending}
+      />
+    </div>
+  );
+}

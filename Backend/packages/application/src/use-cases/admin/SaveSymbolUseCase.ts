@@ -1,13 +1,5 @@
 import { ISymbolRepository, Symbol, IAdminActionRepository, AdminAction } from '@betrix/domain';
-
-export interface SaveSymbolDTO {
-  symbol: string;
-  description?: string;
-  category: string;
-  finnhubSymbol?: string;
-  dukascopySymbol?: string;
-  isActive?: boolean;
-}
+import { SaveSymbolDTO } from '../../schemas/admin.schema.js';
 
 export class SaveSymbolUseCase {
   constructor(
@@ -21,12 +13,13 @@ export class SaveSymbolUseCase {
     context?: { ip?: string; userAgent?: string }
   ): Promise<Symbol> {
     const existing = await this.symbolRepo.findBySymbol(dto.symbol.toUpperCase());
+    const category = dto.category ?? existing?.category ?? 'forex';
 
     const symbol = new Symbol({
       symbol: dto.symbol.toUpperCase(),
       description: dto.description ?? existing?.description ?? null,
-      path: existing?.path ?? `Market/${dto.category}/${dto.symbol.toUpperCase()}`,
-      category: dto.category ?? existing?.category ?? 'forex',
+      path: existing?.path ?? `Market/${category}/${dto.symbol.toUpperCase()}`,
+      category,
       finnhubSymbol: dto.finnhubSymbol ?? existing?.finnhubSymbol ?? null,
       dukascopySymbol: dto.dukascopySymbol ?? existing?.dukascopySymbol ?? null,
       isActive: dto.isActive !== undefined ? dto.isActive : (existing?.isActive ?? true),

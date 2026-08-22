@@ -1038,6 +1038,54 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
 
       expect(updated.tier).toBe('vip');
       expect(localMockUserRepo.update).toHaveBeenCalled();
+
+      // 3. Security Guard: Self-Demotion
+      const selfAdmin = {
+        id: 'admin-1',
+        email: 'root@betrix.io',
+        name: 'Root Admin',
+        isAdmin: true,
+        status: 'active',
+        tier: 'vip',
+        credits: 100000
+      };
+      localMockUserRepo.findById = vi.fn().mockResolvedValue(selfAdmin);
+
+      await expect(
+        updateUserUseCase.execute('admin-1', 'admin-1', { isAdmin: false })
+      ).rejects.toThrow('SELF_DEMOTION_FORBIDDEN');
+
+      // 4. Security Guard: Self-Suspension & Self-Ban
+      await expect(
+        updateUserUseCase.execute('admin-1', 'admin-1', { status: 'suspended' })
+      ).rejects.toThrow('SELF_LOCKOUT_FORBIDDEN');
+
+      await expect(
+        updateUserUseCase.execute('admin-1', 'admin-1', { status: 'banned' })
+      ).rejects.toThrow('SELF_LOCKOUT_FORBIDDEN');
+
+      // 5. Security Guard: Self-Deletion and Admin Deletion
+      const deleteUserUseCase = new DeleteAdminUserUseCase(
+        localMockUserRepo as any,
+        localMockAdminActionRepo as any
+      );
+
+      await expect(
+        deleteUserUseCase.execute('admin-1', 'admin-1')
+      ).rejects.toThrow('SELF_DELETION_FORBIDDEN');
+
+      const otherAdmin = {
+        id: 'admin-2',
+        email: 'admin2@betrix.io',
+        name: 'Admin 2',
+        isAdmin: true,
+        status: 'active'
+      };
+      localMockUserRepo.findById = vi.fn().mockResolvedValue(otherAdmin);
+
+      await expect(
+        deleteUserUseCase.execute('admin-1', 'admin-2')
+      ).rejects.toThrow('ADMIN_DELETION_FORBIDDEN');
     });
   });
 });

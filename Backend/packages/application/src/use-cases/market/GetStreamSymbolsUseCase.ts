@@ -1,9 +1,9 @@
-import { DrizzleStreamSymbolRepository, StreamSymbolRow } from '@betrix/infra';
+import { IStreamSymbolRepository, StreamSymbol } from '@betrix/domain';
 
 export class GetStreamSymbolsUseCase {
-  constructor(private readonly streamSymbolRepo: DrizzleStreamSymbolRepository) {}
+  constructor(private readonly streamSymbolRepo: IStreamSymbolRepository) {}
 
-  public async execute(activeOnly: boolean = false): Promise<StreamSymbolRow[]> {
+  public async execute(activeOnly: boolean = false): Promise<StreamSymbol[]> {
     return this.streamSymbolRepo.findAll(activeOnly);
   }
 }

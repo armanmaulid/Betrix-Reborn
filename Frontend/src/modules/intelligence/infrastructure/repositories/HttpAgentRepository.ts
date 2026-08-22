@@ -1,0 +1,53 @@
+import type {
+  IAgentRepository,
+  CreateAgentInput,
+  UpdateAgentInput,
+  AgentTestPayload,
+  AgentTestResult
+} from '../../domain/repositories/IAgentRepository';
+import { AiAgent } from '../../domain/entities/AiAgent';
+import { AgentMapper } from '../mappers/AgentMapper';
+import { HttpClient } from '@shared/infrastructure/http/api-client';
+
+export class HttpAgentRepository implements IAgentRepository {
+  constructor(private client: HttpClient = new HttpClient()) {}
+
+  async getAgents(): Promise<AiAgent[]> {
+    const res = await this.client.get<{ data: any[] }>('/api/admin/agents');
+    const rawList = res.data ?? (Array.isArray(res) ? res : []);
+    return AgentMapper.toDomainList(rawList);
+  }
+
+  async getAgentById(id: string): Promise<AiAgent> {
+    const res = await this.client.get<{ data: any }>(`/api/admin/agents/${encodeURIComponent(id)}`);
+    return AgentMapper.toDomain(res.data ?? res);
+  }
+
+  async createAgent(input: CreateAgentInput): Promise<AiAgent> {
+    const res = await this.client.post<{ data: any }>('/api/admin/agents', input);
+    return AgentMapper.toDomain(res.data ?? res);
+  }
+
+  async updateAgent(id: string, input: UpdateAgentInput): Promise<AiAgent> {
+    const res = await this.client.patch<{ data: any }>(`/api/admin/agents/${encodeURIComponent(id)}`, input);
+    return AgentMapper.toDomain(res.data ?? res);
+  }
+
+  async setDefaultAgent(id: string): Promise<void> {
+    await this.client.post(`/api/admin/agents/${encodeURIComponent(id)}/set-default`);
+  }
+
+  async deleteAgent(id: string): Promise<void> {
+    await this.client.delete(`/api/admin/agents/${encodeURIComponent(id)}`);
+  }
+
+  async testAgent(id: string, payload: AgentTestPayload): Promise<AgentTestResult> {
+    const res = await this.client.post<{ data: AgentTestResult }>(
+      `/api/admin/agents/${encodeURIComponent(id)}/test`,
+      payload
+    );
+    return res.data;
+  }
+}
+
+export const agentRepository = new HttpAgentRepository();

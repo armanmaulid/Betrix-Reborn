@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { BACKEND_URL } from '@/lib/server-auth';
 
-const BACKEND_URL = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+// Deterministic per-request fingerprint derived from client metadata, so the
+// backend's rate-limit buckets are not all collapsed into one static string.
+async function fallbackFingerprint(request: NextRequest): Promise<string> {
+  const ua = request.headers.get('user-agent') || 'unknown';
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+    request.headers.get('x-real-ip') ||
+    'unknown';
+  const raw = `${ip}|${ua}`;
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +29,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const fingerprint = deviceFingerprint || (await fallbackFingerprint(request));
+
     const backendRes = await fetch(`${BACKEND_URL}/auth/login`, {
       method: 'POST',
       headers: {
@@ -24,7 +40,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         email,
         password,
-        deviceFingerprint: deviceFingerprint || 'betrix-admin-terminal-web',
+        deviceFingerprint: fingerprint,
         ...(captchaId ? { captchaId, captchaAnswer } : {})
       })
     });
@@ -41,7 +57,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { token, user, sessionToken } = resData.data;
+    const { token, user } = resData.data;
 
     // Strict Security Guard: User MUST be an administrator
     if (!user || !user.isAdmin) {
@@ -67,25 +83,6 @@ export async function POST(request: NextRequest) {
       path: '/',
       maxAge: 60 * 60 * 24 * 7 // 7 days
     });
-
-    // 2. Client-Readable User Metadata Cookie for fast UI hydration
-    cookieStore.set(
-      'betrix_admin_user',
-      JSON.stringify({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        isAdmin: user.isAdmin,
-        status: user.status
-      }),
-      {
-        httpOnly: false,
-        secure: isSecure,
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7
-      }
-    );
 
     // Token lives exclusively in the httpOnly cookie — never echoed in the body (XSS-safe)
     return NextResponse.json({

@@ -25,7 +25,12 @@ const nextConfig: NextConfig = {
   ...(process.env.BUILD_STANDALONE === '1' ? { output: 'standalone' as const } : {}),
   reactStrictMode: true,
   reactCompiler: true,
-  allowedDevOrigins: getDynamicDevOrigins()
+  allowedDevOrigins: getDynamicDevOrigins(),
+  logging: {
+    fetches: {
+      fullUrl: process.env.NEXT_PUBLIC_DEBUG_LOGS === 'true'
+    }
+  }
 };
 
 export default nextConfig;

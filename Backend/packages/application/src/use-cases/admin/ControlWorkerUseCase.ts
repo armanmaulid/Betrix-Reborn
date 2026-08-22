@@ -1,9 +1,6 @@
-import { BackgroundWorkerInfo, IAdminActionRepository, AdminAction, WorkerAction } from '@betrix/domain';
+import { BackgroundWorkerInfo, IAdminActionRepository, AdminAction } from '@betrix/domain';
 import { WorkerManagerService } from '../../services/WorkerManagerService.js';
-
-export interface ControlWorkerDTO {
-  action: WorkerAction;
-}
+import { ControlWorkerDTO } from '../../schemas/admin.schema.js';
 
 export class ControlWorkerUseCase {
   constructor(

@@ -57,9 +57,10 @@ export class NewsService {
   public async getNewsPaginated(
     pagination: PaginationParams,
     category?: string,
-    tag?: string
+    tag?: string,
+    search?: string
   ): Promise<PaginatedResult<NewsArticle>> {
-    return this.newsRepo.findAll(pagination, category, tag);
+    return this.newsRepo.findAll(pagination, category, tag, search);
   }
 
   public async getNewsById(id: string): Promise<Nullable<NewsArticle>> {

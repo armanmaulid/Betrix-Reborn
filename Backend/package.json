@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
+    "start": "turbo start",
+    "start:api": "pnpm --filter @betrix/api start",
+    "start:worker": "pnpm --filter @betrix/worker start",
+    "clean": "node -e \"const fs = require('fs'); ['apps/api/dist','apps/worker/dist','packages/application/dist','packages/config/dist','packages/core/dist','packages/domain/dist','packages/infra/dist','.turbo','coverage'].forEach(p => fs.rmSync(p, { recursive: true, force: true }));\"",
     "test": "turbo test",
     "lint": "turbo lint",
     "db:generate": "turbo db:generate",

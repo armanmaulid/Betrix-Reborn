@@ -32,3 +32,33 @@ export interface IMarketCacheStore {
 
 /** @deprecated Use IMarketCacheStore instead */
 export type IMarketDataRepository = IMarketCacheStore;
+
+/**
+ * A Finnhub WebSocket stream symbol persisted in the `stream_symbols` table.
+ * Distinct from the general {@link Symbol} catalog: this carries only the
+ * real-time tick mapping (no historical OHLC/Dukascopy bindings).
+ */
+export interface StreamSymbol {
+  symbol: string;
+  finnhubSymbol: string;
+  description: string | null;
+  category: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** Repository port for Finnhub WebSocket stream symbol persistence. */
+export interface IStreamSymbolRepository {
+  findAll(activeOnly?: boolean): Promise<StreamSymbol[]>;
+  findActive(): Promise<StreamSymbol[]>;
+  findBySymbol(symbol: string): Promise<StreamSymbol | null>;
+  save(data: {
+    symbol: string;
+    finnhubSymbol: string;
+    description?: string | null;
+    category?: string;
+    isActive?: boolean;
+  }): Promise<StreamSymbol>;
+  delete(symbol: string): Promise<boolean>;
+}

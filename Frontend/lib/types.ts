@@ -1,11 +1,22 @@
-export type UserTier = 'free' | 'starter' | 'pro' | 'premium' | 'vip';
+/**
+ * Betrix Frontend Type Definitions & Re-exports
+ * Unified Single Source of Truth bridged with Domain-Driven Design (DDD) modules.
+ */
+
+// Shared Primitives
+export * from '@/shared/domain/types/Result';
+export * from '@/shared/domain/errors/AppError';
+export * from '@/shared/domain/types/Pagination';
+
+// Identity Domain Types
+export type { UserTierLevel as UserTier } from '@/modules/identity/domain/value-objects/UserTier';
 
 export interface AdminUser {
   id: string;
   email: string;
   name: string;
   status: 'active' | 'suspended' | 'banned';
-  tier?: UserTier;
+  tier?: import('@/modules/identity/domain/value-objects/UserTier').UserTierLevel;
   isAdmin: boolean;
   credits: number;
   emailVerified: boolean;
@@ -15,9 +26,11 @@ export interface AdminUser {
   gender?: string | null;
   bio?: string | null;
   lastActive?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt?: string | Date;
 }
+
+export type UserProps = AdminUser;
 
 export interface UserDevice {
   id: string;
@@ -72,26 +85,22 @@ export interface AdminChatHistoryQuery {
   sessionId?: string;
 }
 
-
-export interface CreditVoucher {
-  id: string;
-  code: string;
-  amount: number;
-  isRedeemed: boolean;
-  redeemedById?: string | null;
-  redeemedAt?: string | null;
-  expiresAt?: string | null;
-  createdById: string;
-  createdAt: string;
-  updatedAt: string;
+export interface AdminUsersQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: 'active' | 'suspended' | 'banned';
+  tier?: import('@/modules/identity/domain/value-objects/UserTier').UserTierLevel;
+  isAdmin?: boolean;
 }
 
+// Intelligence Domain Types
 export interface AiAgent {
   id: string;
   name: string;
   modelName: string;
   baseUrl?: string | null;
-  apiKey?: string | null; // Masked as '***' from backend
+  apiKey?: string | null;
   taskType: string;
   systemPrompt?: string | null;
   tier: 'cheap' | 'balanced' | 'deep';
@@ -103,31 +112,76 @@ export interface AiAgent {
   isActive: boolean;
   visibility: 'public' | 'private';
   description?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt?: string | Date;
+  calculateEstimatedCredits?: (tokens: number) => number;
+  getTierBadgeVariant?: () => 'positive' | 'info' | 'accent';
 }
 
-export interface AgentTestResult {
-  agentId: string;
-  agentName: string;
-  modelUsed: string;
-  reply: string;
-  thinking?: string;
-  usage: {
-    inputTokens: number;
-    outputTokens: number;
-    totalTokens: number;
-    latencyMs: number;
-  };
+export type AgentDetail = AiAgent;
+
+export interface CreditVoucher {
+  id: string;
+  code: string;
+  amount: number;
+  isRedeemed: boolean;
+  redeemedById?: string | null;
+  redeemedAt?: string | null;
+  expiresAt?: string | null | Date;
+  createdById: string;
+  createdAt: string | Date;
+  updatedAt?: string | Date;
+  isValid?: () => boolean;
+  isExpired?: () => boolean;
+  getStatus?: () => 'redeemed' | 'expired' | 'available';
+  getStatusBadgeClass?: () => string;
 }
 
-export interface AgentTestPayload {
-  message: string;
-  systemPromptOverride?: string | null;
-  temperatureOverride?: number;
-  maxTokensOverride?: number;
+export type {
+  AgentTestPayload,
+  AgentTestResult,
+  CreateAgentInput,
+  UpdateAgentInput
+} from '@/modules/intelligence/domain/repositories/IAgentRepository';
+
+// Market Domain Types
+export type {
+  MarketInstrument as MarketSymbol,
+  MarketInstrumentProps,
+  StreamSymbolEntity as StreamSymbol,
+  StreamSymbolEntityProps
+} from '@/modules/market/domain/entities/MarketInstrument';
+export type { PriceTick as MarketPrice, PriceTickProps } from '@/modules/market/domain/value-objects/PriceTick';
+
+// Operations Domain Types
+export type { AuditLog, AuditLogProps } from '@/modules/operations/domain/entities/AuditLog';
+
+export interface BackgroundWorkerInfo {
+  id: string;
+  name: string;
+  category: 'market' | 'news' | 'maintenance' | 'intelligence';
+  description: string;
+  status: 'running' | 'paused' | 'stopped' | 'idle' | 'error';
+  interval: string;
+  uptimeSeconds: number;
+  lastRunAt: string | Date | null;
+  nextRunAt: string | Date | null;
+  processedCount: number;
+  errorCount: number;
+  lastError: string | null;
+  isRunning?: () => boolean;
+  isPaused?: () => boolean;
+  hasErrors?: () => boolean;
+  getStatusBadgeClass?: () => string;
 }
 
+export type {
+  WorkerStatus,
+  WorkerAction,
+  WorkerCategory
+} from '@/modules/operations/domain/entities/BackgroundWorker';
+
+// Analytics Domain Types
 export interface SystemMetrics {
   totalUsers: number;
   activeSessions: number;
@@ -136,6 +190,11 @@ export interface SystemMetrics {
   dbPoolActive: number;
   dbPoolIdle: number;
   uptimeSeconds: number;
+  redisStatus?: string;
+  redisLatencyMs?: number;
+  dbPoolTotal?: number;
+  dbPoolActiveRatio?: number;
+  isDbPoolStressed?: boolean;
 }
 
 export interface UserAnalytics {
@@ -155,37 +214,11 @@ export interface AnalyticsQueryParams {
   endDate?: string;
 }
 
-export interface AuditLog {
-  id: string;
-  userId?: string | null;
-  action: string;
-  resource: string;
-  resourceId?: string | null;
-  details?: Record<string, unknown> | null;
-  ipAddress?: string | null;
-  userAgent?: string | null;
-  createdAt: string;
-}
+// News Domain Types
+export type { NewsArticle, NewsArticleProps } from '@/modules/news/domain/entities/NewsArticle';
+export type { NewsQueryParams } from '@/modules/news/domain/repositories/INewsRepository';
 
-export interface AdminUsersQuery {
-  page?: number;
-  limit?: number;
-  search?: string;
-  status?: 'active' | 'suspended' | 'banned';
-  tier?: UserTier;
-  isAdmin?: boolean;
-}
-
-export interface PaginatedResult<T> {
-  data: T[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
+// General API Wrapper
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -204,78 +237,3 @@ export interface ApiResponse<T> {
     delayMs?: number;
   };
 }
-
-export interface NewsArticle {
-  id: string;
-  source: string;
-  headline: string;
-  url: string;
-  summary: string;
-  datetime: number;
-  category: string;
-  tags: string[];
-  image?: string | null;
-  createdAt: string;
-}
-
-export interface NewsQueryParams {
-  page?: number;
-  limit?: number;
-  category?: string;
-  tag?: string;
-  search?: string;
-}
-
-export interface MarketPrice {
-  symbol: string;
-  bid: number;
-  ask: number;
-  spread: number;
-  change24h?: number;
-  change24hPercent?: number;
-  volume24h?: number;
-  high24h?: number;
-  low24h?: number;
-  timestamp: number;
-}
-
-export interface MarketSymbol {
-  symbol: string;
-  name?: string;
-  description?: string;
-  category: string;
-  digits?: number;
-  pipSize?: number;
-  finnhubSymbol?: string;
-  dukascopySymbol?: string;
-  isActive: boolean;
-}
-
-export interface StreamSymbol {
-  symbol: string;
-  finnhubSymbol: string;
-  description?: string | null;
-  category: string;
-  isActive: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export type WorkerStatus = 'running' | 'paused' | 'stopped' | 'idle' | 'error';
-export type WorkerAction = 'start' | 'pause' | 'stop' | 'restart';
-
-export interface BackgroundWorkerInfo {
-  id: string;
-  name: string;
-  category: 'market' | 'news' | 'maintenance' | 'intelligence';
-  description: string;
-  status: WorkerStatus;
-  interval: string;
-  uptimeSeconds: number;
-  lastRunAt: string | null;
-  nextRunAt: string | null;
-  processedCount: number;
-  errorCount: number;
-  lastError: string | null;
-}
-

@@ -22,6 +22,14 @@ vi.mock('next/headers', () => ({
   cookies: async () => mockCookieStore
 }));
 
+const ADMIN_USER = {
+  id: 'admin-uuid-1',
+  email: 'admin@betrix.io',
+  name: 'Chief Admin',
+  isAdmin: true,
+  status: 'active'
+};
+
 describe('Next.js Auth Route Handlers Integration Tests', () => {
   beforeEach(() => {
     mockCookieMap.clear();
@@ -35,13 +43,7 @@ describe('Next.js Auth Route Handlers Integration Tests', () => {
       data: {
         token: 'signed-admin-jwt-token',
         sessionToken: 'sess-token-123',
-        user: {
-          id: 'admin-uuid-1',
-          email: 'admin@betrix.io',
-          name: 'Chief Admin',
-          isAdmin: true,
-          status: 'active'
-        }
+        user: ADMIN_USER
       }
     };
 
@@ -118,9 +120,8 @@ describe('Next.js Auth Route Handlers Integration Tests', () => {
     expect(mockCookieStore.set).not.toHaveBeenCalled();
   });
 
-  it('Test Gate 1.5: Logout revokes session on backend and clears client cookies', async () => {
+  it('Test Gate 1.5: Logout revokes session on backend and clears client cookie', async () => {
     mockCookieMap.set('betrix_admin_token', { value: 'existing-admin-token' });
-    mockCookieMap.set('betrix_admin_user', { value: JSON.stringify({ id: 'admin-1' }) });
 
     const mockBackendFetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -144,20 +145,17 @@ describe('Next.js Auth Route Handlers Integration Tests', () => {
       })
     );
 
-    // Verify cookies were deleted
+    // Verify cookie was deleted
     expect(mockCookieStore.delete).toHaveBeenCalledWith('betrix_admin_token');
-    expect(mockCookieStore.delete).toHaveBeenCalledWith('betrix_admin_user');
   });
 
-  it('Session handler returns authenticated status when valid cookie is present', async () => {
+  it('Session handler verifies token against backend and returns admin user', async () => {
     mockCookieMap.set('betrix_admin_token', { value: 'valid-token' });
-    mockCookieMap.set('betrix_admin_user', {
-      value: JSON.stringify({
-        id: 'admin-uuid',
-        email: 'admin@betrix.io',
-        name: 'Admin',
-        isAdmin: true
-      })
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true, data: ADMIN_USER })
     });
 
     const req = new NextRequest('http://localhost:3001/api/auth/session', { method: 'GET' });
@@ -168,5 +166,42 @@ describe('Next.js Auth Route Handlers Integration Tests', () => {
     expect(body.success).toBe(true);
     expect(body.data.authenticated).toBe(true);
     expect(body.data.user.email).toBe('admin@betrix.io');
+  });
+
+  it('Session handler rejects expired/invalid token (backend 401)', async () => {
+    mockCookieMap.set('betrix_admin_token', { value: 'expired-token' });
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ success: false, error: { message: 'Invalid token' } })
+    });
+
+    const req = new NextRequest('http://localhost:3001/api/auth/session', { method: 'GET' });
+    const res = await sessionHandler(req);
+    const body = await res.json();
+
+    expect(body.success).toBe(false);
+    expect(body.data.authenticated).toBe(false);
+  });
+
+  it('Session handler rejects non-admin user (backend returns isAdmin false)', async () => {
+    mockCookieMap.set('betrix_admin_token', { value: 'trader-token' });
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        data: { ...ADMIN_USER, isAdmin: false }
+      })
+    });
+
+    const req = new NextRequest('http://localhost:3001/api/auth/session', { method: 'GET' });
+    const res = await sessionHandler(req);
+    const body = await res.json();
+
+    expect(body.success).toBe(false);
+    expect(body.data.authenticated).toBe(false);
   });
 });

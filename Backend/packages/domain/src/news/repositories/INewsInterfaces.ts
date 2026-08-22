@@ -6,7 +6,7 @@ export interface INewsRepository {
   saveMany(articles: NewsArticle[]): Promise<number>;
   findById(id: string): Promise<Nullable<NewsArticle>>;
   findRecent(limit?: number, category?: string, tag?: string): Promise<NewsArticle[]>;
-  findAll(pagination: PaginationParams, category?: string, tag?: string): Promise<PaginatedResult<NewsArticle>>;
+  findAll(pagination: PaginationParams, category?: string, tag?: string, search?: string): Promise<PaginatedResult<NewsArticle>>;
 }
 
 export interface INewsProvider {

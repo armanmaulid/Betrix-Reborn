@@ -21,27 +21,28 @@ test.describe('E2E Live Operations Dashboard', () => {
             totalUsers: 1420,
             activeSessions: 95,
             totalChats: 48200,
-            totalTokens: 19500000,
-            dbPool: { totalCount: 20, idleCount: 16, waitingCount: 0 },
-            serverUptimeSeconds: 864000,
-            systemHealth: { status: 'healthy', timestamp: new Date().toISOString() }
+            totalTokensUsed: 19500000,
+            dbPoolActive: 4,
+            dbPoolIdle: 16,
+            uptimeSeconds: 864000
           }
         })
       });
     });
 
-    await page.route('**/api/admin/analytics/history', async (route) => {
+    await page.route('**/api/admin/analytics*', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           success: true,
           data: {
-            userAcquisition: {
-              newUsersToday: 42,
-              newUsersWeekly: 290,
-              activeTraders24h: 310
-            },
+            newUsersToday: 42,
+            newUsersThisWeek: 290,
+            newUsersThisMonth: 1200,
+            activeUsers24h: 310,
+            activeUsersWeekly: 850,
+            activeUsersMonthly: 2100,
             dailyTokenUsage: [
               { date: '2026-08-15', totalTokens: 1200000, costEstimateUsd: 12 },
               { date: '2026-08-16', totalTokens: 1500000, costEstimateUsd: 15 }
@@ -66,8 +67,7 @@ test.describe('E2E Live Operations Dashboard', () => {
     await expect(page.getByText('DB POOL STATUS', { exact: true })).toBeVisible();
     await expect(page.getByText('SYSTEM UPTIME', { exact: true })).toBeVisible();
 
-    await expect(page.getByText('NEW REGISTRATIONS TODAY', { exact: true })).toBeVisible();
-    await expect(page.getByText('NEW USERS THIS WEEK', { exact: true })).toBeVisible();
-    await expect(page.getByText('ACTIVE TRADERS (24H)', { exact: true })).toBeVisible();
+    await expect(page.getByText('NEW REGISTRATIONS', { exact: true })).toBeVisible();
+    await expect(page.getByText('ACTIVE TRADERS', { exact: true })).toBeVisible();
   });
 });

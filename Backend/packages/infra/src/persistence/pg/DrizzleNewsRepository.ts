@@ -1,4 +1,4 @@
-import { and, arrayContains, desc, eq, sql } from 'drizzle-orm';
+import { and, arrayContains, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import { INewsRepository, NewsArticle, Nullable, PaginatedResult, PaginationParams } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { newsArticles } from '../drizzle/schema.js';
@@ -73,7 +73,10 @@ export class DrizzleNewsRepository implements INewsRepository {
   async findRecent(limit: number = 20, category?: string, tag?: string): Promise<NewsArticle[]> {
     const conditions = [];
     if (category) conditions.push(eq(newsArticles.category, category));
-    if (tag) conditions.push(arrayContains(newsArticles.tags, [tag]));
+    if (tag) {
+      const cleanTag = tag.replace(/^#/, '').trim().toLowerCase();
+      if (cleanTag) conditions.push(arrayContains(newsArticles.tags, [cleanTag]));
+    }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -100,11 +103,24 @@ export class DrizzleNewsRepository implements INewsRepository {
     return uniqueArticles;
   }
 
-  async findAll(pagination: PaginationParams, category?: string, tag?: string): Promise<PaginatedResult<NewsArticle>> {
+  async findAll(pagination: PaginationParams, category?: string, tag?: string, search?: string): Promise<PaginatedResult<NewsArticle>> {
     const offset = (pagination.page - 1) * pagination.limit;
     const conditions = [];
     if (category) conditions.push(eq(newsArticles.category, category));
-    if (tag) conditions.push(arrayContains(newsArticles.tags, [tag]));
+    if (tag) {
+      const cleanTag = tag.replace(/^#/, '').trim().toLowerCase();
+      if (cleanTag) conditions.push(arrayContains(newsArticles.tags, [cleanTag]));
+    }
+    if (search) {
+      const cleanSearch = search.replace(/^#/, '').trim();
+      const q = `%${cleanSearch}%`;
+      conditions.push(
+        or(
+          ilike(newsArticles.headline, q),
+          ilike(newsArticles.summary, q)
+        )
+      );
+    }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 

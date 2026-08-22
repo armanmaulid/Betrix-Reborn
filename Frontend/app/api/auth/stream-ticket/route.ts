@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-
-const BACKEND_URL = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+import { BACKEND_URL } from '@/lib/server-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,9 +24,9 @@ export async function POST(request: NextRequest) {
 
     const data = await backendRes.json();
     return NextResponse.json(data, { status: backendRes.status });
-  } catch (err: any) {
+  } catch {
     return NextResponse.json(
-      { success: false, error: { message: err.message || 'Failed to acquire stream ticket.' } },
+      { success: false, error: { message: 'Failed to acquire stream ticket.' } },
       { status: 500 }
     );
   }

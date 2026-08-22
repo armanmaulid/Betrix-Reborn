@@ -1,7 +1,7 @@
 import React from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { DashboardShell } from '@/components/dashboard-shell';
+import { DashboardShell } from '@/shared/presentation/layout/dashboard-shell';
 
 export default async function DashboardLayout({
   children

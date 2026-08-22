@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { NotFoundError } from '@betrix/core';
+import { NotFoundError, ForbiddenError } from '@betrix/core';
 import { IUserRepository, IAdminActionRepository, AdminAction } from '@betrix/domain';
 
 export class DeleteAdminUserUseCase {
@@ -16,6 +16,20 @@ export class DeleteAdminUserUseCase {
     const user = await this.userRepo.findById(targetUserId);
     if (!user) {
       throw new NotFoundError('User not found.');
+    }
+
+    // 1. Guard against Self-Deletion
+    if (adminId === targetUserId) {
+      throw new ForbiddenError(
+        'SELF_DELETION_FORBIDDEN: Administrators cannot delete their own administrator account.'
+      );
+    }
+
+    // 2. Guard against Direct Administrator Deletion
+    if (user.isAdmin) {
+      throw new ForbiddenError(
+        'ADMIN_DELETION_FORBIDDEN: Cannot delete an administrator account directly. Demote the user first.'
+      );
     }
 
     const deleted = await this.userRepo.delete(targetUserId);

@@ -131,9 +131,25 @@ export class DrizzleActivityLogRepository implements IActivityLogRepository {
 }
 
 export class DrizzleAnalyticsRepository implements IAnalyticsRepository {
-  constructor(private readonly db: DrizzleDb) {}
+  constructor(
+    private readonly db: DrizzleDb,
+    private readonly redis?: any
+  ) {}
 
   async getSystemMetrics(): Promise<SystemMetrics> {
+    let redisStatus = 'healthy';
+    let redisLatencyMs = 0;
+
+    if (this.redis) {
+      try {
+        const start = Date.now();
+        await this.redis.ping();
+        redisLatencyMs = Date.now() - start;
+      } catch (err: any) {
+        redisStatus = `unhealthy: ${err?.message || 'timeout'}`;
+      }
+    }
+
     const [userCount, sessionCount, chatStats] = await Promise.all([
       this.db.select({ count: sql<number>`cast(count(*) as integer)` }).from(users),
       this.db.select({ count: sql<number>`cast(count(*) as integer)` }).from(sessions),
@@ -152,7 +168,9 @@ export class DrizzleAnalyticsRepository implements IAnalyticsRepository {
       totalTokensUsed: chatStats[0]?.totalTokens || 0,
       dbPoolActive: 1,
       dbPoolIdle: 0,
-      uptimeSeconds: Math.floor(process.uptime())
+      uptimeSeconds: Math.floor(process.uptime()),
+      redisStatus,
+      redisLatencyMs
     };
   }
 

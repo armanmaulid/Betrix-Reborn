@@ -1,21 +1,12 @@
 import { eq } from 'drizzle-orm';
+import { IStreamSymbolRepository, StreamSymbol } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { streamSymbols } from '../drizzle/schema.js';
 
-export interface StreamSymbolRow {
-  symbol: string;
-  finnhubSymbol: string;
-  description: string | null;
-  category: string;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export class DrizzleStreamSymbolRepository {
+export class DrizzleStreamSymbolRepository implements IStreamSymbolRepository {
   constructor(private readonly db: DrizzleDb) {}
 
-  async findAll(activeOnly: boolean = false): Promise<StreamSymbolRow[]> {
+  async findAll(activeOnly: boolean = false): Promise<StreamSymbol[]> {
     const query = activeOnly
       ? this.db.select().from(streamSymbols).where(eq(streamSymbols.isActive, true))
       : this.db.select().from(streamSymbols);
@@ -23,11 +14,11 @@ export class DrizzleStreamSymbolRepository {
     return query.orderBy(streamSymbols.category, streamSymbols.symbol);
   }
 
-  async findActive(): Promise<StreamSymbolRow[]> {
+  async findActive(): Promise<StreamSymbol[]> {
     return this.findAll(true);
   }
 
-  async findBySymbol(symbol: string): Promise<StreamSymbolRow | null> {
+  async findBySymbol(symbol: string): Promise<StreamSymbol | null> {
     const result = await this.db
       .select()
       .from(streamSymbols)
@@ -43,7 +34,7 @@ export class DrizzleStreamSymbolRepository {
     description?: string | null;
     category?: string;
     isActive?: boolean;
-  }): Promise<StreamSymbolRow> {
+  }): Promise<StreamSymbol> {
     const sym = data.symbol.toUpperCase();
     const inserted = await this.db
       .insert(streamSymbols)

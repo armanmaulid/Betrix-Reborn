@@ -1,0 +1,14 @@
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { analyticsRepository } from '@analytics/infrastructure/repositories/HttpAnalyticsRepository';
+import { analyticsKeys } from '@analytics/application/analytics.keys';
+import type { UserAnalytics, AnalyticsQueryParams } from '@/lib/types';
+
+export function useUserAnalytics(params?: AnalyticsQueryParams) {
+  return useQuery<UserAnalytics>({
+    queryKey: analyticsKeys.userAnalytics(params as Record<string, unknown>),
+    queryFn: () => analyticsRepository.getUserAnalytics(params),
+    staleTime: 60 * 1000
+  });
+}

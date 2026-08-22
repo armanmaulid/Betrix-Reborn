@@ -44,7 +44,7 @@ test.describe('E2E Security & Activity Audit Trail', () => {
   test('should render audit logs table and open JSON tree viewer', async ({ page }) => {
     await page.goto('/audit-logs');
 
-    await expect(page.getByText('SECURITY & OPERATIONS AUDIT TRAIL', { exact: true })).toBeVisible();
+    await expect(page.getByText('SECURITY AUDIT LOGS & TRACEABILITY')).toBeVisible();
     await expect(page.getByRole('table').getByText('UPDATE_USER')).toBeVisible();
     await expect(page.getByText('192.168.1.1', { exact: true })).toBeVisible();
     await expect(page.locator('button:has-text("EXPORT CSV")')).toBeVisible();

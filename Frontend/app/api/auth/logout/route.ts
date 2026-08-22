@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-
-const BACKEND_URL = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+import { BACKEND_URL } from '@/lib/server-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,7 +24,6 @@ export async function POST(request: NextRequest) {
 
     // Delete cookies
     cookieStore.delete('betrix_admin_token');
-    cookieStore.delete('betrix_admin_user');
 
     return NextResponse.json({
       success: true,

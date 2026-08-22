@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { NotFoundError } from '@betrix/core';
+import { NotFoundError, ForbiddenError } from '@betrix/core';
 import { IUserRepository, IAdminActionRepository, ISessionRepository, AdminAction, User } from '@betrix/domain';
 import { UpdateAdminUserDTO } from '../../schemas/admin.schema.js';
 
@@ -19,6 +19,22 @@ export class UpdateAdminUserUseCase {
     const user = await this.userRepo.findById(targetUserId);
     if (!user) {
       throw new NotFoundError('User not found.');
+    }
+
+    const isEditingSelf = adminId === targetUserId;
+
+    // 1. Guard against Self-Demotion (Admin cannot revoke own Admin role)
+    if (isEditingSelf && dto.isAdmin !== undefined && !dto.isAdmin && user.isAdmin) {
+      throw new ForbiddenError(
+        'SELF_DEMOTION_FORBIDDEN: Administrators cannot revoke their own administrator privileges.'
+      );
+    }
+
+    // 2. Guard against Self-Lockout (Admin cannot suspend or ban their own active account)
+    if (isEditingSelf && dto.status !== undefined && dto.status !== 'active') {
+      throw new ForbiddenError(
+        'SELF_LOCKOUT_FORBIDDEN: Administrators cannot suspend or ban their own active account.'
+      );
     }
 
     // Never spread stale fields back — only update what the DTO sets.

@@ -1,25 +1,22 @@
-import { DrizzleStreamSymbolRepository, StreamSymbolRow } from '@betrix/infra';
-import { IAdminActionRepository, AdminAction } from '@betrix/domain';
-
-export interface SaveStreamSymbolDTO {
-  symbol: string;
-  finnhubSymbol: string;
-  description?: string;
-  category?: string;
-  isActive?: boolean;
-}
+import { IStreamSymbolRepository, StreamSymbol, IAdminActionRepository, AdminAction } from '@betrix/domain';
 
 export class SaveStreamSymbolUseCase {
   constructor(
-    private readonly streamSymbolRepo: DrizzleStreamSymbolRepository,
+    private readonly streamSymbolRepo: IStreamSymbolRepository,
     private readonly adminActionRepo?: IAdminActionRepository
   ) {}
 
   public async execute(
     adminId: string,
-    dto: SaveStreamSymbolDTO,
+    dto: {
+      symbol: string;
+      finnhubSymbol: string;
+      description?: string;
+      category?: string;
+      isActive?: boolean;
+    },
     context?: { ip?: string; userAgent?: string }
-  ): Promise<StreamSymbolRow> {
+  ): Promise<StreamSymbol> {
     const existing = await this.streamSymbolRepo.findBySymbol(dto.symbol.toUpperCase());
 
     const saved = await this.streamSymbolRepo.save({

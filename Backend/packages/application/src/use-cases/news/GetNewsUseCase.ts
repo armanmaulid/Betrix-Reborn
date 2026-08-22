@@ -13,7 +13,8 @@ export class GetNewsUseCase {
     return this.newsService.getNewsPaginated(
       { page, limit },
       query?.category,
-      query?.tag
+      query?.tag,
+      query?.search
     );
   }
 }

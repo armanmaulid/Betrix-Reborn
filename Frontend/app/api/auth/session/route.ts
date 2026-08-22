@@ -1,35 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getSessionToken, verifySession } from '@/lib/server-auth';
 
 export async function GET(request: NextRequest) {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('betrix_admin_token')?.value;
-    const userJson = cookieStore.get('betrix_admin_user')?.value;
+  const token = await getSessionToken();
+  const user = await verifySession(token);
 
-    if (!token || !userJson) {
-      return NextResponse.json({
-        success: false,
-        data: { authenticated: false }
-      });
-    }
-
-    const user = JSON.parse(userJson);
-
+  if (!user) {
     return NextResponse.json({
-      success: true,
-      data: {
-        authenticated: true,
-        user
-      }
+      success: false,
+      data: { authenticated: false }
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: { message: error.message || 'Failed to read session' }
-      },
-      { status: 500 }
-    );
   }
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      authenticated: true,
+      user
+    }
+  });
 }

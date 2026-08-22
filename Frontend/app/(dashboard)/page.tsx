@@ -1,1 +1,5 @@
-export { default } from './dashboard/page';
+import { DashboardContainer } from '@/modules/analytics/presentation/dashboard-container';
+
+export default function RootDashboardPage() {
+  return <DashboardContainer />;
+}

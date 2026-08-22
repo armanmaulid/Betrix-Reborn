@@ -265,7 +265,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const messageRepo = new DrizzleMessageRepository(db);
   const adminActionRepo = new DrizzleAdminActionRepository(db);
   const activityLogRepo = new DrizzleActivityLogRepository(db);
-  const analyticsRepo = new DrizzleAnalyticsRepository(db);
+  const analyticsRepo = new DrizzleAnalyticsRepository(db, redis);
   const usageRepo = new DrizzleUsageRepository(db);
   const verificationRepo = new DrizzleVerificationRepository(db);
   const loginAttemptRepo = new DrizzleLoginAttemptRepository(db);
@@ -340,9 +340,9 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
     }
   };
 
-  const registerUseCase = new RegisterUseCase(userRepo, deviceRepo, verificationRepo, authService, emailService, 100, isDevMode);
-  const loginUseCase = new LoginUseCase(userRepo, deviceRepo, loginAttemptRepo, authService, captchaService);
-  const googleOAuthUseCase = new GoogleOAuthUseCase(userRepo, deviceRepo, authService, mockGoogleVerifier, 100);
+  const registerUseCase = new RegisterUseCase(userRepo, deviceRepo, verificationRepo, authService, emailService, 100, isDevMode, env.DEVICE_ENFORCEMENT);
+  const loginUseCase = new LoginUseCase(userRepo, deviceRepo, loginAttemptRepo, authService, captchaService, env.DEVICE_ENFORCEMENT);
+  const googleOAuthUseCase = new GoogleOAuthUseCase(userRepo, deviceRepo, authService, mockGoogleVerifier, 100, env.DEVICE_ENFORCEMENT);
   const verifyEmailUseCase = new VerifyEmailUseCase(userRepo, verificationRepo);
   const resendVerificationUseCase = new ResendVerificationUseCase(userRepo, verificationRepo, emailService, isDevMode);
   const forgotPasswordUseCase = new ForgotPasswordUseCase(userRepo, verificationRepo, emailService, isDevMode);

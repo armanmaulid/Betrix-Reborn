@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { LoginSchema, type LoginInput } from '@/lib/schemas/auth.schema';
+import { LoginSchema, type LoginInput } from '@/modules/identity/application/schemas/auth.schema';
 import { Lock, Terminal, ShieldAlert, Cpu, CheckCircle2 } from 'lucide-react';
+import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
 
 function LoginForm() {
-  const router = useRouter();
+  usePageTitle('TERMINAL AUTH');
   const searchParams = useSearchParams();
   const rawReturn = searchParams.get('from') || '';
   const returnUrl = rawReturn.startsWith('/') && !rawReturn.startsWith('//') ? rawReturn : '/dashboard';
@@ -166,7 +167,7 @@ function LoginForm() {
               <input
                 type="email"
                 {...register('email')}
-                placeholder="admin@betrix.io"
+                placeholder="name@company.com"
                 autoComplete="email"
                 disabled={isLoading || cooldownSeconds > 0}
                 className="w-full bg-black border border-border px-3 py-2 text-xs font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-accent transition-colors"
@@ -232,7 +233,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={isLoading || cooldownSeconds > 0}
-              className="w-full mt-2 bg-accent text-black font-mono text-xs font-bold uppercase tracking-widest py-2.5 px-4 hover:bg-accent/90 focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              className="w-full mt-2 bg-accent text-black font-mono text-xs font-bold uppercase tracking-widest py-2.5 px-4 hover:bg-accent/90 focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {isLoading ? (
                 <>

@@ -1,9 +1,8 @@
-import { DrizzleStreamSymbolRepository } from '@betrix/infra';
-import { IAdminActionRepository, AdminAction } from '@betrix/domain';
+import { IStreamSymbolRepository, IAdminActionRepository, AdminAction } from '@betrix/domain';
 
 export class DeleteStreamSymbolUseCase {
   constructor(
-    private readonly streamSymbolRepo: DrizzleStreamSymbolRepository,
+    private readonly streamSymbolRepo: IStreamSymbolRepository,
     private readonly adminActionRepo?: IAdminActionRepository
   ) {}
 
