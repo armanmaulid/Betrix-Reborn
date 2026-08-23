@@ -6,6 +6,7 @@ import {
   Newspaper,
   Layers,
   Activity,
+  BarChart3,
   Radio,
   ShieldAlert,
   Wrench,
@@ -17,7 +18,7 @@ export interface RouteDefinition {
   name: string;
   href: string;
   icon: LucideIcon;
-  shortcutKey: string;
+  shortcutKey?: string;
   description: string;
   badge?: string;
 }
@@ -81,6 +82,13 @@ export const ADMIN_ROUTES: RouteDefinition[] = [
   },
   {
     num: '08',
+    name: 'OHLC SYMBOLS',
+    href: '/ohlc-symbols',
+    icon: BarChart3,
+    description: 'Dukascopy Historical OHLC Data Symbols'
+  },
+  {
+    num: '09',
     name: 'BROADCAST MSG',
     href: '/broadcast',
     icon: Radio,
@@ -88,7 +96,7 @@ export const ADMIN_ROUTES: RouteDefinition[] = [
     description: 'Global Message Broadcast'
   },
   {
-    num: '09',
+    num: '10',
     name: 'AUDIT LOGS',
     href: '/audit-logs',
     icon: ShieldAlert,
@@ -96,7 +104,7 @@ export const ADMIN_ROUTES: RouteDefinition[] = [
     description: 'Security & Activity Audit Logs'
   },
   {
-    num: '10',
+    num: '11',
     name: 'MAINTENANCE',
     href: '/maintenance',
     icon: Wrench,

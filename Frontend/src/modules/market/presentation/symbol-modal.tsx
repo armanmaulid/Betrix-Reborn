@@ -18,7 +18,7 @@ export interface SymbolModalProps {
   onClose: () => void;
   onSave: (data: SymbolFormData) => void | Promise<void>;
   initialData?: Partial<SymbolFormData> | null;
-  mode?: 'catalog' | 'stream';
+  mode?: 'catalog' | 'stream' | 'ohlc';
   isPending?: boolean;
 }
 
@@ -65,15 +65,21 @@ export function SymbolModal({
       ? isEdit
         ? `EDIT STREAM SYMBOL // ${symbol}`
         : 'ADD NEW FINNHUB STREAM SYMBOL'
+      : mode === 'ohlc'
+      ? isEdit
+        ? `EDIT OHLC SYMBOL // ${symbol}`
+        : 'ADD NEW DUKASCOPY OHLC SYMBOL'
       : isEdit
       ? `EDIT INSTRUMENT // ${symbol}`
       : 'ADD NEW MARKET INSTRUMENT';
 
-  const icon = mode === 'stream' ? Activity : Database;
-  const variant = mode === 'stream' ? 'positive' : 'accent';
+  const icon = mode === 'stream' ? Activity : mode === 'ohlc' ? Activity : Database;
+  const variant = mode === 'stream' ? 'positive' : mode === 'ohlc' ? 'info' : 'accent';
   const saveButtonColor =
     mode === 'stream'
       ? 'bg-positive text-black hover:bg-positive/80'
+      : mode === 'ohlc'
+      ? 'bg-info text-black hover:opacity-80'
       : 'bg-accent text-black hover:bg-accent/80';
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,20 +122,36 @@ export function SymbolModal({
           />
         </div>
 
-        {/* Finnhub Ticker */}
-        <div className="space-y-1">
-          <label className="text-[10px] text-muted-foreground uppercase">
-            FINNHUB TICKER (E.G. OANDA:EUR_USD, BINANCE:BTCUSDT){mode === 'stream' ? ' *' : ''}
-          </label>
-          <input
-            type="text"
-            required={mode === 'stream'}
-            placeholder="OANDA:EUR_USD"
-            value={finnhubSymbol}
-            onChange={(e) => setFinnhubSymbol(e.target.value)}
-            className="w-full bg-black border border-border px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent font-bold"
-          />
-        </div>
+        {/* Finnhub Ticker (stream mode) or Dukascopy Ticker (ohlc mode) */}
+        {mode === 'ohlc' ? (
+          <div className="space-y-1">
+            <label className="text-[10px] text-muted-foreground uppercase">
+              DUKASCOPY TICKER (E.G. eurusd, xauusd, btcusd) *
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="eurusd"
+              value={dukascopySymbol}
+              onChange={(e) => setDukascopySymbol(e.target.value)}
+              className="w-full bg-black border border-border px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent font-bold"
+            />
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <label className="text-[10px] text-muted-foreground uppercase">
+              FINNHUB TICKER (E.G. OANDA:EUR_USD, BINANCE:BTCUSDT){mode === 'stream' ? ' *' : ''}
+            </label>
+            <input
+              type="text"
+              required={mode === 'stream'}
+              placeholder="OANDA:EUR_USD"
+              value={finnhubSymbol}
+              onChange={(e) => setFinnhubSymbol(e.target.value)}
+              className="w-full bg-black border border-border px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent font-bold"
+            />
+          </div>
+        )}
 
         {/* Description */}
         <div className="space-y-1">
@@ -161,7 +183,7 @@ export function SymbolModal({
           </select>
         </div>
 
-        {/* Dukascopy Ticker (catalog mode) */}
+        {/* Dukascopy Ticker (catalog mode only) */}
         {mode === 'catalog' && (
           <div className="space-y-1">
             <label className="text-[10px] text-muted-foreground uppercase">
@@ -192,6 +214,8 @@ export function SymbolModal({
           >
             {mode === 'stream'
               ? 'ENABLE LIVE WEBSOCKET TICK SUBSCRIPTION'
+              : mode === 'ohlc'
+              ? 'ENABLE DUKASCOPY HISTORICAL DATA SYNC'
               : 'ACTIVE IN MARKET CATALOG'}
           </label>
         </div>
@@ -214,6 +238,8 @@ export function SymbolModal({
               ? 'SAVING...'
               : mode === 'stream'
               ? 'SAVE STREAM SYMBOL'
+              : mode === 'ohlc'
+              ? 'SAVE OHLC SYMBOL'
               : 'SAVE INSTRUMENT'}
           </button>
         </div>

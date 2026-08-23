@@ -20,8 +20,11 @@ import {
   AnalyticsQuerySchema,
   ControlWorkerSchema,
   SaveSymbolSchema,
-  SaveStreamSymbolSchema
+  SaveStreamSymbolSchema,
+  SaveOhlcSymbolSchema,
+  BatchDeleteNewsBodySchema
 } from '@betrix/application';
+
 import { Type } from '@sinclair/typebox';
 
 export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
@@ -96,7 +99,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     {
       schema: {
         tags: ['Admin'],
-        summary: 'Get comprehensive user profile with devices & sessions',
+        summary: 'Get comprehensive user profile with devices, sessions & recent activity',
         params: IdParamSchema,
         security: [{ bearerAuth: [] }]
       }
@@ -109,9 +112,104 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
           user: detail.user.toJSON(),
           devices: detail.devices.map((d) => d.toJSON()),
           sessions: detail.sessions.map((s) => s.toJSON()),
+          recentActivity: detail.recentActivity,
           usageSummary: detail.usageSummary
         }
       });
+    }
+  );
+
+  // 2a. DELETE /admin/users/:id/sessions/:sessionId — Revoke a specific session
+  fastify.delete(
+    '/users/:id/sessions/:sessionId',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Revoke a specific user session',
+        params: Type.Object({
+          id: Type.String(),
+          sessionId: Type.String()
+        }),
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      try {
+        const result = await useCases.revokeUserSessionUseCase.execute(
+          request.user.userId,
+          request.params.id,
+          request.params.sessionId,
+          { ip: request.ip, userAgent: request.headers['user-agent'] }
+        );
+        return reply.send({
+          success: true,
+          data: result
+        });
+      } catch (err) {
+        return reply.status(404).send({
+          success: false,
+          error: { message: 'Session not found or already revoked' }
+        });
+      }
+    }
+  );
+
+  // 2b. DELETE /admin/users/:id/sessions — Revoke all sessions for a user
+  fastify.delete(
+    '/users/:id/sessions',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Revoke all active sessions for a user',
+        params: IdParamSchema,
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const result = await useCases.revokeAllUserSessionsUseCase.execute(
+        request.user.userId,
+        request.params.id,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+      return reply.send({
+        success: true,
+        data: result
+      });
+    }
+  );
+
+  // 2c. DELETE /admin/users/:id/devices/:deviceId — Remove a specific device
+  fastify.delete(
+    '/users/:id/devices/:deviceId',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Remove a specific user device',
+        params: Type.Object({
+          id: Type.String(),
+          deviceId: Type.String()
+        }),
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      try {
+        const result = await useCases.removeUserDeviceUseCase.execute(
+          request.user.userId,
+          request.params.id,
+          request.params.deviceId,
+          { ip: request.ip, userAgent: request.headers['user-agent'] }
+        );
+        return reply.send({
+          success: true,
+          data: result
+        });
+      } catch (err) {
+        return reply.status(404).send({
+          success: false,
+          error: { message: 'Device not found or already removed' }
+        });
+      }
     }
   );
 
@@ -131,7 +229,8 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       const updated = await useCases.updateAdminUserUseCase.execute(
         request.user.userId,
         request.params.id,
-        request.body
+        request.body,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
       return reply.send({
         success: true,
@@ -152,7 +251,11 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.deleteAdminUserUseCase.execute(request.user.userId, request.params.id);
+      const result = await useCases.deleteAdminUserUseCase.execute(
+        request.user.userId,
+        request.params.id,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
       return reply.send({
         success: true,
         data: result
@@ -176,7 +279,8 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       const result = await useCases.resetUserPasswordUseCase.execute(
         request.user.userId,
         request.params.id,
-        request.body
+        request.body,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
       return reply.send({
         success: true,
@@ -242,7 +346,11 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const voucher = await useCases.createVoucherUseCase.execute(request.user.userId, request.body);
+      const voucher = await useCases.createVoucherUseCase.execute(
+        request.user.userId,
+        request.body,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
       return reply.status(201).send({
         success: true,
         data: voucher.toJSON()
@@ -317,7 +425,11 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.revokeVoucherUseCase.execute(request.user.userId, request.params.id);
+      const result = await useCases.revokeVoucherUseCase.execute(
+        request.user.userId,
+        request.params.id,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
       return reply.send({
         success: true,
         data: result
@@ -358,7 +470,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const analytics = await useCases.getAnalyticsUseCase.execute(request.query as any);
+      const analytics = await useCases.getAnalyticsUseCase.execute(request.query);
       return reply.send({
         success: true,
         data: analytics
@@ -381,13 +493,15 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       const page = request.query.page || 1;
       const limit = request.query.limit || 20;
       const action = request.query.actionType || request.query.action;
+      const userId = request.query.userId;
       const paginated = await useCases.getAuditLogsUseCase.execute(
         { page, limit },
-        action
+        action,
+        userId
       );
       return reply.send({
         success: true,
-        data: paginated.data.map((l) => l.toJSON()),
+        data: paginated.data,
         meta: {
           page: paginated.page,
           limit: paginated.limit,
@@ -435,7 +549,11 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.broadcastMessageUseCase.execute(request.user.userId, request.body);
+      const result = await useCases.broadcastMessageUseCase.execute(
+        request.user.userId,
+        request.body,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
       return reply.send({
         success: true,
         data: result
@@ -455,7 +573,11 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.systemCleanupUseCase.execute(request.body);
+      const result = await useCases.systemCleanupUseCase.execute(request.body, {
+        adminId: request.user.userId,
+        ip: request.ip,
+        userAgent: request.headers['user-agent']
+      });
       return reply.send({
         success: true,
         data: result
@@ -494,7 +616,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const agent = await useCases.createAgentUseCase.execute(request.body);
+      const agent = await useCases.createAgentUseCase.execute(request.body, request.user.userId, { ip: request.ip, userAgent: request.headers['user-agent'] });
       return reply.status(201).send({
         success: true,
         data: agent.toJSON()
@@ -535,7 +657,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const updated = await useCases.updateAgentUseCase.execute(request.params.id, request.body);
+      const updated = await useCases.updateAgentUseCase.execute(request.user.userId, request.params.id, request.body, { ip: request.ip, userAgent: request.headers['user-agent'] });
       return reply.send({
         success: true,
         data: updated.toJSON()
@@ -555,7 +677,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const deleted = await useCases.deleteAgentUseCase.execute(request.params.id);
+      const deleted = await useCases.deleteAgentUseCase.execute(request.user.userId, request.params.id, { ip: request.ip, userAgent: request.headers['user-agent'] });
       return reply.send({
         success: true,
         data: { deleted }
@@ -575,7 +697,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const success = await useCases.setDefaultAgentUseCase.execute(request.params.id);
+      const success = await useCases.setDefaultAgentUseCase.execute(request.user.userId, request.params.id, { ip: request.ip, userAgent: request.headers['user-agent'] });
       return reply.send({
         success: true,
         data: { isDefault: success }
@@ -668,8 +790,11 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const category = (request.body as any)?.category || 'general';
-      const articles = await useCases.fetchNewsUseCase.execute(category);
+      const category = request.body?.category || 'general';
+      const articles = await useCases.fetchNewsUseCase.execute(
+        { category },
+        { adminId: request.user.userId, ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
       return reply.send({
         success: true,
         data: {
@@ -681,7 +806,62 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     }
   );
 
+  // 24a. DELETE /admin/news/:id — Delete single news article
+  fastify.delete(
+    '/news/:id',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Delete single market news article from database',
+        params: Type.Object({ id: Type.String() }),
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const deleted = await useCases.deleteNewsUseCase.execute(
+        request.user.userId,
+        request.params.id,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+      if (!deleted) {
+        return reply.status(404).send({
+          success: false,
+          error: { message: 'News article not found or already deleted' }
+        });
+      }
+      return reply.send({
+        success: true,
+        data: { id: request.params.id, deleted: true }
+      });
+    }
+  );
+
+  // 24b. POST /admin/news/batch-delete — Batch delete news articles
+  fastify.post(
+    '/news/batch-delete',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Batch delete market news articles from database',
+        body: BatchDeleteNewsBodySchema,
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const count = await useCases.batchDeleteNewsUseCase.execute(
+        request.user.userId,
+        request.body.ids,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+      return reply.send({
+        success: true,
+        data: { deletedCount: count }
+      });
+    }
+  );
+
   // 25. POST /admin/symbols — Add or update instrument symbol in database
+
   fastify.post(
     '/symbols',
     {
@@ -816,6 +996,77 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const deleted = await useCases.deleteStreamSymbolUseCase.execute(
+        request.user.userId,
+        request.params.symbol,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+      return reply.send({
+        success: true,
+        data: { deleted }
+      });
+    }
+  );
+
+  // 31. GET /admin/ohlc-symbols — List all OHLC symbols
+  fastify.get(
+    '/ohlc-symbols',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'List all OHLC (Dukascopy) historical data symbol mappings',
+        querystring: Type.Object({
+          activeOnly: Type.Optional(Type.Boolean({ default: false }))
+        }),
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const activeOnly = request.query.activeOnly === true;
+      const symbols = await useCases.getOhlcSymbolsUseCase.execute(activeOnly);
+      return reply.send({
+        success: true,
+        data: symbols
+      });
+    }
+  );
+
+  // 32. POST /admin/ohlc-symbols — Add or update OHLC symbol
+  fastify.post(
+    '/ohlc-symbols',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Add or update OHLC (Dukascopy) historical data symbol mapping',
+        body: SaveOhlcSymbolSchema,
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const saved = await useCases.saveOhlcSymbolUseCase.execute(
+        request.user.userId,
+        request.body,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
+      return reply.send({
+        success: true,
+        data: saved
+      });
+    }
+  );
+
+  // 33. DELETE /admin/ohlc-symbols/:symbol — Delete OHLC symbol
+  fastify.delete(
+    '/ohlc-symbols/:symbol',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Delete OHLC (Dukascopy) historical data symbol mapping',
+        params: Type.Object({ symbol: Type.String() }),
+        security: [{ bearerAuth: [] }]
+      }
+    },
+    async (request, reply) => {
+      const deleted = await useCases.deleteOhlcSymbolUseCase.execute(
         request.user.userId,
         request.params.symbol,
         { ip: request.ip, userAgent: request.headers['user-agent'] }

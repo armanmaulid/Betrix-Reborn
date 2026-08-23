@@ -17,6 +17,26 @@ export interface BackgroundWorkerProps {
   lastError?: string | null;
 }
 
+/** Flat background worker info interface for presentation layer */
+export interface BackgroundWorkerInfo {
+  id: string;
+  name: string;
+  category: 'market' | 'news' | 'maintenance' | 'intelligence';
+  description: string;
+  status: 'running' | 'paused' | 'stopped' | 'idle' | 'error';
+  interval: string;
+  uptimeSeconds: number;
+  lastRunAt: string | Date | null;
+  nextRunAt: string | Date | null;
+  processedCount: number;
+  errorCount: number;
+  lastError: string | null;
+  isRunning?: () => boolean;
+  isPaused?: () => boolean;
+  hasErrors?: () => boolean;
+  getStatusBadgeClass?: () => string;
+}
+
 export class BackgroundWorker {
   public readonly id: string;
   public readonly name: string;

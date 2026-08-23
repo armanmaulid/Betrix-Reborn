@@ -4,6 +4,7 @@ import {
   IUserRepository,
   IDeviceRepository,
   IVerificationRepository,
+  IActivityLogRepository,
   DeviceDomainService,
   User,
   Session
@@ -31,7 +32,8 @@ export class RegisterUseCase {
     private readonly emailService?: IEmailDispatcher,
     private readonly defaultCredits: number = 100,
     private readonly isDevMode: boolean = false,
-    private readonly enforceDeviceBinding: boolean = true
+    private readonly enforceDeviceBinding: boolean = true,
+    private readonly activityLogRepo?: IActivityLogRepository
   ) {}
 
   public async execute(
@@ -103,6 +105,8 @@ export class RegisterUseCase {
       context?.ip,
       context?.userAgent
     );
+
+    await this.activityLogRepo?.log(userId, 'REGISTER', { email }, context?.ip, context?.userAgent);
 
     return {
       user: savedUser,

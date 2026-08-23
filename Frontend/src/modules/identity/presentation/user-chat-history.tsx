@@ -18,7 +18,8 @@ import { useUserChatHistoryQuery } from '@/modules/identity/application/queries/
 import { PaginationBar } from '@/shared/presentation/ui/pagination-bar';
 import { formatFinancialNumber } from '@/shared/utils';
 import { formatDateTime } from '@/shared/utils/formatters';
-import type { AdminChatMessage, PaginatedResult } from '@/lib/types';
+import type { AdminChatMessage } from '@/modules/identity/domain/entities/User';
+import type { PaginatedResult } from '@shared/domain/types/Pagination';
 
 interface UserChatHistoryProps {
   userId: string;

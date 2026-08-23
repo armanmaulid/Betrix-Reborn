@@ -58,12 +58,22 @@ export class NewsService {
     pagination: PaginationParams,
     category?: string,
     tag?: string,
-    search?: string
+    search?: string,
+    sortOrder?: 'asc' | 'desc'
   ): Promise<PaginatedResult<NewsArticle>> {
-    return this.newsRepo.findAll(pagination, category, tag, search);
+    return this.newsRepo.findAll(pagination, category, tag, search, sortOrder);
   }
 
   public async getNewsById(id: string): Promise<Nullable<NewsArticle>> {
     return this.newsRepo.findById(id);
   }
+
+  public async deleteNews(id: string): Promise<boolean> {
+    return this.newsRepo.deleteById(id);
+  }
+
+  public async batchDeleteNews(ids: string[]): Promise<number> {
+    return this.newsRepo.deleteMany(ids);
+  }
 }
+

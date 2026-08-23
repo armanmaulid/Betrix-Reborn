@@ -1,4 +1,4 @@
-import { desc, eq, sql } from 'drizzle-orm';
+import { desc, eq, sql, and, or } from 'drizzle-orm';
 import {
   IAdminActionRepository,
   IActivityLogRepository,
@@ -50,9 +50,12 @@ export class DrizzleAdminActionRepository implements IAdminActionRepository {
     return this.mapToDomain(inserted[0]!);
   }
 
-  async findAll(pagination: PaginationParams, actionType?: string): Promise<PaginatedResult<AdminAction>> {
+  async findAll(pagination: PaginationParams, actionType?: string, userId?: string): Promise<PaginatedResult<AdminAction>> {
     const offset = (pagination.page - 1) * pagination.limit;
-    const whereClause = actionType ? eq(adminActions.action, actionType) : undefined;
+    const conditions = [];
+    if (actionType) conditions.push(eq(adminActions.action, actionType));
+    if (userId) conditions.push(or(eq(adminActions.adminId, userId), eq(adminActions.targetId, userId)));
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const [countResult, rows] = await Promise.all([
       this.db
@@ -78,8 +81,11 @@ export class DrizzleAdminActionRepository implements IAdminActionRepository {
     };
   }
 
-  async exportAll(actionType?: string): Promise<AdminAction[]> {
-    const whereClause = actionType ? eq(adminActions.action, actionType) : undefined;
+  async exportAll(actionType?: string, userId?: string): Promise<AdminAction[]> {
+    const conditions = [];
+    if (actionType) conditions.push(eq(adminActions.action, actionType));
+    if (userId) conditions.push(or(eq(adminActions.adminId, userId), eq(adminActions.targetId, userId)));
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
     const query = whereClause
       ? this.db.select().from(adminActions).where(whereClause).orderBy(desc(adminActions.createdAt))
       : this.db.select().from(adminActions).orderBy(desc(adminActions.createdAt));

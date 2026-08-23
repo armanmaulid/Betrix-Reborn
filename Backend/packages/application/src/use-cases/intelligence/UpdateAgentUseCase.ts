@@ -1,10 +1,18 @@
-import { IAiAgentRepository, AiAgent, NotFoundError } from '@betrix/domain';
+import { IAiAgentRepository, AiAgent, NotFoundError, IAdminActionRepository, AdminAction } from '@betrix/domain';
 import { UpdateAgentDto } from '../../schemas/agent.schema.js';
 
 export class UpdateAgentUseCase {
-  constructor(private readonly agentRepo: IAiAgentRepository) {}
+  constructor(
+    private readonly agentRepo: IAiAgentRepository,
+    private readonly adminActionRepo?: IAdminActionRepository
+  ) {}
 
-  public async execute(id: string, dto: UpdateAgentDto): Promise<AiAgent> {
+  public async execute(
+    adminId: string,
+    id: string,
+    dto: UpdateAgentDto,
+    context?: { ip?: string; userAgent?: string }
+  ): Promise<AiAgent> {
     const existing = await this.agentRepo.findById(id);
     if (!existing) {
       throw new NotFoundError(`AI Agent with ID '${id}' not found`);
@@ -31,6 +39,26 @@ export class UpdateAgentUseCase {
       updatedAt: new Date()
     });
 
-    return this.agentRepo.save(updated);
+    const saved = await this.agentRepo.save(updated);
+
+    if (this.adminActionRepo) {
+      await this.adminActionRepo.save(
+        new AdminAction({
+          id: crypto.randomUUID(),
+          adminId,
+          action: 'UPDATE_AGENT',
+          targetType: 'ai_agent',
+          targetId: id,
+          details: {
+            changes: Object.keys(dto).filter((k) => (dto as any)[k] !== undefined)
+          },
+          ip: context?.ip,
+          userAgent: context?.userAgent,
+          createdAt: new Date()
+        })
+      );
+    }
+
+    return saved;
   }
 }

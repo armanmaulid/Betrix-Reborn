@@ -48,8 +48,8 @@ export interface AnalyticsQueryOptions {
 
 export interface IAdminActionRepository {
   save(action: AdminAction): Promise<AdminAction>;
-  findAll(pagination: PaginationParams, actionType?: string): Promise<PaginatedResult<AdminAction>>;
-  exportAll(actionType?: string): Promise<AdminAction[]>;
+  findAll(pagination: PaginationParams, actionType?: string, userId?: string): Promise<PaginatedResult<AdminAction>>;
+  exportAll(actionType?: string, userId?: string): Promise<AdminAction[]>;
 }
 
 export interface IActivityLogRepository {

@@ -30,6 +30,7 @@ export function DashboardContainer() {
   const {
     data: analytics,
     isLoading: isAnalyticsLoading,
+    isError: isAnalyticsError,
     isRefetching: isAnalyticsRefetching,
     refetch: refetchAnalytics
   } = useUserAnalytics({
@@ -103,6 +104,7 @@ export function DashboardContainer() {
       <AnalyticsSummary
         analytics={analytics}
         isLoading={isAnalyticsLoading}
+        isError={isAnalyticsError}
         onRefresh={() => refetchAnalytics()}
         isRefetching={isAnalyticsRefetching}
       />

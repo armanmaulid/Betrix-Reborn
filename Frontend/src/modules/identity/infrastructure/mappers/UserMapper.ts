@@ -1,6 +1,6 @@
 import { User } from '../../domain/entities/User';
-import type { AdminUser, PaginatedResult } from '@/lib/types';
-import type { PaginatedResult as DomainPaginatedResult } from '@shared/domain/types/Pagination';
+import type { AdminUser } from '../../domain/entities/User';
+import { toDomainPaginated } from '@shared/domain/types/Pagination';
 
 export class UserMapper {
   public static toDomain(dto: AdminUser | any): User {
@@ -24,18 +24,7 @@ export class UserMapper {
     });
   }
 
-  public static toDomainPaginated(paginatedDto: PaginatedResult<AdminUser> | any): DomainPaginatedResult<User> {
-    const rawItems = Array.isArray(paginatedDto?.data) ? paginatedDto.data : [];
-    const meta = paginatedDto?.meta || {
-      page: 1,
-      limit: rawItems.length,
-      total: rawItems.length,
-      totalPages: 1
-    };
-
-    return {
-      data: rawItems.map(UserMapper.toDomain),
-      meta
-    };
+  public static toDomainPaginated(paginatedDto: any) {
+    return toDomainPaginated(paginatedDto, UserMapper.toDomain);
   }
 }

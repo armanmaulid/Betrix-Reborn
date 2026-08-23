@@ -1,5 +1,5 @@
 import { CreditVoucher } from '@intelligence/domain/entities/CreditVoucher';
-import type { PaginatedResult } from '@shared/domain/types/Pagination';
+import { toDomainPaginated } from '@shared/domain/types/Pagination';
 
 export class VoucherMapper {
   public static toDomain(dto: any): CreditVoucher {
@@ -17,18 +17,7 @@ export class VoucherMapper {
     });
   }
 
-  public static toDomainPaginated(paginatedDto: any): PaginatedResult<CreditVoucher> {
-    const rawItems = Array.isArray(paginatedDto?.data) ? paginatedDto.data : [];
-    const meta = paginatedDto?.meta || {
-      page: 1,
-      limit: rawItems.length,
-      total: rawItems.length,
-      totalPages: 1
-    };
-
-    return {
-      data: rawItems.map(VoucherMapper.toDomain),
-      meta
-    };
+  public static toDomainPaginated(paginatedDto: any) {
+    return toDomainPaginated(paginatedDto, VoucherMapper.toDomain);
   }
 }

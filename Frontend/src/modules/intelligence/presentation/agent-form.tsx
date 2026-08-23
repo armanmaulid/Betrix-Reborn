@@ -12,11 +12,10 @@ import {
   type CreateAgentInput,
   type UpdateAgentInput
 } from '@/modules/intelligence/application/schemas/agent.schema';
-import type { AgentDetail, AiAgent as LegacyAiAgent } from '@/lib/types';
-import type { AiAgent } from '@intelligence/domain/entities/AiAgent';
+import type { AgentDetail, AiAgent } from '@intelligence/domain/entities/AiAgent';
 
 export interface AgentFormProps {
-  initialData?: AgentDetail | LegacyAiAgent | AiAgent | null;
+  initialData?: AgentDetail | AiAgent | null;
   onSubmit: (data: CreateAgentInput | UpdateAgentInput) => Promise<void>;
   isPending?: boolean;
 }
@@ -27,6 +26,11 @@ export function AgentForm({
   isPending = false
 }: AgentFormProps) {
   const isEdit = Boolean(initialData);
+
+  // Key by isEdit+initialData.id to force a full remount when switching between
+  // create/edit modes.  This avoids stale defaultValues + resolver mismatches
+  // that react-hook-form v8 cannot fully reset at runtime.
+  const formKey = `${isEdit ? 'edit' : 'create'}-${initialData?.id ?? 'new'}`;
 
   const defaultValues = isEdit && initialData
     ? {
@@ -65,38 +69,12 @@ export function AgentForm({
         description: ''
       };
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    watch,
-    formState: { errors }
-  } = useForm<any>({
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const form = useForm<any>({
     resolver: zodResolver(isEdit ? UpdateAgentSchema : CreateAgentSchema),
     defaultValues
   });
-
-  useEffect(() => {
-    if (initialData) {
-      reset({
-        name: initialData.name,
-        modelName: initialData.modelName,
-        baseUrl: initialData.baseUrl || '',
-        apiKey: '',
-        taskType: initialData.taskType,
-        tier: initialData.tier,
-        creditsPer1kTokens: initialData.creditsPer1kTokens,
-        maxTokens: initialData.maxTokens,
-        temperature: initialData.temperature,
-        supportsThinking: initialData.supportsThinking,
-        isDefault: initialData.isDefault,
-        isActive: initialData.isActive,
-        visibility: initialData.visibility || 'public',
-        systemPrompt: initialData.systemPrompt || '',
-        description: initialData.description || ''
-      });
-    }
-  }, [initialData, reset]);
+  const { register, handleSubmit, watch, formState: { errors } } = form;
 
   const temperatureValue = watch('temperature', initialData?.temperature ?? 0.7);
 
@@ -105,7 +83,7 @@ export function AgentForm({
   };
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6 font-mono">
+    <form key={formKey} onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6 font-mono">
       {/* Panel 1: Primary Identity & Model Spec */}
       <div className="border border-border bg-surface p-5 space-y-4">
         <div className="flex items-center space-x-2 border-b border-border/60 pb-3">

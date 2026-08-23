@@ -1,5 +1,4 @@
-import { SystemMetrics } from '../entities/SystemMetrics';
-import type { UserAnalytics, AnalyticsQueryParams } from '@/lib/types';
+import { SystemMetrics, type UserAnalytics, type AnalyticsQueryParams } from '../entities/SystemMetrics';
 
 export interface IAnalyticsRepository {
   getSystemMetrics(): Promise<SystemMetrics>;

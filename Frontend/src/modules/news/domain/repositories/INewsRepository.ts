@@ -4,8 +4,12 @@ import type { PaginatedResult, PaginationQueryParams } from '@shared/domain/type
 export interface NewsQueryParams extends PaginationQueryParams {
   category?: string;
   tag?: string;
+  sort?: 'asc' | 'desc';
 }
 
 export interface INewsRepository {
   getNews(params?: NewsQueryParams): Promise<PaginatedResult<NewsArticle>>;
+  deleteNews(id: string): Promise<boolean>;
+  batchDeleteNews(ids: string[]): Promise<number>;
 }
+

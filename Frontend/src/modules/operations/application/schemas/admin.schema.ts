@@ -52,7 +52,8 @@ export const AuditLogQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50).optional(),
   actionType: z.string().optional(),
-  action: z.string().optional()
+  action: z.string().optional(),
+  userId: z.string().optional()
 });
 export type AuditLogQueryInput = z.infer<typeof AuditLogQuerySchema>;
 

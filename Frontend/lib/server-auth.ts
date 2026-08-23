@@ -1,7 +1,23 @@
 import { cookies } from 'next/headers';
 
-export const BACKEND_URL =
-  process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+function resolveBackendUrl(): string {
+  const internal = process.env.BACKEND_INTERNAL_URL;
+  if (internal) return internal;
+
+  // In production, never fall back to the public URL — server-side fetches
+  // must go through the internal network to avoid leaking traffic through
+  // the public ingress and hitting rate-limits / geo-restrictions.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'BACKEND_INTERNAL_URL must be set in production. ' +
+      'Server-side fetches must not fall back to the public API URL.'
+    );
+  }
+
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+}
+
+export const BACKEND_URL = resolveBackendUrl();
 
 /**
  * Read the httpOnly admin JWT from the request cookie.

@@ -4,6 +4,7 @@ import {
   ISessionRepository,
   IDeviceRepository,
   IUsageRepository,
+  IActivityLogRepository,
   User,
   Session,
   Device
@@ -13,6 +14,7 @@ export interface AdminUserDetailResult {
   user: User;
   sessions: Session[];
   devices: Device[];
+  recentActivity: unknown[];
   usageSummary: {
     totalInputTokens: number;
     totalOutputTokens: number;
@@ -25,7 +27,8 @@ export class GetAdminUserDetailUseCase {
     private readonly userRepo: IUserRepository,
     private readonly sessionRepo: ISessionRepository,
     private readonly deviceRepo: IDeviceRepository,
-    private readonly usageRepo: IUsageRepository
+    private readonly usageRepo: IUsageRepository,
+    private readonly activityLogRepo?: IActivityLogRepository
   ) {}
 
   public async execute(userId: string): Promise<AdminUserDetailResult> {
@@ -34,16 +37,18 @@ export class GetAdminUserDetailUseCase {
       throw new NotFoundError('User not found.');
     }
 
-    const [sessions, devices, usageSummary] = await Promise.all([
+    const [sessions, devices, usageSummary, activityPage] = await Promise.all([
       this.sessionRepo.findByUserId(userId),
       this.deviceRepo.findByUserId(userId),
-      this.usageRepo.getSummary(userId)
+      this.usageRepo.getSummary(userId),
+      this.activityLogRepo?.findByUserId(userId, { page: 1, limit: 10 })
     ]);
 
     return {
       user,
       sessions,
       devices,
+      recentActivity: activityPage?.data ?? [],
       usageSummary
     };
   }

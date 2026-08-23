@@ -12,22 +12,34 @@ describe('Operations Infrastructure: AuditLogMapper & HttpOperationsRepository',
     opsRepo = new HttpOperationsRepository(mockHttpClient);
   });
 
-  it('should map audit log DTO to domain model', () => {
+  it('should map audit log DTO to domain model with enrichment fields', () => {
     const rawDto = {
       id: 'log-1',
-      userId: 'usr-admin',
+      adminId: 'usr-admin',
+      adminEmail: 'admin@betrix.io',
+      adminName: 'Root Admin',
       action: 'user_ban',
-      resource: 'USER',
-      resourceId: 'usr-bad',
+      targetType: 'user',
+      targetId: 'usr-bad',
+      targetEmail: 'bad-actor@example.com',
+      targetName: 'Bad Actor',
       details: { reason: 'abuse' },
+      ip: '203.0.113.7',
       createdAt: '2026-02-10T12:00:00Z'
     };
 
     const audit = AuditLogMapper.toDomain(rawDto);
 
     expect(audit.id).toBe('log-1');
+    expect(audit.userId).toBe('usr-admin');
+    expect(audit.userEmail).toBe('admin@betrix.io');
+    expect(audit.userName).toBe('Root Admin');
     expect(audit.action).toBe('USER_BAN');
-    expect(audit.resource).toBe('USER');
+    expect(audit.resource).toBe('user');
+    expect(audit.resourceId).toBe('usr-bad');
+    expect(audit.targetEmail).toBe('bad-actor@example.com');
+    expect(audit.targetName).toBe('Bad Actor');
+    expect(audit.ipAddress).toBe('203.0.113.7');
     expect(audit.details).toEqual({ reason: 'abuse' });
   });
 

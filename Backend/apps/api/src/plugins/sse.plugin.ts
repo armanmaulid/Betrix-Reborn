@@ -4,6 +4,7 @@ import { PriceTick, NewsArticle } from '@betrix/domain';
 
 export interface SseClient {
   id: string;
+  userId: string;
   channel: 'market' | 'news';
   reply: FastifyReply;
   symbols?: Set<string>;
@@ -28,6 +29,7 @@ export class SseHub {
 
   public addClient(
     id: string,
+    userId: string,
     channel: 'market' | 'news',
     request: FastifyRequest,
     reply: FastifyReply,
@@ -43,6 +45,7 @@ export class SseHub {
 
     const client: SseClient = {
       id,
+      userId,
       channel,
       reply,
       symbols: symbols && symbols.length > 0 ? new Set(symbols.map((s) => s.toUpperCase())) : undefined,
@@ -100,7 +103,11 @@ export class SseHub {
   }
 
   public broadcastToUser(userId: string, event: string, data: unknown): void {
-    // Can be extended if clients are mapped with userId
+    for (const client of this.clients.values()) {
+      if (client.userId === userId) {
+        this.sendEvent(client, event, data);
+      }
+    }
   }
 
   public closeAll(): void {

@@ -23,16 +23,13 @@ export class ChatLoggingHandler {
 
   public async handle(event: ChatMessageStreamedEvent): Promise<void> {
     try {
-      // 1. Deduct credits if applicable
-      if (event.creditsSpent > 0) {
-        await this.creditRepo.deductCredits(
-          event.userId,
-          event.creditsSpent,
-          `AI_CHAT_STREAM:${event.model}:${event.sessionId}`
-        );
-      }
+      // NOTE: credits are already deducted by StreamMessageUseCase via
+      // creditRepo.settleReservation() BEFORE this event is dispatched.
+      // Do NOT call deductCredits here — that would double-charge the user
+      // for every streamed chat message (settleReservation + deductCredits
+      // both subtract from the same `credits` column).
 
-      // 2. Persist chat message
+      // 1. Persist chat message
       const chatMsg = new ChatMessage({
         id: randomUUID(),
         userId: event.userId,
@@ -49,7 +46,7 @@ export class ChatLoggingHandler {
 
       await this.chatRepo.save(chatMsg);
 
-      // 3. Log user activity
+      // 2. Log user activity
       if (this.activityLogRepo) {
         await this.activityLogRepo.log(event.userId, 'AI_CHAT_STREAM_COMPLETED', {
           sessionId: event.sessionId,

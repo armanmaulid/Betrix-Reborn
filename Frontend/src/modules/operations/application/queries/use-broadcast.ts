@@ -1,8 +1,8 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { BroadcastMessageInput } from '@/modules/operations/application/schemas/admin.schema';
 import { apiFetch } from '@shared/infrastructure/http/api-client';
+import { useAdminMutation } from '@shared/application/useAdminMutation';
 
 export interface BroadcastResponse {
   recipientsCount: number;
@@ -10,18 +10,14 @@ export interface BroadcastResponse {
 }
 
 export function useBroadcastMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation<BroadcastResponse, Error, BroadcastMessageInput>({
-    mutationFn: async (data: BroadcastMessageInput) => {
+  return useAdminMutation<BroadcastResponse, BroadcastMessageInput>(
+    async (data) => {
       const json = await apiFetch<any>('/api/admin/broadcast', {
         method: 'POST',
         body: JSON.stringify(data)
       });
       return json.data || json;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'audit-logs'] });
-    }
-  });
+    [['admin', 'audit-logs']]
+  );
 }

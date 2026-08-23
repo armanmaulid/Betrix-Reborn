@@ -22,7 +22,6 @@ export interface SystemCleanupInput {
 
 export interface IOperationsRepository {
   getAuditLogs(params?: AuditLogQueryParams): Promise<PaginatedResult<AuditLog>>;
-  exportAuditLogs(format: 'json' | 'csv'): Promise<Blob>;
   broadcastMessage(input: BroadcastMessageInput): Promise<{ messageId: string; deliveredCount: number }>;
   getWorkers(): Promise<BackgroundWorker[]>;
   controlWorker(workerId: string, action: WorkerAction): Promise<BackgroundWorker>;

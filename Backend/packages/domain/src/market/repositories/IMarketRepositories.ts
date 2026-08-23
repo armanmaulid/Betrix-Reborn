@@ -34,6 +34,35 @@ export interface IMarketCacheStore {
 export type IMarketDataRepository = IMarketCacheStore;
 
 /**
+ * An OHLC symbol mapping persisted in the `ohlc_symbols` table.
+ * The FK to `symbols.symbol` prevents admin typos — only valid catalog
+ * symbols can have OHLC/Dukascopy historical data attached.
+ */
+export interface OhlcSymbol {
+  symbol: string;
+  dukascopySymbol: string;
+  description: string | null;
+  category: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** Repository port for OHLC symbol persistence. */
+export interface IOhlcSymbolRepository {
+  findAll(activeOnly?: boolean): Promise<OhlcSymbol[]>;
+  findBySymbol(symbol: string): Promise<OhlcSymbol | null>;
+  save(data: {
+    symbol: string;
+    dukascopySymbol: string;
+    description?: string | null;
+    category?: string;
+    isActive?: boolean;
+  }): Promise<OhlcSymbol>;
+  delete(symbol: string): Promise<boolean>
+}
+
+/**
  * A Finnhub WebSocket stream symbol persisted in the `stream_symbols` table.
  * Distinct from the general {@link Symbol} catalog: this carries only the
  * real-time tick mapping (no historical OHLC/Dukascopy bindings).

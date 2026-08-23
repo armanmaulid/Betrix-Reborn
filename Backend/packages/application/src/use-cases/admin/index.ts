@@ -21,7 +21,11 @@ export * from './SaveSymbolUseCase.js';
 export * from './DeleteSymbolUseCase.js';
 export * from './SaveStreamSymbolUseCase.js';
 export * from './DeleteStreamSymbolUseCase.js';
-
-
-
-
+export * from './DeleteNewsUseCase.js';
+export * from './BatchDeleteNewsUseCase.js';
+export * from './GetOhlcSymbolsUseCase.js';
+export * from './SaveOhlcSymbolUseCase.js';
+export * from './DeleteOhlcSymbolUseCase.js';
+export * from './RevokeUserSessionUseCase.js';
+export * from './RevokeAllUserSessionsUseCase.js';
+export * from './RemoveUserDeviceUseCase.js';

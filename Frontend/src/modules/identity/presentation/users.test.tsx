@@ -8,7 +8,7 @@ import { UserChatHistory } from './user-chat-history';
 import { UserTierBadge } from './user-tier-badge';
 import { ToastProvider } from '@/shared/presentation/ui/terminal-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { AdminUser, AdminChatMessage } from '@/lib/types';
+import type { AdminUser, AdminChatMessage } from '@/modules/identity/domain/entities/User';
 
 function createWrapper() {
   const queryClient = new QueryClient({

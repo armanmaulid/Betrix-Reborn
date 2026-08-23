@@ -12,7 +12,20 @@ function LoginForm() {
   usePageTitle('TERMINAL AUTH');
   const searchParams = useSearchParams();
   const rawReturn = searchParams.get('from') || '';
-  const returnUrl = rawReturn.startsWith('/') && !rawReturn.startsWith('//') ? rawReturn : '/dashboard';
+  const returnUrl = (() => {
+    // Reject empty, protocol-relative (//evil.com), backslash-bypass (/\evil.com),
+    // and any origin that doesn't match our own.
+    if (!rawReturn.startsWith('/') || rawReturn.startsWith('//') || rawReturn.startsWith('/\\')) {
+      return '/dashboard';
+    }
+    try {
+      const normalized = new URL(rawReturn, window.location.origin);
+      if (normalized.origin !== window.location.origin) return '/dashboard';
+      return normalized.pathname + normalized.search + normalized.hash;
+    } catch {
+      return '/dashboard';
+    }
+  })();
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

@@ -68,8 +68,17 @@ export function AuditTable({ logs, isLoading, isError, onInspect }: AuditTablePr
                       href={`/users/${log.userId}`}
                       className="text-foreground hover:text-accent flex items-center gap-1 group"
                     >
-                      <User className="w-3 h-3 text-muted-foreground group-hover:text-accent" />
-                      <span className="text-[11px] select-all truncate max-w-[120px]">{log.userId}</span>
+                      <User className="w-3 h-3 text-muted-foreground group-hover:text-accent shrink-0" />
+                      <span className="flex flex-col leading-tight">
+                        <span className="text-[11px] truncate max-w-[140px]">
+                          {log.userName || log.userEmail || log.userId}
+                        </span>
+                        {(log.userName || log.userEmail) && (
+                          <span className="text-[9px] text-muted-foreground select-all truncate max-w-[140px]">
+                            {log.userId}
+                          </span>
+                        )}
+                      </span>
                     </Link>
                   ) : (
                     <span className="text-muted-foreground/60 italic text-[11px]">SYSTEM ANONYMOUS</span>
@@ -84,13 +93,18 @@ export function AuditTable({ logs, isLoading, isError, onInspect }: AuditTablePr
                       ID: {log.resourceId}
                     </div>
                   )}
+                  {(log.targetName || log.targetEmail) && (
+                    <div className="text-[10px] text-muted-foreground font-normal truncate max-w-[140px]">
+                      {log.targetName || log.targetEmail}
+                    </div>
+                  )}
                 </td>
 
                 {/* IP Address */}
                 <td className="p-3 text-[11px] text-muted-foreground tabular-nums">
                   <div className="flex items-center gap-1 select-all">
                     <Globe className="w-3 h-3 text-muted-foreground/60 shrink-0" />
-                    <span>{log.ipAddress || '127.0.0.1'}</span>
+                    <span>{log.ipAddress || '—'}</span>
                   </div>
                 </td>
 

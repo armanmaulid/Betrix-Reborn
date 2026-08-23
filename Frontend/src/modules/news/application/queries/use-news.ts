@@ -1,8 +1,9 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { newsRepository } from '@news/infrastructure/repositories/HttpNewsRepository';
 import { newsKeys } from '@news/application/news.keys';
+import { useAdminMutation } from '@shared/application/useAdminMutation';
 import type { NewsArticle } from '@news/domain/entities/NewsArticle';
 import type { PaginatedResult } from '@shared/domain/types/Pagination';
 import type { NewsQueryParams } from '@news/domain/repositories/INewsRepository';
@@ -17,18 +18,27 @@ export function useNewsQuery(params?: NewsQueryParams & { search?: string }) {
 }
 
 export function usePollNewsMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (category: string = 'general') => {
-      return apiFetch('/api/admin/news/poll', {
+  return useAdminMutation(
+    (category: string = 'general') =>
+      apiFetch('/api/admin/news/poll', {
         method: 'POST',
         body: JSON.stringify({ category })
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: newsKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
-    }
-  });
+      }),
+    [newsKeys.all]
+  );
 }
+
+export function useDeleteNewsMutation() {
+  return useAdminMutation(
+    (id: string) => newsRepository.deleteNews(id),
+    [newsKeys.all]
+  );
+}
+
+export function useBatchDeleteNewsMutation() {
+  return useAdminMutation(
+    (ids: string[]) => newsRepository.batchDeleteNews(ids),
+    [newsKeys.all]
+  );
+}
+

@@ -3,13 +3,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userRepository } from '@identity/infrastructure/repositories/HttpUserRepository';
 import { identityKeys } from '@identity/application/identity.keys';
+import { useAdminMutation } from '@shared/application/useAdminMutation';
 import type { User } from '@identity/domain/entities/User';
 import type {
   AdminUserDetail,
   AdminUsersQuery,
   AdminChatMessage,
   AdminChatHistoryQuery
-} from '@/lib/types';
+} from '@/modules/identity/domain/entities/User';
 import type {
   UpdateAdminUserInput,
   ResetUserPasswordInput,
@@ -37,31 +38,20 @@ export function useUserDetailQuery(userId: string) {
 }
 
 export function useUpdateUserMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateAdminUserInput }) =>
-      userRepository.updateUser(id, data),
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: identityKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
-    }
-  });
+  return useAdminMutation(
+    ({ id, data }: { id: string; data: UpdateAdminUserInput }) => userRepository.updateUser(id, data),
+    [identityKeys.all]
+  );
 }
 
 export function useCreateUserMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CreateAdminUserInput) => {
+  return useAdminMutation(
+    (data: CreateAdminUserInput) => {
       const payload = { ...data, password: data.password?.trim() || undefined };
       return userRepository.createUser(payload);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: identityKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
-    }
-  });
+    [identityKeys.all]
+  );
 }
 
 export function useResetPasswordMutation() {
@@ -78,15 +68,33 @@ export function useResetPasswordMutation() {
 }
 
 export function useDeleteUserMutation() {
-  const queryClient = useQueryClient();
+  return useAdminMutation(
+    (userId: string) => userRepository.deleteUser(userId),
+    [identityKeys.all]
+  );
+}
 
-  return useMutation({
-    mutationFn: (userId: string) => userRepository.deleteUser(userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: identityKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
-    }
-  });
+export function useRevokeSessionMutation() {
+  return useAdminMutation(
+    ({ userId, sessionId }: { userId: string; sessionId: string }) =>
+      userRepository.revokeSession(userId, sessionId),
+    [identityKeys.all]
+  );
+}
+
+export function useRevokeAllSessionsMutation() {
+  return useAdminMutation(
+    (userId: string) => userRepository.revokeAllSessions(userId),
+    [identityKeys.all]
+  );
+}
+
+export function useRemoveDeviceMutation() {
+  return useAdminMutation(
+    ({ userId, deviceId }: { userId: string; deviceId: string }) =>
+      userRepository.removeDevice(userId, deviceId),
+    [identityKeys.all]
+  );
 }
 
 export function useUserChatHistoryQuery(userId: string, params: AdminChatHistoryQuery = {}) {

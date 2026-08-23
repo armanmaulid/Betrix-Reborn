@@ -5,7 +5,8 @@ import { render, screen } from '@testing-library/react';
 import { LiveGauges } from './live-gauges';
 import { AnalyticsSummary } from './analytics-summary';
 import { formatFinancialNumber, formatUptime } from '@/shared/utils';
-import type { SystemMetrics, UserAnalytics } from '@/lib/types';
+import type { SystemMetrics } from '@/modules/analytics/domain/entities/SystemMetrics';
+import type { UserAnalytics } from '@/modules/analytics/domain/entities/SystemMetrics';
 
 describe('Phase 3 Dashboard & Analytics Component Tests', () => {
   describe('Numeric Formatting Utilities (Test Gate 3.3)', () => {
@@ -33,7 +34,12 @@ describe('Phase 3 Dashboard & Analytics Component Tests', () => {
         totalTokensUsed: 4500000,
         dbPoolActive: 4,
         dbPoolIdle: 16,
-        uptimeSeconds: 86400
+        uptimeSeconds: 86400,
+        redisStatus: 'online',
+        redisLatencyMs: 1,
+        dbPoolTotal: 20,
+        dbPoolActiveRatio: 0.2,
+        isDbPoolStressed: false
       };
 
       const mockDeltas = {

@@ -6,7 +6,15 @@ export interface INewsRepository {
   saveMany(articles: NewsArticle[]): Promise<number>;
   findById(id: string): Promise<Nullable<NewsArticle>>;
   findRecent(limit?: number, category?: string, tag?: string): Promise<NewsArticle[]>;
-  findAll(pagination: PaginationParams, category?: string, tag?: string, search?: string): Promise<PaginatedResult<NewsArticle>>;
+  findAll(
+    pagination: PaginationParams,
+    category?: string,
+    tag?: string,
+    search?: string,
+    sortOrder?: 'asc' | 'desc'
+  ): Promise<PaginatedResult<NewsArticle>>;
+  deleteById(id: string): Promise<boolean>;
+  deleteMany(ids: string[]): Promise<number>;
 }
 
 export interface INewsProvider {
@@ -14,3 +22,4 @@ export interface INewsProvider {
   getPollingIntervalMs(): number;
   fetchNews(category?: string): Promise<NewsArticle[]>;
 }
+

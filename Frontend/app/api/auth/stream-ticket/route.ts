@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { BACKEND_URL } from '@/lib/server-auth';
+import { sanitizeBackendResponse } from '@/shared/infrastructure/http/api-client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
     });
 
     const data = await backendRes.json();
-    return NextResponse.json(data, { status: backendRes.status });
+    return NextResponse.json(sanitizeBackendResponse(data, backendRes.status), { status: backendRes.status });
   } catch {
     return NextResponse.json(
       { success: false, error: { message: 'Failed to acquire stream ticket.' } },

@@ -31,6 +31,8 @@ export function TerminalModal({
   closeOnBackdrop = false
 }: TerminalModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!isOpen || !closeOnEscape) return;
@@ -38,13 +40,13 @@ export function TerminalModal({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, closeOnEscape, onClose]);
+  }, [isOpen, closeOnEscape]);
 
   if (!isOpen) return null;
 

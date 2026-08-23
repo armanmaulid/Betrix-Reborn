@@ -23,12 +23,12 @@ export class UserTier {
     premium: {
       label: 'PREMIUM',
       maxDailyChats: 5000,
-      badgeClass: 'border-accent-dim/50 bg-accent-dim/10 text-accent font-bold'
+      badgeClass: 'border-premium/40 bg-premium/10 text-premium font-bold'
     },
     vip: {
       label: 'VIP',
       maxDailyChats: 20000,
-      badgeClass: 'border-positive/40 bg-positive/10 text-positive font-bold'
+      badgeClass: 'border-vip/40 bg-vip/10 text-vip font-bold'
     }
   };
 

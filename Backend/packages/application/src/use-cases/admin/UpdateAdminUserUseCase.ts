@@ -1,13 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { NotFoundError, ForbiddenError } from '@betrix/core';
-import { IUserRepository, IAdminActionRepository, ISessionRepository, AdminAction, User } from '@betrix/domain';
+import { IUserRepository, IAdminActionRepository, ISessionRepository, INotifier, AdminAction, User } from '@betrix/domain';
 import { UpdateAdminUserDTO } from '../../schemas/admin.schema.js';
 
 export class UpdateAdminUserUseCase {
   constructor(
     private readonly userRepo: IUserRepository,
     private readonly adminActionRepo: IAdminActionRepository,
-    private readonly sessionRepo: ISessionRepository
+    private readonly sessionRepo: ISessionRepository,
+    private readonly notifier?: INotifier
   ) {}
 
   public async execute(
@@ -60,6 +61,11 @@ export class UpdateAdminUserUseCase {
       (dto.isAdmin !== undefined && !dto.isAdmin && user.isAdmin);
     if (accessRevoked) {
       await this.sessionRepo.deleteByUserId(targetUserId);
+      // Push an immediate logout to any open connection (SSE stream, open tab)
+      // so the user is signed out in real time instead of only on their next
+      // API call. Session/DB access is already revoked above regardless of
+      // whether this delivers — it's a UX nicety, not the security boundary.
+      this.notifier?.broadcastToUser(targetUserId, 'logout', { reason: dto.status ?? 'admin_demoted' });
     }
 
     // Record audit action

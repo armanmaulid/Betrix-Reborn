@@ -3,7 +3,7 @@
 import React from 'react';
 import { Users, Radio, MessageSquare, Zap, Database, Clock, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatFinancialNumber, formatUptime, getDbPoolStats } from '@/shared/utils';
-import type { SystemMetrics } from '@/lib/types';
+import type { SystemMetrics } from '@/modules/analytics/domain/entities/SystemMetrics';
 
 interface LiveGaugesProps {
   metrics?: SystemMetrics;
@@ -34,6 +34,15 @@ export function LiveGauges({
             <div className="h-6 bg-border w-16"></div>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (isError && !metrics) {
+    return (
+      <div className="border border-negative/40 bg-negative/5 p-8 text-center font-mono">
+        <p className="text-xs text-negative font-bold">SYSTEM METRICS GATEWAY OFFLINE</p>
+        <p className="text-[10px] text-muted-foreground mt-1">Unable to retrieve real-time infrastructure metrics.</p>
       </div>
     );
   }

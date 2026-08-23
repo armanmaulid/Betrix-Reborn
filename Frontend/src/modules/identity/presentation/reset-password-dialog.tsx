@@ -8,7 +8,7 @@ import { ResetUserPasswordSchema, type ResetUserPasswordInput } from '@/modules/
 import { useResetPasswordMutation } from '@/modules/identity/application/queries/use-users';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { TerminalModal } from '@/shared/presentation/ui/terminal-modal';
-import type { AdminUser } from '@/lib/types';
+import type { AdminUser } from '@/modules/identity/domain/entities/User';
 
 interface ResetPasswordDialogProps {
   user: AdminUser | null;

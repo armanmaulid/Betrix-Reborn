@@ -8,6 +8,8 @@
   --positive: #00D964;
   --negative: #FF3B30;
   --info: #4A9EFF;
+  --premium: #A855F7;
+  --vip: #FACC15;
   --border: #1A1A1A;
   --surface: #0A0A0A;
   --surface-hover: #141414;
@@ -36,6 +38,8 @@
   --color-positive: var(--positive);
   --color-negative: var(--negative);
   --color-info: var(--info);
+  --color-premium: var(--premium);
+  --color-vip: var(--vip);
   --color-border: var(--border);
   --color-surface: var(--surface);
   --color-surface-hover: var(--surface-hover);

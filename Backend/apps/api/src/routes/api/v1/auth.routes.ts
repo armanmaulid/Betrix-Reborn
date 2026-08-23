@@ -43,7 +43,10 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.registerUseCase.execute(request.body);
+      const result = await useCases.registerUseCase.execute(request.body, {
+        ip: request.ip,
+        userAgent: request.headers['user-agent']
+      });
 
       // Sign JWT token containing session ID
       const jwtToken = services.authService.signJwt(result.user, result.session, fastify.jwt.sign.bind(fastify.jwt));
@@ -71,7 +74,10 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.loginUseCase.execute(request.body);
+      const result = await useCases.loginUseCase.execute(request.body, {
+        ip: request.ip,
+        userAgent: request.headers['user-agent']
+      });
 
       const jwtToken = services.authService.signJwt(result.user, result.session, fastify.jwt.sign.bind(fastify.jwt));
 
@@ -97,7 +103,10 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.googleOAuthUseCase.execute(request.body);
+      const result = await useCases.googleOAuthUseCase.execute(request.body, {
+        ip: request.ip,
+        userAgent: request.headers['user-agent']
+      });
 
       const jwtToken = services.authService.signJwt(result.user, result.session, fastify.jwt.sign.bind(fastify.jwt));
 
@@ -222,7 +231,10 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      await useCases.revokeSessionUseCase.execute(request.user.sessionId);
+      await useCases.revokeSessionUseCase.execute(request.user.sessionId, request.user.userId, {
+        ip: request.ip,
+        userAgent: request.headers['user-agent']
+      });
       return reply.send({
         success: true,
         data: { message: 'Successfully logged out.' }
@@ -242,7 +254,10 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.logoutAllUseCase.execute(request.user.userId);
+      const result = await useCases.logoutAllUseCase.execute(request.user.userId, {
+        ip: request.ip,
+        userAgent: request.headers['user-agent']
+      });
       return reply.send({
         success: true,
         data: result

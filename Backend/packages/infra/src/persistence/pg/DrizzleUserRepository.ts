@@ -1,4 +1,4 @@
-import { and, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, eq, ilike, or, inArray, sql } from 'drizzle-orm';
 import { IUserRepository, User, Nullable, PaginatedResult, PaginationParams } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { users } from '../drizzle/schema.js';
@@ -42,6 +42,13 @@ export class DrizzleUserRepository implements IUserRepository {
   async findByGoogleId(googleId: string): Promise<Nullable<User>> {
     const result = await this.db.select().from(users).where(eq(users.googleId, googleId)).limit(1);
     return result[0] ? this.mapToDomain(result[0]) : null;
+  }
+
+  async findByIds(ids: string[]): Promise<User[]> {
+    if (ids.length === 0) return [];
+    const uniqueIds = [...new Set(ids)];
+    const rows = await this.db.select().from(users).where(inArray(users.id, uniqueIds));
+    return rows.map((r) => this.mapToDomain(r));
   }
 
   async save(user: User): Promise<User> {

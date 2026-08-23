@@ -81,7 +81,8 @@ export const AuditLogQuerySchema = Type.Object({
   page: Type.Optional(Type.Integer({ minimum: 1, default: 1 })),
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100, default: 50 })),
   actionType: Type.Optional(Type.String()),
-  action: Type.Optional(Type.String())
+  action: Type.Optional(Type.String()),
+  userId: Type.Optional(Type.String())
 });
 export type AuditLogQueryDTO = Static<typeof AuditLogQuerySchema>;
 
@@ -144,6 +145,15 @@ export const SaveStreamSymbolSchema = Type.Object({
   isActive: Type.Optional(Type.Boolean({ default: true }))
 });
 export type SaveStreamSymbolDTO = Static<typeof SaveStreamSymbolSchema>;
+
+// Save OHLC Symbol Schema
+export const SaveOhlcSymbolSchema = Type.Object({
+  symbol: Type.String({ minLength: 2, maxLength: 50 }),
+  dukascopySymbol: Type.String({ minLength: 2, maxLength: 100 }),
+  description: Type.Optional(Type.String({ maxLength: 255 })),
+  isActive: Type.Optional(Type.Boolean({ default: true }))
+});
+export type SaveOhlcSymbolDTO = Static<typeof SaveOhlcSymbolSchema>;
 
 
 

@@ -16,6 +16,7 @@ import {
   DrizzleCreditRepository,
   DrizzleSymbolRepository,
   DrizzleStreamSymbolRepository,
+  DrizzleOhlcSymbolRepository,
   DrizzleNewsRepository,
   DrizzleMessageRepository,
   DrizzleAdminActionRepository,
@@ -106,8 +107,17 @@ import {
   GetStreamSymbolsUseCase,
   SaveStreamSymbolUseCase,
   DeleteStreamSymbolUseCase,
+  DeleteNewsUseCase,
+  BatchDeleteNewsUseCase,
+  GetOhlcSymbolsUseCase,
+  SaveOhlcSymbolUseCase,
+  DeleteOhlcSymbolUseCase,
+  RevokeUserSessionUseCase,
+  RevokeAllUserSessionsUseCase,
+  RemoveUserDeviceUseCase,
   ChatLoggingHandler
 } from '@betrix/application';
+
 import { EventDispatcher, INotifier } from '@betrix/domain';
 
 export interface AppContainer {
@@ -127,6 +137,7 @@ export interface AppContainer {
     creditRepo: DrizzleCreditRepository;
     symbolRepo: DrizzleSymbolRepository;
     streamSymbolRepo: DrizzleStreamSymbolRepository;
+    ohlcSymbolRepo: DrizzleOhlcSymbolRepository;
     newsRepo: DrizzleNewsRepository;
     messageRepo: DrizzleMessageRepository;
     adminActionRepo: DrizzleAdminActionRepository;
@@ -230,7 +241,16 @@ export interface AppContainer {
     getStreamSymbolsUseCase: GetStreamSymbolsUseCase;
     saveStreamSymbolUseCase: SaveStreamSymbolUseCase;
     deleteStreamSymbolUseCase: DeleteStreamSymbolUseCase;
+    revokeUserSessionUseCase: RevokeUserSessionUseCase;
+    revokeAllUserSessionsUseCase: RevokeAllUserSessionsUseCase;
+    removeUserDeviceUseCase: RemoveUserDeviceUseCase;
+    getOhlcSymbolsUseCase: GetOhlcSymbolsUseCase;
+    saveOhlcSymbolUseCase: SaveOhlcSymbolUseCase;
+    deleteOhlcSymbolUseCase: DeleteOhlcSymbolUseCase;
+    deleteNewsUseCase: DeleteNewsUseCase;
+    batchDeleteNewsUseCase: BatchDeleteNewsUseCase;
   };
+
   eventDispatcher: EventDispatcher;
 }
 
@@ -261,6 +281,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const creditRepo = new DrizzleCreditRepository(db);
   const symbolRepo = new DrizzleSymbolRepository(db);
   const streamSymbolRepo = new DrizzleStreamSymbolRepository(db);
+  const ohlcSymbolRepo = new DrizzleOhlcSymbolRepository(db);
   const newsRepo = new DrizzleNewsRepository(db);
   const messageRepo = new DrizzleMessageRepository(db);
   const adminActionRepo = new DrizzleAdminActionRepository(db);
@@ -340,8 +361,8 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
     }
   };
 
-  const registerUseCase = new RegisterUseCase(userRepo, deviceRepo, verificationRepo, authService, emailService, 100, isDevMode, env.DEVICE_ENFORCEMENT);
-  const loginUseCase = new LoginUseCase(userRepo, deviceRepo, loginAttemptRepo, authService, captchaService, env.DEVICE_ENFORCEMENT);
+  const registerUseCase = new RegisterUseCase(userRepo, deviceRepo, verificationRepo, authService, emailService, 100, isDevMode, env.DEVICE_ENFORCEMENT, activityLogRepo);
+  const loginUseCase = new LoginUseCase(userRepo, deviceRepo, loginAttemptRepo, authService, captchaService, env.DEVICE_ENFORCEMENT, activityLogRepo);
   const googleOAuthUseCase = new GoogleOAuthUseCase(userRepo, deviceRepo, authService, mockGoogleVerifier, 100, env.DEVICE_ENFORCEMENT);
   const verifyEmailUseCase = new VerifyEmailUseCase(userRepo, verificationRepo);
   const resendVerificationUseCase = new ResendVerificationUseCase(userRepo, verificationRepo, emailService, isDevMode);
@@ -350,8 +371,8 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const changePasswordUseCase = new ChangePasswordUseCase(userRepo, sessionRepo, authService);
   const changeEmailUseCase = new ChangeEmailUseCase(userRepo, authService);
   const getStreamTicketUseCase = new GetStreamTicketUseCase(ticketStore);
-  const revokeSessionUseCase = new RevokeSessionUseCase(sessionRepo);
-  const logoutAllUseCase = new LogoutAllUseCase(sessionRepo);
+  const revokeSessionUseCase = new RevokeSessionUseCase(sessionRepo, activityLogRepo);
+  const logoutAllUseCase = new LogoutAllUseCase(sessionRepo, activityLogRepo);
   const getProfileUseCase = new GetProfileUseCase(userRepo);
   const updateProfileUseCase = new UpdateProfileUseCase(userRepo);
   const redeemVoucherUseCase = new RedeemVoucherUseCase(voucherRepo, creditRepo);
@@ -364,17 +385,17 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const listModelsUseCase = new ListModelsUseCase(agentRepo, appConfig.defaultModel);
   const listAgentsUseCase = new ListAgentsUseCase(agentRepo);
   const getAgentUseCase = new GetAgentUseCase(agentRepo);
-  const createAgentUseCase = new CreateAgentUseCase(agentRepo);
-  const updateAgentUseCase = new UpdateAgentUseCase(agentRepo);
-  const deleteAgentUseCase = new DeleteAgentUseCase(agentRepo);
-  const setDefaultAgentUseCase = new SetDefaultAgentUseCase(agentRepo);
+  const createAgentUseCase = new CreateAgentUseCase(agentRepo, adminActionRepo);
+  const updateAgentUseCase = new UpdateAgentUseCase(agentRepo, adminActionRepo);
+  const deleteAgentUseCase = new DeleteAgentUseCase(agentRepo, adminActionRepo);
+  const setDefaultAgentUseCase = new SetDefaultAgentUseCase(agentRepo, adminActionRepo);
   const testAgentUseCase = new TestAgentUseCase(agentRepo, aiGateway);
 
   const getSymbolsUseCase = new GetSymbolsUseCase(marketDataService);
   const getPricesUseCase = new GetPricesUseCase(marketDataService);
   const getOHLCUseCase = new GetOHLCUseCase(marketDataService);
 
-  const fetchNewsUseCase = new FetchNewsUseCase(newsService);
+  const fetchNewsUseCase = new FetchNewsUseCase(newsService, adminActionRepo);
   const storeNewsUseCase = new StoreNewsUseCase(newsRepo);
   const getNewsUseCase = new GetNewsUseCase(newsService);
 
@@ -387,8 +408,8 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const updateNotificationPrefsUseCase = new UpdateNotificationPrefsUseCase(messageRepo);
 
   const getAdminUsersUseCase = new GetAdminUsersUseCase(userRepo);
-  const getAdminUserDetailUseCase = new GetAdminUserDetailUseCase(userRepo, sessionRepo, deviceRepo, usageRepo);
-  const updateAdminUserUseCase = new UpdateAdminUserUseCase(userRepo, adminActionRepo, sessionRepo);
+  const getAdminUserDetailUseCase = new GetAdminUserDetailUseCase(userRepo, sessionRepo, deviceRepo, usageRepo, activityLogRepo);
+  const updateAdminUserUseCase = new UpdateAdminUserUseCase(userRepo, adminActionRepo, sessionRepo, notifier);
   const createAdminUserUseCase = new CreateAdminUserUseCase(userRepo, adminActionRepo, authService);
   const deleteAdminUserUseCase = new DeleteAdminUserUseCase(userRepo, adminActionRepo);
   const resetUserPasswordUseCase = new ResetUserPasswordUseCase(userRepo, sessionRepo, adminActionRepo, authService);
@@ -398,10 +419,10 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const batchRevokeVouchersUseCase = new BatchRevokeVouchersUseCase(voucherRepo, adminActionRepo);
   const getSystemMetricsUseCase = new GetSystemMetricsUseCase(analyticsRepo);
   const getAnalyticsUseCase = new GetAnalyticsUseCase(analyticsRepo);
-  const getAuditLogsUseCase = new GetAuditLogsUseCase(adminActionRepo);
+  const getAuditLogsUseCase = new GetAuditLogsUseCase(adminActionRepo, userRepo);
   const exportAuditLogsUseCase = new ExportAuditLogsUseCase(adminActionRepo);
   const broadcastMessageUseCase = new BroadcastMessageUseCase(userRepo, messageRepo, adminActionRepo, notifier);
-  const systemCleanupUseCase = new SystemCleanupUseCase(sessionRepo, verificationRepo, loginAttemptRepo);
+  const systemCleanupUseCase = new SystemCleanupUseCase(sessionRepo, verificationRepo, loginAttemptRepo, adminActionRepo);
   const getAdminUserChatHistoryUseCase = new GetAdminUserChatHistoryUseCase(userRepo, chatRepo, adminActionRepo);
   const listWorkersUseCase = new ListWorkersUseCase(workerManagerService);
   const controlWorkerUseCase = new ControlWorkerUseCase(workerManagerService, adminActionRepo);
@@ -410,8 +431,17 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const getStreamSymbolsUseCase = new GetStreamSymbolsUseCase(streamSymbolRepo);
   const saveStreamSymbolUseCase = new SaveStreamSymbolUseCase(streamSymbolRepo, adminActionRepo);
   const deleteStreamSymbolUseCase = new DeleteStreamSymbolUseCase(streamSymbolRepo, adminActionRepo);
+  const getOhlcSymbolsUseCase = new GetOhlcSymbolsUseCase(ohlcSymbolRepo);
+  const saveOhlcSymbolUseCase = new SaveOhlcSymbolUseCase(ohlcSymbolRepo, symbolRepo, adminActionRepo);
+  const deleteOhlcSymbolUseCase = new DeleteOhlcSymbolUseCase(ohlcSymbolRepo, adminActionRepo);
+  const deleteNewsUseCase = new DeleteNewsUseCase(newsRepo, adminActionRepo);
+  const batchDeleteNewsUseCase = new BatchDeleteNewsUseCase(newsRepo, adminActionRepo);
+  const revokeUserSessionUseCase = new RevokeUserSessionUseCase(sessionRepo, adminActionRepo);
+  const revokeAllUserSessionsUseCase = new RevokeAllUserSessionsUseCase(sessionRepo, adminActionRepo);
+  const removeUserDeviceUseCase = new RemoveUserDeviceUseCase(deviceRepo, adminActionRepo);
 
   const container: AppContainer = {
+
     config: appConfig,
     pgPool,
     db,
@@ -428,6 +458,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
       creditRepo,
       symbolRepo,
       streamSymbolRepo,
+      ohlcSymbolRepo,
       newsRepo,
       messageRepo,
       adminActionRepo,
@@ -519,8 +550,17 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
       deleteSymbolUseCase,
       getStreamSymbolsUseCase,
       saveStreamSymbolUseCase,
-      deleteStreamSymbolUseCase
-    },
+      deleteStreamSymbolUseCase,
+      getOhlcSymbolsUseCase,
+      saveOhlcSymbolUseCase,
+      deleteOhlcSymbolUseCase,
+    deleteNewsUseCase,
+    batchDeleteNewsUseCase,
+    revokeUserSessionUseCase,
+    revokeAllUserSessionsUseCase,
+    removeUserDeviceUseCase
+  },
+
     eventDispatcher
   };
 

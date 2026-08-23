@@ -3,11 +3,12 @@
 import React, { useState } from 'react';
 import { UserPlus, Flame, RefreshCw, Users, TrendingUp } from 'lucide-react';
 import { IntervalStatCard } from './interval-stat-card';
-import type { UserAnalytics } from '@/lib/types';
+import type { UserAnalytics } from '@/modules/analytics/domain/entities/SystemMetrics';
 
 interface AnalyticsSummaryProps {
   analytics?: UserAnalytics;
   isLoading?: boolean;
+  isError?: boolean;
   onRefresh?: () => void;
   isRefetching?: boolean;
 }
@@ -15,6 +16,7 @@ interface AnalyticsSummaryProps {
 export function AnalyticsSummary({
   analytics,
   isLoading,
+  isError,
   onRefresh,
   isRefetching
 }: AnalyticsSummaryProps) {
@@ -31,6 +33,15 @@ export function AnalyticsSummary({
     topModels: [],
     dailyTokenUsage: []
   };
+
+  if (isError && !analytics) {
+    return (
+      <div className="border border-negative/40 bg-negative/5 p-6 text-center font-mono">
+        <p className="text-xs text-negative font-bold">ANALYTICS GATEWAY UNREACHABLE</p>
+        <p className="text-[10px] text-muted-foreground mt-1">Unable to retrieve user analytics data. Check backend connectivity.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">

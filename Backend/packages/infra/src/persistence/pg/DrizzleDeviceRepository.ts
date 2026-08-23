@@ -63,6 +63,11 @@ export class DrizzleDeviceRepository implements IDeviceRepository {
     return updated.length > 0;
   }
 
+  async deleteByFingerprint(fingerprint: string): Promise<boolean> {
+    const deleted = await this.db.delete(devices).where(eq(devices.fingerprint, fingerprint)).returning();
+    return deleted.length > 0;
+  }
+
   async deleteByUserId(userId: string): Promise<number> {
     const deleted = await this.db.delete(devices).where(eq(devices.userId, userId)).returning();
     return deleted.length;

@@ -5,7 +5,7 @@ import {
   LayoutDashboard,
   Terminal
 } from 'lucide-react';
-import { ADMIN_ROUTES } from '@/lib/routes';
+import { ADMIN_ROUTES } from '@/shared/utils/routes';
 
 export default function NotFound() {
   return (

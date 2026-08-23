@@ -22,6 +22,12 @@ export interface AiAgentProps {
   updatedAt?: string | Date;
 }
 
+/** Flat agent interface for presentation layer */
+export type AgentDetail = AiAgentProps & {
+  calculateEstimatedCredits?: (tokens: number) => number;
+  getTierBadgeVariant?: () => 'positive' | 'info' | 'accent';
+};
+
 export class AiAgent {
   public readonly id: string;
   public readonly name: string;

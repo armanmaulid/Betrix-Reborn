@@ -1,4 +1,4 @@
-import { MarketInstrument, StreamSymbolEntity } from '../../domain/entities/MarketInstrument';
+import { MarketInstrument, StreamSymbolEntity, OhlcSymbolEntity } from '../../domain/entities/MarketInstrument';
 import { PriceTick } from '../../domain/value-objects/PriceTick';
 
 export class MarketMapper {
@@ -40,6 +40,18 @@ export class MarketMapper {
     return new StreamSymbolEntity({
       symbol: String(dto.symbol || '').toUpperCase(),
       finnhubSymbol: String(dto.finnhubSymbol || '').toUpperCase(),
+      category: String(dto.category || 'forex').toLowerCase(),
+      description: dto.description || null,
+      isActive: Boolean(dto.isActive ?? true),
+      createdAt: dto.createdAt,
+      updatedAt: dto.updatedAt
+    });
+  }
+
+  public static toOhlcSymbolEntity(dto: any): OhlcSymbolEntity {
+    return new OhlcSymbolEntity({
+      symbol: String(dto.symbol || '').toUpperCase(),
+      dukascopySymbol: String(dto.dukascopySymbol || ''),
       category: String(dto.category || 'forex').toLowerCase(),
       description: dto.description || null,
       isActive: Boolean(dto.isActive ?? true),

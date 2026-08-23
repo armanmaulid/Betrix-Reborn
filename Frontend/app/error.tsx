@@ -12,7 +12,8 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('Terminal runtime exception intercepted:', error);
+    // Log full error details for debugging — digest is safe to log
+    console.error('Terminal runtime exception intercepted:', error.message, error.digest);
   }, [error]);
 
   return (
@@ -32,10 +33,10 @@ export default function GlobalError({
             An unexpected error occurred during terminal rendering or data synchronization.
           </p>
           <div className="bg-black border border-border p-3 text-[11px] text-negative font-mono whitespace-pre-wrap break-all">
-            {error.message || 'Unknown runtime exception'}
+            An unexpected error has occurred. The issue has been logged.
             {error.digest && (
               <div className="text-[10px] text-muted-foreground mt-2">
-                DIGEST: {error.digest}
+                Reference: {error.digest}
               </div>
             )}
           </div>

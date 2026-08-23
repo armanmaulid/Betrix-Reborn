@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { AiAgent } from './AiAgent';
 import { CreditVoucher } from './CreditVoucher';
-import { ThinkingParser } from '../services/ThinkingParser';
 
-describe('Intelligence Domain: AiAgent, CreditVoucher & ThinkingParser', () => {
+describe('Intelligence Domain: AiAgent & CreditVoucher', () => {
   it('should instantiate AiAgent and calculate estimated credits accurately', () => {
     const agent = new AiAgent({
       id: 'gpt-4o',
@@ -58,11 +57,5 @@ describe('Intelligence Domain: AiAgent, CreditVoucher & ThinkingParser', () => {
     expect(expiredVoucher.getStatus()).toBe('expired');
   });
 
-  it('should parse thinking blocks from stream tokens via ThinkingParser', () => {
-    const rawOutput = '<think>Analyzing market structure and order flow...</think>Based on current volume profile, bias is bullish.';
-    const result = ThinkingParser.parse(rawOutput);
 
-    expect(result.thinking).toBe('Analyzing market structure and order flow...');
-    expect(result.content).toBe('Based on current volume profile, bias is bullish.');
-  });
 });

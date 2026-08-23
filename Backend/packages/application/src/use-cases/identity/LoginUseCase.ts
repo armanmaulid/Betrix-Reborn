@@ -9,6 +9,7 @@ import {
   IUserRepository,
   IDeviceRepository,
   ILoginAttemptRepository,
+  IActivityLogRepository,
   LoginPolicy,
   DeviceDomainService,
   User,
@@ -31,7 +32,8 @@ export class LoginUseCase {
     private readonly loginAttemptRepo: ILoginAttemptRepository,
     private readonly authService: AuthService,
     private readonly captchaService: CaptchaService,
-    private readonly enforceDeviceBinding: boolean = true
+    private readonly enforceDeviceBinding: boolean = true,
+    private readonly activityLogRepo?: IActivityLogRepository
   ) {}
 
   public async execute(
@@ -118,6 +120,8 @@ export class LoginUseCase {
       context?.ip,
       context?.userAgent
     );
+
+    await this.activityLogRepo?.log(user.id, 'LOGIN', { method: 'password' }, context?.ip, context?.userAgent);
 
     return {
       user,

@@ -18,3 +18,25 @@ export interface PaginationQueryParams {
   limit?: number;
   search?: string;
 }
+
+/**
+ * Generic paginated mapper — eliminates copy-paste `toDomainPaginated` across all mappers.
+ * Usage: `toDomainPaginated(raw, MyMapper.toDomain)`
+ */
+export function toDomainPaginated<TDto, TDomain>(
+  paginatedDto: { data?: TDto[]; meta?: PaginationMeta } | TDto[] | any,
+  mapItem: (dto: TDto) => TDomain
+): PaginatedResult<TDomain> {
+  const rawItems: TDto[] = Array.isArray(paginatedDto?.data)
+    ? paginatedDto.data
+    : Array.isArray(paginatedDto)
+    ? paginatedDto
+    : [];
+  const meta: PaginationMeta = paginatedDto?.meta || {
+    page: 1,
+    limit: rawItems.length,
+    total: rawItems.length,
+    totalPages: 1
+  };
+  return { data: rawItems.map(mapItem), meta };
+}

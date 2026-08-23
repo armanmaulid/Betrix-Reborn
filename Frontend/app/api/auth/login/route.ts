@@ -73,7 +73,9 @@ export async function POST(request: NextRequest) {
     const cookieStore = await cookies();
 
     const isHttps = request.nextUrl.protocol === 'https:' || request.headers.get('x-forwarded-proto') === 'https';
-    const isSecure = process.env.COOKIE_SECURE === 'true' || (process.env.NODE_ENV === 'production' && isHttps);
+    // In production, cookies are ALWAYS secure regardless of COOKIE_SECURE env var.
+    // COOKIE_SECURE only takes effect in non-production (dev/lan) environments.
+    const isSecure = process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true' || isHttps;
 
     // 1. httpOnly Secure JWT Token Cookie
     cookieStore.set('betrix_admin_token', token, {

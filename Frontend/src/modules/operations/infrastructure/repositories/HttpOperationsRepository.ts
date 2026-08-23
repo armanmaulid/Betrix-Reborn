@@ -7,7 +7,7 @@ import type {
 import { AuditLog } from '../../domain/entities/AuditLog';
 import { BackgroundWorker, type WorkerAction } from '../../domain/entities/BackgroundWorker';
 import { AuditLogMapper } from '../mappers/AuditLogMapper';
-import { HttpClient } from '@shared/infrastructure/http/api-client';
+import { HttpClient, unwrapData, unwrapListData } from '@shared/infrastructure/http/api-client';
 import type { PaginatedResult } from '@shared/domain/types/Pagination';
 
 export class HttpOperationsRepository implements IOperationsRepository {
@@ -20,11 +20,6 @@ export class HttpOperationsRepository implements IOperationsRepository {
     return AuditLogMapper.toDomainPaginated(res);
   }
 
-  async exportAuditLogs(format: 'json' | 'csv'): Promise<Blob> {
-    const res = await fetch(`/api/admin/audit-logs/export?format=${format}`);
-    return res.blob();
-  }
-
   async broadcastMessage(input: BroadcastMessageInput): Promise<{ messageId: string; deliveredCount: number }> {
     const res = await this.http.post<{ data: { messageId: string; deliveredCount: number } }>(
       '/api/admin/broadcast',
@@ -35,8 +30,7 @@ export class HttpOperationsRepository implements IOperationsRepository {
 
   async getWorkers(): Promise<BackgroundWorker[]> {
     const res = await this.http.get<{ data: any[] }>('/api/admin/workers');
-    const items = res.data ?? (Array.isArray(res) ? res : []);
-    return items.map(AuditLogMapper.toWorkerDomain);
+    return unwrapListData(res).map(AuditLogMapper.toWorkerDomain);
   }
 
   async controlWorker(workerId: string, action: WorkerAction): Promise<BackgroundWorker> {
@@ -44,7 +38,7 @@ export class HttpOperationsRepository implements IOperationsRepository {
       `/api/admin/workers/${encodeURIComponent(workerId)}/control`,
       { action }
     );
-    return AuditLogMapper.toWorkerDomain(res.data ?? res);
+    return AuditLogMapper.toWorkerDomain(unwrapData(res));
   }
 
   async runSystemCleanup(input: SystemCleanupInput): Promise<{ deletedRows: number }> {

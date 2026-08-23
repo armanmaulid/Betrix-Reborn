@@ -14,8 +14,6 @@ export class ApiError extends Error {
 }
 
 export interface HttpRequestOptions extends RequestInit {
-  timeoutMs?: number;
-  retries?: number;
   queryParams?: Record<string, string | number | boolean | undefined | null>;
 }
 
@@ -57,10 +55,14 @@ export async function apiFetch<T = any>(
     try {
       data = await res.json();
     } catch {
-      data = typeof res.text === 'function' ? await res.text().catch(() => ({})) : {};
+      // Non-JSON response — preserve the raw text for error reporting
+      // instead of silently converting to empty object
+      const text = typeof res.text === 'function' ? await res.text().catch(() => '') : '';
+      data = text || {};
     }
   } else if (typeof res.text === 'function') {
-    data = await res.text().catch(() => ({}));
+    const text = await res.text().catch(() => '');
+    data = text || {};
   } else {
     data = {};
   }
@@ -76,6 +78,37 @@ export async function apiFetch<T = any>(
   }
 
   return data as T;
+}
+
+/**
+ * Unwrap a single-item API response: `res.data ?? res`
+ */
+export function unwrapData<T>(res: any): T {
+  return (res?.data ?? res) as T;
+}
+
+/**
+ * Unwrap a list API response, falling back to empty array.
+ * Eliminates the repeated `res.data ?? (Array.isArray(res) ? res : [])` pattern.
+ */
+export function unwrapListData<T>(res: any): T[] {
+  if (Array.isArray(res?.data)) return res.data as T[];
+  if (Array.isArray(res)) return res as T[];
+  return [];
+}
+
+/**
+ * Sanitize a backend JSON response to prevent leaking internal details
+ * (hostname, port, stack traces, SQL errors, etc.) to the client.
+ * Only the `error.message` field is preserved; all other fields are stripped.
+ */
+export function sanitizeBackendResponse(data: any, status: number): any {
+  if (status >= 200 && status < 300) return data;
+  const message =
+    data?.error?.message ||
+    data?.message ||
+    'Request failed';
+  return { success: false, error: { message } };
 }
 
 export class HttpClient {
@@ -104,4 +137,3 @@ export class HttpClient {
   }
 }
 
-export const httpClient = new HttpClient();

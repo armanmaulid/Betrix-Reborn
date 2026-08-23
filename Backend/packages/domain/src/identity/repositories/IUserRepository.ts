@@ -3,6 +3,7 @@ import { User } from '../entities/User.js';
 
 export interface IUserRepository {
   findById(id: string): Promise<Nullable<User>>;
+  findByIds(ids: string[]): Promise<User[]>;
   findByEmail(email: string): Promise<Nullable<User>>;
   findByGoogleId(googleId: string): Promise<Nullable<User>>;
   save(user: User): Promise<User>;

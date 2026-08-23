@@ -14,7 +14,8 @@ export class GetNewsUseCase {
       { page, limit },
       query?.category,
       query?.tag,
-      query?.search
+      query?.search,
+      query?.sort
     );
   }
 }

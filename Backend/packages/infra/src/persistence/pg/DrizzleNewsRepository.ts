@@ -1,4 +1,4 @@
-import { and, arrayContains, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, arrayContains, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { INewsRepository, NewsArticle, Nullable, PaginatedResult, PaginationParams } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { newsArticles } from '../drizzle/schema.js';
@@ -103,7 +103,13 @@ export class DrizzleNewsRepository implements INewsRepository {
     return uniqueArticles;
   }
 
-  async findAll(pagination: PaginationParams, category?: string, tag?: string, search?: string): Promise<PaginatedResult<NewsArticle>> {
+  async findAll(
+    pagination: PaginationParams,
+    category?: string,
+    tag?: string,
+    search?: string,
+    sortOrder: 'asc' | 'desc' = 'desc'
+  ): Promise<PaginatedResult<NewsArticle>> {
     const offset = (pagination.page - 1) * pagination.limit;
     const conditions = [];
     if (category) conditions.push(eq(newsArticles.category, category));
@@ -123,6 +129,7 @@ export class DrizzleNewsRepository implements INewsRepository {
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const orderClause = sortOrder === 'asc' ? asc(newsArticles.datetime) : desc(newsArticles.datetime);
 
     const [countResult, rows] = await Promise.all([
       this.db
@@ -135,7 +142,7 @@ export class DrizzleNewsRepository implements INewsRepository {
         .where(whereClause)
         .limit(pagination.limit)
         .offset(offset)
-        .orderBy(desc(newsArticles.datetime))
+        .orderBy(orderClause)
     ]);
 
     const total = countResult[0]?.count || 0;
@@ -147,4 +154,22 @@ export class DrizzleNewsRepository implements INewsRepository {
       totalPages: Math.ceil(total / pagination.limit)
     };
   }
+
+  async deleteById(id: string): Promise<boolean> {
+    const result = await this.db
+      .delete(newsArticles)
+      .where(eq(newsArticles.id, id))
+      .returning({ id: newsArticles.id });
+    return result.length > 0;
+  }
+
+  async deleteMany(ids: string[]): Promise<number> {
+    if (!ids || ids.length === 0) return 0;
+    const result = await this.db
+      .delete(newsArticles)
+      .where(inArray(newsArticles.id, ids))
+      .returning({ id: newsArticles.id });
+    return result.length;
+  }
 }
+

@@ -9,7 +9,7 @@ import { useUpdateUserMutation } from '@/modules/identity/application/queries/us
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { TerminalModal } from '@/shared/presentation/ui/terminal-modal';
 import { useSession } from '@/shared/presentation/hooks/use-session';
-import type { AdminUser } from '@/lib/types';
+import type { AdminUser } from '@/modules/identity/domain/entities/User';
 
 interface UpdateUserDialogProps {
   user: AdminUser | null;

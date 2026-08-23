@@ -10,6 +10,23 @@ export interface SystemMetricsProps {
   redisLatencyMs?: number;
 }
 
+export interface UserAnalytics {
+  newUsersToday: number;
+  newUsersThisWeek: number;
+  newUsersThisMonth: number;
+  activeUsers24h: number;
+  activeUsersWeekly: number;
+  activeUsersMonthly: number;
+  topModels: { model: string; count: number }[];
+  dailyTokenUsage: { date: string; tokens: number }[];
+}
+
+export interface AnalyticsQueryParams {
+  period?: 'daily' | 'weekly' | 'monthly' | 'custom' | 'all';
+  startDate?: string;
+  endDate?: string;
+}
+
 export class SystemMetrics {
   public readonly totalUsers: number;
   public readonly activeSessions: number;

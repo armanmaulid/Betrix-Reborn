@@ -46,6 +46,21 @@ export class HttpUserRepository implements IUserRepository {
     );
     return res.data || {};
   }
+
+  async revokeSession(userId: string, sessionId: string): Promise<void> {
+    await this.client.delete(`/api/admin/users/${encodeURIComponent(userId)}/sessions/${encodeURIComponent(sessionId)}`);
+  }
+
+  async revokeAllSessions(userId: string): Promise<number> {
+    const res = await this.client.delete<{ data?: { revokedCount?: number } }>(
+      `/api/admin/users/${encodeURIComponent(userId)}/sessions`
+    );
+    return res.data?.revokedCount ?? 0;
+  }
+
+  async removeDevice(userId: string, deviceId: string): Promise<void> {
+    await this.client.delete(`/api/admin/users/${encodeURIComponent(userId)}/devices/${encodeURIComponent(deviceId)}`);
+  }
 }
 
 export const userRepository = new HttpUserRepository();

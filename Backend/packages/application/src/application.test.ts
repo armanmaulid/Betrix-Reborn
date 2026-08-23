@@ -712,8 +712,16 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       expect(doneMeta).toBeDefined();
       expect(doneMeta.creditsSpent).toBe(1);
 
-      // Verify that asynchronous handler deducted credits & saved message
-      expect(mockCreditRepo.deductCredits).toHaveBeenCalled();
+      // Credits are settled exactly once, via settleReservation from the use case
+      // itself (reserve -> settle with actual cost). The event handler must NOT
+      // also call deductCredits, or the user would be charged twice for one message.
+      expect(mockCreditRepo.settleReservation).toHaveBeenCalledWith(
+        'usr-1',
+        expect.any(Number),
+        1,
+        expect.stringContaining('AI_CHAT:')
+      );
+      expect(mockCreditRepo.deductCredits).not.toHaveBeenCalled();
       expect(mockChatRepo.save).toHaveBeenCalled();
     });
 

@@ -6,5 +6,6 @@ export interface IDeviceRepository {
   findByUserId(userId: string): Promise<Device[]>;
   save(device: Device): Promise<Device>;
   updateLastSeen(fingerprint: string): Promise<boolean>;
+  deleteByFingerprint(fingerprint: string): Promise<boolean>;
   deleteByUserId(userId: string): Promise<number>;
 }

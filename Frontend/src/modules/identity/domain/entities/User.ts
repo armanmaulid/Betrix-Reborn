@@ -21,6 +21,89 @@ export interface UserProps {
   updatedAt?: string | Date;
 }
 
+/** Flat admin user interface for presentation layer */
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  status: 'active' | 'suspended' | 'banned';
+  tier?: import('../value-objects/UserTier').UserTierLevel;
+  isAdmin: boolean;
+  credits: number;
+  emailVerified: boolean;
+  phone?: string | null;
+  address?: string | null;
+  birthdate?: string | null;
+  gender?: string | null;
+  bio?: string | null;
+  lastActive?: string | null;
+  createdAt: string | Date;
+  updatedAt?: string | Date;
+}
+
+export interface UserDevice {
+  id: string;
+  userId: string;
+  fingerprint: string;
+  trusted: boolean;
+  lastSeenAt: string;
+  createdAt: string;
+}
+
+export interface UserSession {
+  id: string;
+  userId: string;
+  deviceFingerprint: string;
+  ip: string;
+  userAgent: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface UserUsageSummary {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCreditsSpent: number;
+}
+
+export interface AdminUserDetail {
+  user: AdminUser;
+  devices: UserDevice[];
+  sessions: UserSession[];
+  recentActivity?: unknown[];
+  usageSummary?: UserUsageSummary;
+}
+
+export interface AdminChatMessage {
+  id: string;
+  userId: string;
+  sessionId: string;
+  taskType: string;
+  modelUsed: string;
+  message: string;
+  reply: string;
+  latencyMs: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens?: number;
+  createdAt: string;
+}
+
+export interface AdminChatHistoryQuery {
+  page?: number;
+  limit?: number;
+  sessionId?: string;
+}
+
+export interface AdminUsersQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: 'active' | 'suspended' | 'banned';
+  tier?: import('../value-objects/UserTier').UserTierLevel;
+  isAdmin?: boolean;
+}
+
 export class User {
   public readonly id: string;
   public readonly email: string;

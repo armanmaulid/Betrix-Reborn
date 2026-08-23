@@ -28,7 +28,9 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: getDynamicDevOrigins(),
   logging: {
     fetches: {
-      fullUrl: process.env.NEXT_PUBLIC_DEBUG_LOGS === 'true'
+      // Never log full fetch URLs in production — they may contain query secrets.
+      // Only enabled in development via NEXT_PUBLIC_DEBUG_LOGS=true.
+      fullUrl: process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_DEBUG_LOGS === 'true'
     }
   }
 };

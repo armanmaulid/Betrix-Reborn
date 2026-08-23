@@ -48,6 +48,14 @@ export class FinnhubWsWorker {
     for (const r of rows) {
       this.reverseMap[r.finnhubSymbol] = r.symbol.toUpperCase();
     }
+
+    if (rows.length > MAX_CONCURRENT_SUBSCRIPTIONS) {
+      const skipped = rows.slice(MAX_CONCURRENT_SUBSCRIPTIONS).map((r) => r.symbol.toUpperCase());
+      logger.warn(
+        `${rows.length} active stream symbols exceed MAX_CONCURRENT_SUBSCRIPTIONS (${MAX_CONCURRENT_SUBSCRIPTIONS}) — ${skipped.length} symbol(s) will NOT receive live ticks: ${skipped.join(', ')}`
+      );
+    }
+
     return rows.slice(0, MAX_CONCURRENT_SUBSCRIPTIONS).map((r) => r.finnhubSymbol);
   }
 

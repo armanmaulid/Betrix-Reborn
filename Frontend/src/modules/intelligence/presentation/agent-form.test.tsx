@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { AgentForm } from './agent-form';
-import type { AgentDetail } from '@/lib/types';
+import type { AgentDetail } from '@/modules/intelligence/domain/entities/AiAgent';
 
 describe('AgentForm Component', () => {
   const mockAgent: AgentDetail = {

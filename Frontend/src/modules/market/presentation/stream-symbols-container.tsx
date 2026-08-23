@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Radio, Search, Plus, RefreshCw } from 'lucide-react';
 import {
   useStreamSymbolsQuery,
@@ -11,8 +11,10 @@ import {
 import { StreamSymbolTable } from './stream-symbol-table';
 import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-confirm-dialog';
 import { SymbolModal, type SymbolFormData } from './symbol-modal';
+import { PaginationBar } from '@/shared/presentation/ui/pagination-bar';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
+import { formatFinancialNumber } from '@/shared/utils';
 import type { StreamSymbolEntity } from '@market/domain/entities/MarketInstrument';
 
 const CATEGORIES = [
@@ -30,6 +32,8 @@ export function StreamSymbolsContainer() {
 
   const [category, setCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedSymbolForEdit, setSelectedSymbolForEdit] = useState<Partial<SymbolFormData> | null>(null);
   const [symbolToDelete, setSymbolToDelete] = useState<string | null>(null);
@@ -57,6 +61,20 @@ export function StreamSymbolsContainer() {
       return matchesCategory && matchesSearch;
     });
   }, [streamSymbols, category, searchQuery]);
+
+  const total = filteredSymbols.length;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  // Reset page when totalPages shrinks (e.g. after delete/filter)
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [totalPages, page]);
+
+  const paginatedSymbols = useMemo(() => {
+    const validPage = Math.min(page, totalPages);
+    const start = (validPage - 1) * limit;
+    return filteredSymbols.slice(start, start + limit);
+  }, [filteredSymbols, page, limit, totalPages]);
 
   const handleSaveSymbol = async (formData: SymbolFormData) => {
     try {
@@ -130,7 +148,7 @@ export function StreamSymbolsContainer() {
       </div>
 
       {/* Filter / Search Bar */}
-      <div className="border border-border bg-black p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="border border-border bg-black p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 flex-1">
           <div className="relative min-w-[200px] flex-1 max-w-xs">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -138,7 +156,10 @@ export function StreamSymbolsContainer() {
               type="text"
               placeholder="Filter symbol or Finnhub ticker..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
               className="w-full bg-surface border border-border pl-8 pr-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent"
             />
           </div>
@@ -147,7 +168,10 @@ export function StreamSymbolsContainer() {
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
-                onClick={() => setCategory(cat.id)}
+                onClick={() => {
+                  setCategory(cat.id);
+                  setPage(1);
+                }}
                 className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors whitespace-nowrap cursor-pointer ${
                   category === cat.id
                     ? 'border border-accent bg-accent/20 text-accent'
@@ -159,11 +183,15 @@ export function StreamSymbolsContainer() {
             ))}
           </div>
         </div>
+
+        <div className="text-xs text-muted-foreground whitespace-nowrap">
+          TOTAL: <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong> SYMBOLS
+        </div>
       </div>
 
       {/* Stream Symbol Table */}
       <StreamSymbolTable
-        symbols={filteredSymbols}
+        symbols={paginatedSymbols}
         priceMap={priceMap}
         isLoading={isSymbolsLoading}
         isError={isSymbolsError}
@@ -178,6 +206,22 @@ export function StreamSymbolsContainer() {
           setIsAddOpen(true);
         }}
         onDelete={(sym) => setSymbolToDelete(sym)}
+      />
+
+      {/* Pagination Bar */}
+      <PaginationBar
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        limit={limit}
+        onLimitChange={(l) => {
+          setLimit(l);
+          setPage(1);
+        }}
+        limitOptions={[10, 25, 50, 100]}
+        total={total}
+        totalLabel="TOTAL STREAM SYMBOLS"
+        isLoading={isSymbolsLoading}
       />
 
       {/* Add / Edit Symbol Modal */}

@@ -39,12 +39,17 @@ export function DestructiveConfirmDialog({
 
   const handleConfirm = async () => {
     if (!isMatched || isLoading) return;
-    await onConfirm();
+    try {
+      await onConfirm();
+    } catch {
+      // Parent manages error state — swallow to avoid unhandled rejection
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && isMatched && !isLoading) {
-      handleConfirm();
+      e.preventDefault();
+      void handleConfirm();
     }
   };
 

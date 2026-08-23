@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { BACKEND_URL } from '@/lib/server-auth';
+import { requireAdminToken } from '@/app/api/proxy-utils';
+import { sanitizeBackendResponse } from '@/shared/infrastructure/http/api-client';
 
 async function handleProxy(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   try {
     const { path } = await params;
-    const cookieStore = await cookies();
-    const token = cookieStore.get('betrix_admin_token')?.value;
-
-    if (!token) {
-      return NextResponse.json(
-        { success: false, error: { message: 'Unauthorized: Admin session required' } },
-        { status: 401 }
-      );
-    }
+    const tokenOrResponse = await requireAdminToken();
+    if (tokenOrResponse instanceof NextResponse) return tokenOrResponse;
+    const token = tokenOrResponse;
 
     const subPath = path.join('/');
     const searchParams = request.nextUrl.searchParams.toString();
@@ -60,7 +55,7 @@ async function handleProxy(request: NextRequest, { params }: { params: Promise<{
     }
 
     const data = await backendRes.json();
-    return NextResponse.json(data, { status: backendRes.status });
+    return NextResponse.json(sanitizeBackendResponse(data, backendRes.status), { status: backendRes.status });
   } catch {
     // Never leak internal/infra error details (hostnames, ports) to the client
     return NextResponse.json(

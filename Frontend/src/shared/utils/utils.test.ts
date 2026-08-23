@@ -6,7 +6,7 @@ import {
   getDbPoolStats,
   getWorkerStats
 } from './utils';
-import type { BackgroundWorkerInfo } from '@/lib/types';
+import type { BackgroundWorkerInfo } from '@/modules/operations/domain/entities/BackgroundWorker';
 
 describe('Utility Functions (Frontend/lib/utils.ts)', () => {
   describe('cn', () => {

@@ -21,11 +21,11 @@ import { TestAgentSchema } from '@/modules/intelligence/application/schemas/agen
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { formatFinancialNumber } from '@/shared/utils';
 import { useCopyFeedback } from '@/shared/presentation/hooks/use-copy-feedback';
-import type { AiAgent as LegacyAiAgent, AgentTestResult } from '@/lib/types';
-import type { AiAgent } from '@intelligence/domain/entities/AiAgent';
+import type { AiAgent, AgentDetail } from '@intelligence/domain/entities/AiAgent';
+import type { AgentTestResult } from '@intelligence/domain/repositories/IAgentRepository';
 
 interface AgentTestConsoleProps {
-  agent: AiAgent | LegacyAiAgent;
+  agent: AiAgent | AgentDetail;
 }
 
 const PRESET_PROMPTS = [

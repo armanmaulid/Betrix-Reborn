@@ -36,4 +36,7 @@ export interface IUserRepository {
   updateUser(id: string, input: UpdateUserInput): Promise<User>;
   deleteUser(id: string): Promise<void>;
   resetPassword(userId: string, newPassword?: string): Promise<{ temporaryPassword?: string }>;
+  revokeSession(userId: string, sessionId: string): Promise<void>;
+  revokeAllSessions(userId: string): Promise<number>;
+  removeDevice(userId: string, deviceId: string): Promise<void>;
 }

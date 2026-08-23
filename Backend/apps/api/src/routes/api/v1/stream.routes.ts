@@ -31,7 +31,7 @@ export const streamRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       const symbolList = symbols ? symbols.split(',').map((s) => s.trim().toUpperCase()) : undefined;
       const clientId = `market-${userId}-${Date.now()}`;
 
-      fastify.sseHub.addClient(clientId, 'market', request, reply, symbolList);
+      fastify.sseHub.addClient(clientId, userId, 'market', request, reply, symbolList);
     }
   );
 
@@ -57,7 +57,7 @@ export const streamRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
 
       const clientId = `news-${userId}-${Date.now()}`;
-      fastify.sseHub.addClient(clientId, 'news', request, reply);
+      fastify.sseHub.addClient(clientId, userId, 'news', request, reply);
     }
   );
 };

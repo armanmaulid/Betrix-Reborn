@@ -51,7 +51,6 @@ export class StreamMessageUseCase {
     if (!reserved) {
       throw new AppError('Insufficient credits to initiate AI chat. Please top up or redeem a voucher.', 402, 'PAYMENT_REQUIRED');
     }
-    let settled = false;
 
     // 2. Resolve Dynamic Agent from Database (Zero Backend Restart)
     let agent: AiAgent | null = null;
@@ -98,6 +97,8 @@ export class StreamMessageUseCase {
     messages.push({ role: 'user', content: dto.message });
 
     let fullReply = '';
+    let pendingSettleCreditsSpent: number | null = null;
+    let settlePromise: Promise<number> | null = null;
 
     // 6. Stream from AI Gateway with dual think/delta callbacks
     try {
@@ -122,13 +123,25 @@ export class StreamMessageUseCase {
           const totalTokens = meta.inputTokens + meta.outputTokens;
           const creditsRate = agent?.creditsPer1kTokens ?? 1;
           const creditsSpent = Math.max(1, Math.ceil((totalTokens / 1000) * creditsRate));
-          settled = true;
 
-          // Settle reservation with actual usage — fire-and-forget safe now:
-          // even if this throws, the finally below releases the hold.
-          void this.creditRepo
-            .settleReservation(userId, reservationAmount, creditsSpent, `AI_CHAT:${agent?.id || modelName}:${sessionId}`)
-            .catch(() => {});
+          // Actual usage is now known — record it so the finally block, if it
+          // ends up running before this settles (or if this call fails), retries
+          // with this exact amount instead of a full no-cost release.
+          pendingSettleCreditsSpent = creditsSpent;
+
+          // Kick off settlement now (keeps the SSE response snappy — callbacks.onDone
+          // below fires without waiting for it), but keep the promise itself so the
+          // finally block can await the SAME attempt rather than racing it.
+          settlePromise = this.creditRepo.settleReservation(
+            userId,
+            reservationAmount,
+            creditsSpent,
+            `AI_CHAT:${agent?.id || modelName}:${sessionId}`
+          );
+          settlePromise.catch(() => {
+            // Swallow here — the finally block below awaits this same promise
+            // and handles the failure by retrying settlement.
+          });
 
           // Emit onDone SSE event with metadata
           callbacks.onDone?.({
@@ -163,9 +176,23 @@ export class StreamMessageUseCase {
       }
     );
     } finally {
-      // Release the hold if stream failed/aborted before onDone fired.
+      // Resolve the credit hold exactly once, however the stream ended:
+      // - onDone fired and settlement already in flight: await that SAME
+      //   attempt (no race with the .then() above — there isn't one anymore)
+      //   and retry once with the known actual cost if it failed.
+      // - stream failed/aborted before onDone: no cost was ever computed,
+      //   so release the full reservation.
+      let settled = false;
+      if (settlePromise) {
+        settled = await (settlePromise as Promise<number>).then(
+          () => true,
+          () => false
+        );
+      }
       if (!settled) {
-        await this.creditRepo.settleReservation(userId, reservationAmount, 0, `AI_CHAT_RELEASE:${sessionId}`).catch(() => {});
+        const actualCost = pendingSettleCreditsSpent ?? 0;
+        const action = pendingSettleCreditsSpent !== null ? `AI_CHAT_RETRY:${sessionId}` : `AI_CHAT_RELEASE:${sessionId}`;
+        await this.creditRepo.settleReservation(userId, reservationAmount, actualCost, action).catch(() => {});
       }
     }
   }

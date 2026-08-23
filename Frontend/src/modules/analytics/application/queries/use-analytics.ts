@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { analyticsRepository } from '@analytics/infrastructure/repositories/HttpAnalyticsRepository';
 import { analyticsKeys } from '@analytics/application/analytics.keys';
-import type { UserAnalytics, AnalyticsQueryParams } from '@/lib/types';
+import type { UserAnalytics, AnalyticsQueryParams } from '@/modules/analytics/domain/entities/SystemMetrics';
 
 export function useUserAnalytics(params?: AnalyticsQueryParams) {
   return useQuery<UserAnalytics>({

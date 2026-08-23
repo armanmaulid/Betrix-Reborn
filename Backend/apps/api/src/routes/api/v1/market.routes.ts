@@ -41,7 +41,7 @@ export const marketRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const activeOnly = (request.query as any)?.activeOnly === true;
+      const activeOnly = request.query.activeOnly === true;
       const symbols = await useCases.getStreamSymbolsUseCase.execute(activeOnly);
       return reply.send({
         success: true,

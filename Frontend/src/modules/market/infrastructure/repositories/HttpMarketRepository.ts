@@ -1,7 +1,7 @@
 import type { IMarketRepository } from '../../domain/repositories/IMarketRepository';
-import { MarketInstrument, StreamSymbolEntity } from '../../domain/entities/MarketInstrument';
+import { MarketInstrument, StreamSymbolEntity, OhlcSymbolEntity } from '../../domain/entities/MarketInstrument';
 import { PriceTick } from '../../domain/value-objects/PriceTick';
-import { HttpClient } from '@shared/infrastructure/http/api-client';
+import { HttpClient, unwrapData, unwrapListData } from '@shared/infrastructure/http/api-client';
 import { MarketMapper } from '../mappers/MarketMapper';
 
 export class HttpMarketRepository implements IMarketRepository {
@@ -11,13 +11,12 @@ export class HttpMarketRepository implements IMarketRepository {
     const res = await this.http.get<{ data: any[] }>('/api/market/symbols', {
       queryParams: { activeOnly }
     });
-    const items = res.data ?? (Array.isArray(res) ? res : []);
-    return items.map(MarketMapper.toInstrumentEntity);
+    return unwrapListData(res).map(MarketMapper.toInstrumentEntity);
   }
 
   public async saveSymbol(instrument: Partial<MarketInstrument> & { symbol: string }): Promise<MarketInstrument> {
     const res = await this.http.post<{ data: any }>('/api/admin/symbols', instrument);
-    return MarketMapper.toInstrumentEntity(res.data ?? res);
+    return MarketMapper.toInstrumentEntity(unwrapData(res));
   }
 
   public async deleteSymbol(symbol: string): Promise<boolean> {
@@ -29,13 +28,12 @@ export class HttpMarketRepository implements IMarketRepository {
     const res = await this.http.get<{ data: any[] }>('/api/market/stream-symbols', {
       queryParams: { activeOnly }
     });
-    const items = res.data ?? (Array.isArray(res) ? res : []);
-    return items.map(MarketMapper.toStreamSymbolEntity);
+    return unwrapListData(res).map(MarketMapper.toStreamSymbolEntity);
   }
 
   public async saveStreamSymbol(streamData: Partial<StreamSymbolEntity> & { symbol: string; finnhubSymbol: string }): Promise<StreamSymbolEntity> {
     const res = await this.http.post<{ data: any }>('/api/admin/stream-symbols', streamData);
-    return MarketMapper.toStreamSymbolEntity(res.data ?? res);
+    return MarketMapper.toStreamSymbolEntity(unwrapData(res));
   }
 
   public async deleteStreamSymbol(symbol: string): Promise<boolean> {
@@ -43,10 +41,26 @@ export class HttpMarketRepository implements IMarketRepository {
     return true;
   }
 
+  public async getOhlcSymbols(activeOnly: boolean = false): Promise<OhlcSymbolEntity[]> {
+    const res = await this.http.get<{ data: any[] }>('/api/admin/ohlc-symbols', {
+      queryParams: { activeOnly }
+    });
+    return unwrapListData(res).map(MarketMapper.toOhlcSymbolEntity);
+  }
+
+  public async saveOhlcSymbol(data: { symbol: string; dukascopySymbol: string; description?: string; isActive?: boolean }): Promise<OhlcSymbolEntity> {
+    const res = await this.http.post<{ data: any }>('/api/admin/ohlc-symbols', data);
+    return MarketMapper.toOhlcSymbolEntity(unwrapData(res));
+  }
+
+  public async deleteOhlcSymbol(symbol: string): Promise<boolean> {
+    await this.http.delete(`/api/admin/ohlc-symbols/${encodeURIComponent(symbol.toUpperCase())}`);
+    return true;
+  }
+
   public async getPricesSnapshot(): Promise<PriceTick[]> {
     const res = await this.http.get<{ data: any[] }>('/api/market/prices');
-    const items = res.data ?? (Array.isArray(res) ? res : []);
-    return items.map((dto) => MarketMapper.toPriceTick(dto));
+    return unwrapListData(res).map((dto) => MarketMapper.toPriceTick(dto));
   }
 }
 

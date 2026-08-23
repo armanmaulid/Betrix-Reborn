@@ -20,7 +20,7 @@ import {
   HardDrive,
   MessageSquare
 } from 'lucide-react';
-import { useUserDetailQuery, useDeleteUserMutation } from '@/modules/identity/application/queries/use-users';
+import { useUserDetailQuery, useDeleteUserMutation, useRevokeSessionMutation, useRevokeAllSessionsMutation, useRemoveDeviceMutation } from '@/modules/identity/application/queries/use-users';
 import { UpdateUserDialog } from './update-user-dialog';
 import { ResetPasswordDialog } from './reset-password-dialog';
 import { UserChatHistory } from './user-chat-history';
@@ -45,7 +45,12 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isRevokeAllDialogOpen, setIsRevokeAllDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'telemetry' | 'chat'>('telemetry');
+
+  const revokeSessionMutation = useRevokeSessionMutation();
+  const revokeAllSessionsMutation = useRevokeAllSessionsMutation();
+  const removeDeviceMutation = useRemoveDeviceMutation();
 
   usePageTitle(detail?.user?.name ? `USER // ${detail.user.name}` : detail?.user?.email ? `USER // ${detail.user.email}` : `USER // ${userId}`);
 
@@ -90,7 +95,7 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
     );
   }
 
-  const { user, devices = [], sessions = [], usageSummary } = detail;
+  const { user, devices = [], sessions = [], recentActivity = [], usageSummary } = detail;
 
   const handleDeleteConfirm = async () => {
     try {
@@ -223,6 +228,16 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
                       ACTIVE SESSIONS ({sessions.length})
                     </h2>
                   </div>
+                  {sessions.length > 0 && (
+                    <button
+                      onClick={() => setIsRevokeAllDialogOpen(true)}
+                      disabled={revokeAllSessionsMutation.isPending}
+                      className="flex items-center gap-1 text-[9px] font-bold text-negative hover:text-negative/80 uppercase tracking-wider transition-colors disabled:opacity-40 cursor-pointer"
+                    >
+                      <Key className="w-3 h-3" />
+                      REVOKE ALL
+                    </button>
+                  )}
                 </div>
 
                 {sessions.length === 0 ? (
@@ -235,9 +250,32 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
                       <div key={s.id} className="py-2.5 space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-foreground select-all">{s.ip}</span>
-                          <span className="text-[10px] text-muted-foreground tabular-nums">
-                            EXPIRES: {formatDateTime(s.expiresAt)}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-muted-foreground tabular-nums">
+                              EXPIRES: {formatDateTime(s.expiresAt)}
+                            </span>
+                            <button
+                              onClick={() => {
+                                revokeSessionMutation.mutate(
+                                  { userId: user.id, sessionId: s.id },
+                                  {
+                                    onSuccess: () => {
+                                      success('SESSION REVOKED', `Session from ${s.ip} has been terminated.`);
+                                      refetch();
+                                    },
+                                    onError: (err: any) => {
+                                      error('REVOKE FAILED', err.message || 'Unable to revoke session.');
+                                    }
+                                  }
+                                );
+                              }}
+                              disabled={revokeSessionMutation.isPending}
+                              className="text-negative hover:text-negative/80 transition-colors disabled:opacity-40 cursor-pointer"
+                              title="Revoke this session"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                         <div className="text-[10px] text-muted-foreground/80 truncate select-all">{s.userAgent}</div>
                       </div>
@@ -271,9 +309,32 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
                           <span className="font-mono text-[10px] text-accent truncate max-w-[140px] select-all">
                             {d.fingerprint}
                           </span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 border border-positive/40 bg-positive/10 text-positive">
-                            TRUSTED
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 border border-positive/40 bg-positive/10 text-positive">
+                              TRUSTED
+                            </span>
+                            <button
+                              onClick={() => {
+                                removeDeviceMutation.mutate(
+                                  { userId: user.id, deviceId: d.id },
+                                  {
+                                    onSuccess: () => {
+                                      success('DEVICE REMOVED', `Device ${d.fingerprint.slice(0, 8)}... has been removed.`);
+                                      refetch();
+                                    },
+                                    onError: (err: any) => {
+                                      error('REMOVE FAILED', err.message || 'Unable to remove device.');
+                                    }
+                                  }
+                                );
+                              }}
+                              disabled={removeDeviceMutation.isPending}
+                              className="text-negative hover:text-negative/80 transition-colors disabled:opacity-40 cursor-pointer"
+                              title="Remove this device"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                         <div className="text-[10px] text-muted-foreground tabular-nums">
                           LAST SEEN: {formatDateTime(d.lastSeenAt)}
@@ -306,6 +367,26 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
         user={user}
         isOpen={isResetDialogOpen}
         onClose={() => setIsResetDialogOpen(false)}
+      />
+
+      {/* Revoke All Sessions Confirmation */}
+      <DestructiveConfirmDialog
+        isOpen={isRevokeAllDialogOpen}
+        onClose={() => setIsRevokeAllDialogOpen(false)}
+        onConfirm={async () => {
+          try {
+            const count = await revokeAllSessionsMutation.mutateAsync(user.id);
+            success('SESSIONS REVOKED', `${count} session(s) for ${user.email} have been terminated.`);
+            refetch();
+          } catch (err: any) {
+            error('REVOKE FAILED', err.message || 'Unable to revoke sessions.');
+          }
+        }}
+        title="REVOKE ALL ACTIVE SESSIONS"
+        description={`This will terminate all ${sessions.length} active session(s) for ${user.email}. The user will need to log in again.`}
+        targetIdentifier={user.email}
+        confirmButtonText="REVOKE ALL SESSIONS"
+        isLoading={revokeAllSessionsMutation.isPending}
       />
 
       {/* Delete User Confirmation */}

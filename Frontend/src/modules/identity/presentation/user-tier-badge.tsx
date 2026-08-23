@@ -2,47 +2,20 @@
 
 import React from 'react';
 import { Crown, Sparkles, Zap, Shield, Star } from 'lucide-react';
-import type { UserTier } from '@/lib/types';
+import { UserTier, type UserTierLevel } from '@/modules/identity/domain/value-objects/UserTier';
 
 interface UserTierBadgeProps {
-  tier?: UserTier | string;
+  tier?: UserTierLevel | string;
   size?: 'sm' | 'md' | 'lg';
   showIcon?: boolean;
 }
 
-const TIER_CONFIG: Record<
-  string,
-  {
-    label: string;
-    classes: string;
-    icon: React.ElementType;
-  }
-> = {
-  free: {
-    label: 'FREE',
-    classes: 'border-muted-foreground/30 bg-surface/60 text-muted-foreground',
-    icon: Shield
-  },
-  starter: {
-    label: 'STARTER',
-    classes: 'border-info/40 bg-info/10 text-info',
-    icon: Zap
-  },
-  pro: {
-    label: 'PRO',
-    classes: 'border-accent/40 bg-accent/10 text-accent font-bold',
-    icon: Star
-  },
-  premium: {
-    label: 'PREMIUM',
-    classes: 'border-accent-dim/50 bg-accent-dim/10 text-accent font-bold',
-    icon: Sparkles
-  },
-  vip: {
-    label: 'VIP',
-    classes: 'border-positive/40 bg-positive/10 text-positive font-bold',
-    icon: Crown
-  }
+const TIER_ICONS: Record<string, React.ElementType> = {
+  free: Shield,
+  starter: Zap,
+  pro: Star,
+  premium: Sparkles,
+  vip: Crown
 };
 
 export function UserTierBadge({
@@ -50,9 +23,9 @@ export function UserTierBadge({
   size = 'sm',
   showIcon = true
 }: UserTierBadgeProps) {
-  const normalizedTier = (tier || 'free').toLowerCase();
-  const config = TIER_CONFIG[normalizedTier] || TIER_CONFIG.free;
-  const Icon = config.icon;
+  const normalizedTier = (tier || 'free').toLowerCase() as UserTierLevel;
+  const config = UserTier.CONFIG[normalizedTier] || UserTier.CONFIG.free;
+  const Icon = TIER_ICONS[normalizedTier] || Shield;
 
   const sizeClasses = {
     sm: 'text-[9px] px-1.5 py-0.5 tracking-wider gap-1',
@@ -68,7 +41,7 @@ export function UserTierBadge({
 
   return (
     <span
-      className={`inline-flex items-center border font-mono uppercase select-none transition-colors ${config.classes} ${sizeClasses}`}
+      className={`inline-flex items-center border font-mono uppercase select-none transition-colors ${config.badgeClass} ${sizeClasses}`}
       title={`Tier: ${config.label}`}
     >
       {showIcon && <Icon className={`${iconSizes} shrink-0`} />}

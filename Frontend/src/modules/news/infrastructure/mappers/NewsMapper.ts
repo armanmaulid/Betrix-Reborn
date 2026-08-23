@@ -1,5 +1,5 @@
 import { NewsArticle } from '../../domain/entities/NewsArticle';
-import type { PaginatedResult } from '@shared/domain/types/Pagination';
+import { toDomainPaginated } from '@shared/domain/types/Pagination';
 
 export class NewsMapper {
   public static toDomain(dto: any): NewsArticle {
@@ -17,18 +17,7 @@ export class NewsMapper {
     });
   }
 
-  public static toDomainPaginated(paginatedDto: any): PaginatedResult<NewsArticle> {
-    const rawItems = Array.isArray(paginatedDto?.data) ? paginatedDto.data : [];
-    const meta = paginatedDto?.meta || {
-      page: 1,
-      limit: rawItems.length,
-      total: rawItems.length,
-      totalPages: 1
-    };
-
-    return {
-      data: rawItems.map(NewsMapper.toDomain),
-      meta
-    };
+  public static toDomainPaginated(paginatedDto: any) {
+    return toDomainPaginated(paginatedDto, NewsMapper.toDomain);
   }
 }

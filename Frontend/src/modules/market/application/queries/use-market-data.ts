@@ -1,11 +1,12 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { marketRepository } from '@market/infrastructure/repositories/HttpMarketRepository';
 import { marketKeys } from '@market/application/market.keys';
 import { MarketMapper } from '@market/infrastructure/mappers/MarketMapper';
-import type { MarketInstrument, StreamSymbolEntity } from '@market/domain/entities/MarketInstrument';
+import { useAdminMutation } from '@shared/application/useAdminMutation';
+import type { MarketInstrument, StreamSymbolEntity, OhlcSymbolEntity } from '@market/domain/entities/MarketInstrument';
 import type { PriceTick } from '@market/domain/value-objects/PriceTick';
 import { apiFetch } from '@shared/infrastructure/http/api-client';
 
@@ -18,26 +19,18 @@ export function useMarketSymbolsQuery(activeOnly: boolean = false) {
 }
 
 export function useSaveSymbolMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (symbolData: Partial<MarketInstrument> & { symbol: string }) =>
+  return useAdminMutation(
+    (symbolData: Partial<MarketInstrument> & { symbol: string }) =>
       marketRepository.saveSymbol(symbolData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: marketKeys.all });
-    }
-  });
+    [marketKeys.all]
+  );
 }
 
 export function useDeleteSymbolMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (symbol: string) => marketRepository.deleteSymbol(symbol),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: marketKeys.all });
-    }
-  });
+  return useAdminMutation(
+    (symbol: string) => marketRepository.deleteSymbol(symbol),
+    [marketKeys.all]
+  );
 }
 
 export function useStreamSymbolsQuery(activeOnly: boolean = false) {
@@ -49,26 +42,41 @@ export function useStreamSymbolsQuery(activeOnly: boolean = false) {
 }
 
 export function useSaveStreamSymbolMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (streamData: Partial<StreamSymbolEntity> & { symbol: string; finnhubSymbol: string }) =>
+  return useAdminMutation(
+    (streamData: Partial<StreamSymbolEntity> & { symbol: string; finnhubSymbol: string }) =>
       marketRepository.saveStreamSymbol(streamData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: marketKeys.all });
-    }
-  });
+    [marketKeys.all]
+  );
 }
 
 export function useDeleteStreamSymbolMutation() {
-  const queryClient = useQueryClient();
+  return useAdminMutation(
+    (symbol: string) => marketRepository.deleteStreamSymbol(symbol),
+    [marketKeys.all]
+  );
+}
 
-  return useMutation({
-    mutationFn: (symbol: string) => marketRepository.deleteStreamSymbol(symbol),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: marketKeys.all });
-    }
+export function useOhlcSymbolsQuery() {
+  return useQuery<OhlcSymbolEntity[]>({
+    queryKey: marketKeys.ohlcSymbols(),
+    queryFn: () => marketRepository.getOhlcSymbols(),
+    staleTime: 60 * 1000
   });
+}
+
+export function useSaveOhlcSymbolMutation() {
+  return useAdminMutation(
+    (data: { symbol: string; dukascopySymbol: string; description?: string; isActive?: boolean }) =>
+      marketRepository.saveOhlcSymbol(data),
+    [marketKeys.all]
+  );
+}
+
+export function useDeleteOhlcSymbolMutation() {
+  return useAdminMutation(
+    (symbol: string) => marketRepository.deleteOhlcSymbol(symbol),
+    [marketKeys.all]
+  );
 }
 
 export function useMarketPricesSnapshot() {
@@ -102,6 +110,9 @@ export function useRealtimeMarketStream() {
   useEffect(() => {
     let eventSource: EventSource | null = null;
     let isCancelled = false;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    let retryCount = 0;
+    const MAX_RETRY_DELAY = 30000;
 
     const connectStream = async () => {
       try {
@@ -113,7 +124,10 @@ export function useRealtimeMarketStream() {
         eventSource = new EventSource(`/api/stream/market?ticket=${encodeURIComponent(ticket)}`);
 
         eventSource.onopen = () => {
-          if (!isCancelled) setIsConnected(true);
+          if (!isCancelled) {
+            setIsConnected(true);
+            retryCount = 0;
+          }
         };
 
         const handleTickMessage = (event: MessageEvent) => {
@@ -137,10 +151,23 @@ export function useRealtimeMarketStream() {
         eventSource.addEventListener('price:tick', handleTickMessage as EventListener);
 
         eventSource.onerror = () => {
-          if (!isCancelled) setIsConnected(false);
+          if (isCancelled) return;
+          setIsConnected(false);
+          eventSource?.close();
+          const delay = Math.min(1000 * Math.pow(2, retryCount), MAX_RETRY_DELAY);
+          retryCount++;
+          retryTimeout = setTimeout(() => {
+            if (!isCancelled) connectStream();
+          }, delay);
         };
       } catch {
-        if (!isCancelled) setIsConnected(false);
+        if (isCancelled) return;
+        setIsConnected(false);
+        const delay = Math.min(1000 * Math.pow(2, retryCount), MAX_RETRY_DELAY);
+        retryCount++;
+        retryTimeout = setTimeout(() => {
+          if (!isCancelled) connectStream();
+        }, delay);
       }
     };
 
@@ -148,9 +175,8 @@ export function useRealtimeMarketStream() {
 
     return () => {
       isCancelled = true;
-      if (eventSource) {
-        eventSource.close();
-      }
+      if (retryTimeout) clearTimeout(retryTimeout);
+      if (eventSource) eventSource.close();
     };
   }, []);
 
