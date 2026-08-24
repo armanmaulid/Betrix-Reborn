@@ -20,12 +20,12 @@ export class HttpOperationsRepository implements IOperationsRepository {
     return AuditLogMapper.toDomainPaginated(res);
   }
 
-  async broadcastMessage(input: BroadcastMessageInput): Promise<{ messageId: string; deliveredCount: number }> {
-    const res = await this.http.post<{ data: { messageId: string; deliveredCount: number } }>(
+  async broadcastMessage(input: BroadcastMessageInput): Promise<{ recipientsCount: number }> {
+    const res = await this.http.post<{ data: { recipientsCount: number } }>(
       '/api/admin/broadcast',
       input
     );
-    return res.data;
+    return { recipientsCount: res.data?.recipientsCount ?? 0 };
   }
 
   async getWorkers(): Promise<BackgroundWorker[]> {
@@ -41,12 +41,19 @@ export class HttpOperationsRepository implements IOperationsRepository {
     return AuditLogMapper.toWorkerDomain(unwrapData(res));
   }
 
-  async runSystemCleanup(input: SystemCleanupInput): Promise<{ deletedRows: number }> {
-    const res = await this.http.post<{ data: { deletedRows: number } }>(
-      '/api/admin/maintenance/cleanup',
-      input
-    );
-    return res.data ?? { deletedRows: 0 };
+  async runSystemCleanup(input: SystemCleanupInput): Promise<{
+    expiredSessionsDeleted: number;
+    expiredTokensDeleted: number;
+    oldLoginAttemptsDeleted: number;
+  }> {
+    const res = await this.http.post<{
+      data: {
+        expiredSessionsDeleted: number;
+        expiredTokensDeleted: number;
+        oldLoginAttemptsDeleted: number;
+      };
+    }>('/api/admin/cleanup', input);
+    return res.data ?? { expiredSessionsDeleted: 0, expiredTokensDeleted: 0, oldLoginAttemptsDeleted: 0 };
   }
 }
 

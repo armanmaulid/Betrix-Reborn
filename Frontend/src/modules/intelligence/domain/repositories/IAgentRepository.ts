@@ -42,6 +42,10 @@ export interface AgentTestResult {
   };
 }
 
+export interface TestAgentOptions {
+  signal?: AbortSignal;
+}
+
 export interface IAgentRepository {
   getAgents(): Promise<AiAgent[]>;
   getAgentById(id: string): Promise<AiAgent>;
@@ -49,5 +53,5 @@ export interface IAgentRepository {
   updateAgent(id: string, input: UpdateAgentInput): Promise<AiAgent>;
   setDefaultAgent(id: string): Promise<void>;
   deleteAgent(id: string): Promise<void>;
-  testAgent(id: string, payload: AgentTestPayload): Promise<AgentTestResult>;
+  testAgent(id: string, payload: AgentTestPayload, options?: TestAgentOptions): Promise<AgentTestResult>;
 }

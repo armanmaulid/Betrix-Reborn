@@ -3,6 +3,8 @@
 import type { SystemCleanupInput } from '@/modules/operations/application/schemas/admin.schema';
 import { apiFetch } from '@shared/infrastructure/http/api-client';
 import { useAdminMutation } from '@shared/application/useAdminMutation';
+import { operationsKeys } from '@operations/application/operations.keys';
+import { analyticsKeys } from '@analytics/application/analytics.keys';
 
 export interface CleanupResult {
   expiredSessionsDeleted: number;
@@ -19,6 +21,6 @@ export function useCleanupMutation() {
       });
       return json.data || json;
     },
-    [['admin', 'metrics'], ['admin', 'audit-logs']]
+    [operationsKeys.auditLogs(), operationsKeys.workers(), analyticsKeys.metrics()]
   );
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL } from '@/lib/server-auth';
-import { requireAdminToken } from '@/app/api/proxy-utils';
+import { requireAdminToken, sanitizePathSegments } from '@/app/api/proxy-utils';
 import { sanitizeBackendResponse } from '@/shared/infrastructure/http/api-client';
 
 async function handleProxy(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
@@ -10,7 +10,14 @@ async function handleProxy(request: NextRequest, { params }: { params: Promise<{
     if (tokenOrResponse instanceof NextResponse) return tokenOrResponse;
     const token = tokenOrResponse;
 
-    const subPath = path.join('/');
+    const safePath = sanitizePathSegments(path);
+    if (safePath === null || safePath.length === 0) {
+      return NextResponse.json(
+        { success: false, error: { message: 'Bad request: invalid path' } },
+        { status: 400 }
+      );
+    }
+    const subPath = safePath.join('/');
     const searchParams = request.nextUrl.searchParams.toString();
     const targetUrl = `${BACKEND_URL}/admin/${subPath}${searchParams ? `?${searchParams}` : ''}`;
 

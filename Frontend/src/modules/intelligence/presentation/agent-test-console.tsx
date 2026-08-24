@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Terminal,
   Play,
@@ -43,6 +43,8 @@ const PRESET_PROMPTS = [
   }
 ];
 
+const INFERENCE_TIMEOUT_MS = 60000;
+
 export function AgentTestConsole({ agent }: AgentTestConsoleProps) {
   const { success, error } = useToast();
   const { isCopied, copy } = useCopyFeedback();
@@ -57,7 +59,19 @@ export function AgentTestConsole({ agent }: AgentTestConsoleProps) {
 
   const [testResult, setTestResult] = useState<AgentTestResult | null>(null);
 
+  const abortRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      abortRef.current?.abort();
+    };
+  }, []);
+
   const handleRunTest = async () => {
+    if (testMutation.isPending) return;
     if (!message.trim()) {
       error('PROMPT REQUIRED', 'Please enter a test prompt message before running inference.');
       return;
@@ -71,21 +85,46 @@ export function AgentTestConsole({ agent }: AgentTestConsoleProps) {
         maxTokensOverride
       });
 
-      const result = await testMutation.mutateAsync({
-        id: agent.id,
-        payload: validatedPayload
-      });
-      setTestResult(result);
-      success('INFERENCE COMPLETE', `Model responded in ${result.usage.latencyMs}ms (${result.usage.totalTokens} tokens).`);
+      const controller = new AbortController();
+      abortRef.current = controller;
+      let timedOut = false;
+      const timeoutId = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, INFERENCE_TIMEOUT_MS);
+
+      try {
+        const result = await testMutation.mutateAsync({
+          id: agent.id,
+          payload: validatedPayload,
+          signal: controller.signal
+        });
+        if (!isMountedRef.current) return;
+        setTestResult(result);
+        success('INFERENCE COMPLETE', `Model responded in ${result.usage.latencyMs}ms (${result.usage.totalTokens} tokens).`);
+      } finally {
+        clearTimeout(timeoutId);
+        if (abortRef.current === controller) abortRef.current = null;
+      }
     } catch (err: any) {
-      error('TEST INFERENCE FAILED', err.message || 'Unable to complete test inference.');
+      if (!isMountedRef.current) return;
+      const isAbort = err?.name === 'AbortError' || err?.name === 'CanceledError';
+      if (isAbort) {
+        error('INFERENCE ABORTED', 'The test request was cancelled or timed out after 60s.');
+      } else {
+        error('TEST INFERENCE FAILED', err.message || 'Unable to complete test inference.');
+      }
     }
+  };
+
+  const handleAbortTest = () => {
+    abortRef.current?.abort();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
-      handleRunTest();
+      void handleRunTest();
     }
   };
 
@@ -287,6 +326,13 @@ export function AgentTestConsole({ agent }: AgentTestConsoleProps) {
           <div className="text-[10px] text-muted-foreground">
             Model: {agent.modelName} // Awaiting completion tokens
           </div>
+          <button
+            type="button"
+            onClick={handleAbortTest}
+            className="mt-2 px-3 py-1.5 border border-negative/40 bg-negative/10 hover:bg-negative hover:text-white text-negative text-[10px] font-bold uppercase tracking-wider transition-colors"
+          >
+            ABORT REQUEST
+          </button>
         </div>
       )}
 

@@ -4,6 +4,35 @@ import { BACKEND_URL, verifySession, getSessionToken } from '@/lib/server-auth';
 import { sanitizeBackendResponse } from '@/shared/infrastructure/http/api-client';
 
 /**
+ * Sanitize catch-all path segments before they are joined into an upstream URL.
+ * Rejects empty segments, dot-segments ('.', '..'), encoded traversal leftovers,
+ * and anything outside the conservative URL-safe whitelist so that a crafted
+ * path can never escape the configured prefix boundary on the backend.
+ *
+ * Returns null when a segment fails validation (caller must respond 400).
+ */
+const SAFE_SEGMENT_RE = /^[A-Za-z0-9._~-]+$/;
+
+export function sanitizePathSegments(segments: string[]): string[] | null {
+  if (!segments || segments.length === 0) return [];
+  const safe: string[] = [];
+  for (const raw of segments) {
+    let seg: string;
+    try {
+      // Catch-all params arrive decoded once; decode again to expose
+      // double-encoded payloads like '%252e%252e'.
+      seg = decodeURIComponent(raw);
+    } catch {
+      return null;
+    }
+    if (!seg || seg === '.' || seg === '..') return null;
+    if (!SAFE_SEGMENT_RE.test(seg)) return null;
+    safe.push(seg);
+  }
+  return safe;
+}
+
+/**
  * Require a valid admin session token. Returns the token string or sends a 401 response.
  * Used by admin proxy and shared proxy helpers.
  */
@@ -90,7 +119,14 @@ async function forwardGet(
   token: string,
   pathSegments?: string[]
 ): Promise<NextResponse> {
-  const subPath = pathSegments?.length ? `/${pathSegments.join('/')}` : '';
+  const safeSegments = sanitizePathSegments(pathSegments ?? []);
+  if (safeSegments === null) {
+    return NextResponse.json(
+      { success: false, error: { message: 'Bad request: invalid path' } },
+      { status: 400 }
+    );
+  }
+  const subPath = safeSegments.length ? `/${safeSegments.join('/')}` : '';
   const searchParams = request.nextUrl.searchParams.toString();
   const targetUrl = `${BACKEND_URL}/${prefix}${subPath}${searchParams ? `?${searchParams}` : ''}`;
 

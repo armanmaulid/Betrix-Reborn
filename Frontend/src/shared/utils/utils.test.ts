@@ -52,7 +52,7 @@ describe('Utility Functions (Frontend/lib/utils.ts)', () => {
       const stats = getDbPoolStats(undefined, undefined);
       expect(stats.active).toBe(0);
       expect(stats.idle).toBe(0);
-      expect(stats.total).toBe(20);
+      expect(stats.total).toBe(0);
       expect(stats.usagePct).toBe(0);
     });
   });
@@ -100,7 +100,7 @@ describe('Utility Functions (Frontend/lib/utils.ts)', () => {
     it('should handle empty workers array safely', () => {
       const stats = getWorkerStats([]);
       expect(stats.running).toBe(0);
-      expect(stats.total).toBe(4);
+      expect(stats.total).toBe(0);
       expect(stats.isWsLive).toBe(false);
       expect(stats.wsWorker).toBeUndefined();
     });

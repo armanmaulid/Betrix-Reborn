@@ -52,7 +52,11 @@ export function useDeleteAgentMutation() {
 
 export function useTestAgentMutation() {
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: AgentTestPayload }) =>
-      agentRepository.testAgent(id, payload)
+    mutationFn: ({
+      id,
+      payload,
+      signal
+    }: { id: string; payload: AgentTestPayload; signal?: AbortSignal }) =>
+      agentRepository.testAgent(id, payload, { signal })
   });
 }

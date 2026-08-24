@@ -44,17 +44,34 @@ describe('Operations Infrastructure: AuditLogMapper & HttpOperationsRepository',
   });
 
   it('should broadcast message via HttpOperationsRepository', async () => {
-    vi.spyOn(mockHttpClient, 'post').mockResolvedValue({
-      data: { messageId: 'msg-123', deliveredCount: 50 }
+    const postSpy = vi.spyOn(mockHttpClient, 'post').mockResolvedValue({
+      data: { success: true, recipientsCount: 50 }
     });
 
     const res = await opsRepo.broadcastMessage({
-      title: 'Scheduled Maintenance',
+      subject: 'Scheduled Maintenance',
       body: 'Maintenance starting in 1 hour.',
-      severity: 'warning'
+      targetUserIds: ['usr-1', 'usr-2']
     });
 
-    expect(res.messageId).toBe('msg-123');
-    expect(res.deliveredCount).toBe(50);
+    expect(postSpy).toHaveBeenCalledWith('/api/admin/broadcast', {
+      subject: 'Scheduled Maintenance',
+      body: 'Maintenance starting in 1 hour.',
+      targetUserIds: ['usr-1', 'usr-2']
+    });
+    expect(res.recipientsCount).toBe(50);
+  });
+
+  it('should run system cleanup against the real backend contract', async () => {
+    const postSpy = vi.spyOn(mockHttpClient, 'post').mockResolvedValue({
+      data: { expiredSessionsDeleted: 12, expiredTokensDeleted: 34, oldLoginAttemptsDeleted: 56 }
+    });
+
+    const res = await opsRepo.runSystemCleanup({ olderThanDays: 30 });
+
+    expect(postSpy).toHaveBeenCalledWith('/api/admin/cleanup', { olderThanDays: 30 });
+    expect(res.expiredSessionsDeleted).toBe(12);
+    expect(res.expiredTokensDeleted).toBe(34);
+    expect(res.oldLoginAttemptsDeleted).toBe(56);
   });
 });

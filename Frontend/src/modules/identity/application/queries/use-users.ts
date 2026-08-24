@@ -62,7 +62,6 @@ export function useResetPasswordMutation() {
       userRepository.resetPassword(id, data?.newPassword),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: identityKeys.userDetail(id) });
-      queryClient.invalidateQueries({ queryKey: ['admin'] });
     }
   });
 }

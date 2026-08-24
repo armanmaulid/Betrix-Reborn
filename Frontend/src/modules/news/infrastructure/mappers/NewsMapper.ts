@@ -9,7 +9,7 @@ export class NewsMapper {
       headline: dto.headline || '',
       url: dto.url || '#',
       summary: dto.summary || '',
-      datetime: dto.datetime || Date.now(),
+      datetime: dto.datetime,
       category: dto.category || 'general',
       tags: dto.tags || [],
       image: dto.image,

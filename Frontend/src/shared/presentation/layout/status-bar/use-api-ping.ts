@@ -28,7 +28,8 @@ export function useApiPing(intervalMs: number = 30000) {
       clearTimeout(timeoutId);
       const latency = Math.round(performance.now() - start);
 
-      if (!controller.signal.aborted) {
+      // Apply result only if this ping is still the latest one.
+      if (abortControllerRef.current === controller) {
         if (res.ok) {
           setApiStatus('online');
           setLatencyMs(latency);
@@ -39,7 +40,10 @@ export function useApiPing(intervalMs: number = 30000) {
       }
     } catch {
       clearTimeout(timeoutId);
-      if (!controller.signal.aborted) {
+      const isSuperseded = abortControllerRef.current !== controller;
+      if (!isSuperseded) {
+        // This controller is still current: either a network error or our own
+        // 6s hard timeout fired — both mean the backend is unreachable.
         setApiStatus('offline');
         setLatencyMs(null);
       }
@@ -69,9 +73,11 @@ export function useApiPing(intervalMs: number = 30000) {
     return () => {
       if (timer) clearInterval(timer);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      // Null the ref first so the aborted ping's catch block treats itself as
+      // superseded and does not flip the status after unmount.
+      const current = abortControllerRef.current;
+      abortControllerRef.current = null;
+      current?.abort();
     };
   }, [intervalMs, pingApi]);
 

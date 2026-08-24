@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { marketRepository } from '@market/infrastructure/repositories/HttpMarketRepository';
 import { marketKeys } from '@market/application/market.keys';
 import { MarketMapper } from '@market/infrastructure/mappers/MarketMapper';
@@ -92,19 +92,24 @@ export function useMarketPricesSnapshot() {
 export function useRealtimeMarketStream() {
   const { data: initialPrices = [], isLoading: isSnapshotLoading } = useMarketPricesSnapshot();
   const [livePrices, setLivePrices] = useState<Map<string, PriceTick>>(new Map());
+  // Connectivity is owned exclusively by the SSE lifecycle — a REST snapshot
+  // response says nothing about the stream and must not flip this flag.
   const [isConnected, setIsConnected] = useState(false);
+  // Symbols that have received at least one live SSE tick. The REST snapshot
+  // must never overwrite them (its data may be older than the last tick).
+  const liveSymbolsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (initialPrices && initialPrices.length > 0) {
-      setLivePrices((prev) => {
-        const next = new Map(prev);
-        for (const p of initialPrices) {
-          next.set(p.symbol.toUpperCase(), p);
-        }
-        return next;
-      });
-      setIsConnected(true);
-    }
+    if (!initialPrices || initialPrices.length === 0) return;
+    setLivePrices((prev) => {
+      const next = new Map(prev);
+      for (const p of initialPrices) {
+        const sym = p.symbol.toUpperCase();
+        if (liveSymbolsRef.current.has(sym)) continue;
+        next.set(sym, p);
+      }
+      return next;
+    });
   }, [initialPrices]);
 
   useEffect(() => {
@@ -135,6 +140,7 @@ export function useRealtimeMarketStream() {
             const payload = JSON.parse(event.data);
             if (payload && (payload.symbol || payload.s)) {
               const sym = (payload.symbol || payload.s).toUpperCase();
+              liveSymbolsRef.current.add(sym);
               setLivePrices((prev) => {
                 const next = new Map(prev);
                 const existing = next.get(sym);
@@ -153,6 +159,8 @@ export function useRealtimeMarketStream() {
         eventSource.onerror = () => {
           if (isCancelled) return;
           setIsConnected(false);
+          // Let the REST snapshot resume refreshing values until the stream returns.
+          liveSymbolsRef.current.clear();
           eventSource?.close();
           const delay = Math.min(1000 * Math.pow(2, retryCount), MAX_RETRY_DELAY);
           retryCount++;

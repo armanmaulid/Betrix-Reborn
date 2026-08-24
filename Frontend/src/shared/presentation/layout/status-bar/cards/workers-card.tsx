@@ -11,14 +11,15 @@ interface WorkersCardProps {
 }
 
 export const WorkersCard = React.memo(function WorkersCard({ onClose }: WorkersCardProps) {
-  const { data: workers = [] } = useWorkersQuery(10000);
+  const { data: workers = [], isLoading, isError } = useWorkersQuery(10000);
   const { running, total } = getWorkerStats(workers);
+  const isUnreachable = isError || (!isLoading && workers.length === 0);
 
   return (
     <div className="border border-border bg-surface p-3 space-y-2">
       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
         <span className="flex items-center gap-1">
-          <Wrench className="w-3 h-3 text-positive" />
+          <Wrench className={`w-3 h-3 ${isUnreachable ? 'text-negative' : 'text-positive'}`} />
           WORKERS ({running}/{total})
         </span>
         <Link
@@ -29,8 +30,14 @@ export const WorkersCard = React.memo(function WorkersCard({ onClose }: WorkersC
           [MANAGE]
         </Link>
       </div>
-      <div className="text-base font-bold text-positive tabular-nums">
-        {running} <span className="text-xs text-muted-foreground font-normal">/ {total} Running</span>
+      <div className={`text-base font-bold tabular-nums ${isUnreachable ? 'text-negative' : 'text-positive'}`}>
+        {isUnreachable ? (
+          <span className="text-xs">WORKER STATUS UNAVAILABLE</span>
+        ) : (
+          <>
+            {running} <span className="text-xs text-muted-foreground font-normal">/ {total} Running</span>
+          </>
+        )}
       </div>
       <div className="space-y-1 pt-1 border-t border-border/40 text-[10px]">
         {workers.slice(0, 3).map((w) => (

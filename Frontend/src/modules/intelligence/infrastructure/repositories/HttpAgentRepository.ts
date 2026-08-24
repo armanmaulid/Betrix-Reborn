@@ -3,7 +3,8 @@ import type {
   CreateAgentInput,
   UpdateAgentInput,
   AgentTestPayload,
-  AgentTestResult
+  AgentTestResult,
+  TestAgentOptions
 } from '../../domain/repositories/IAgentRepository';
 import { AiAgent } from '../../domain/entities/AiAgent';
 import { AgentMapper } from '../mappers/AgentMapper';
@@ -40,10 +41,11 @@ export class HttpAgentRepository implements IAgentRepository {
     await this.client.delete(`/api/admin/agents/${encodeURIComponent(id)}`);
   }
 
-  async testAgent(id: string, payload: AgentTestPayload): Promise<AgentTestResult> {
+  async testAgent(id: string, payload: AgentTestPayload, options?: TestAgentOptions): Promise<AgentTestResult> {
     const res = await this.client.post<{ data: AgentTestResult }>(
       `/api/admin/agents/${encodeURIComponent(id)}/test`,
-      payload
+      payload,
+      { signal: options?.signal }
     );
     return res.data;
   }

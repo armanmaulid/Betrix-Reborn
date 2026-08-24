@@ -3,6 +3,7 @@
 import type { BroadcastMessageInput } from '@/modules/operations/application/schemas/admin.schema';
 import { apiFetch } from '@shared/infrastructure/http/api-client';
 import { useAdminMutation } from '@shared/application/useAdminMutation';
+import { operationsKeys } from '@operations/application/operations.keys';
 
 export interface BroadcastResponse {
   recipientsCount: number;
@@ -18,6 +19,6 @@ export function useBroadcastMutation() {
       });
       return json.data || json;
     },
-    [['admin', 'audit-logs']]
+    [operationsKeys.auditLogs()]
   );
 }

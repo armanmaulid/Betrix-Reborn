@@ -21,8 +21,10 @@ export interface DbPoolStats {
 export function getDbPoolStats(active?: number, idle?: number): DbPoolStats {
   const safeActive = active ?? 0;
   const safeIdle = idle ?? 0;
-  const total = safeActive + safeIdle || 20;
-  const usagePct = Math.round((safeActive / (total || 1)) * 100);
+  // No fabricated pool limit — missing metrics must surface as zero/unknown
+  // ("0 / 0"), never as a plausible-looking idle pool like "0 / 20".
+  const total = safeActive + safeIdle;
+  const usagePct = total > 0 ? Math.round((safeActive / total) * 100) : 0;
   return { active: safeActive, idle: safeIdle, total, usagePct };
 }
 
@@ -35,7 +37,8 @@ export interface WorkerStats {
 
 export function getWorkerStats(workers: (BackgroundWorker | any)[] = []): WorkerStats {
   const running = workers.filter((w) => w.status === 'running').length;
-  const total = workers.length || 4;
+  // No fabricated default count — an empty/failed fetch means unknown (0).
+  const total = workers.length;
   const wsWorker = workers.find((w) => w.id === 'finnhub-realtime-ws' || w.category === 'market');
   const isWsLive = wsWorker?.status === 'running';
   return { running, total, wsWorker, isWsLive };

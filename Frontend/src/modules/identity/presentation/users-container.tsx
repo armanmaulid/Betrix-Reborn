@@ -22,9 +22,7 @@ export function UsersContainer() {
   const [limit, setLimit] = useState(25);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'active' | 'suspended' | 'banned' | 'all'>('all');
   const [tierFilter, setTierFilter] = useState<UserTierLevel | 'all'>('all');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
 
   // Modal states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -47,9 +45,7 @@ export function UsersContainer() {
     page,
     limit,
     search: debouncedSearch || undefined,
-    status: statusFilter !== 'all' ? statusFilter : undefined,
-    tier: tierFilter !== 'all' ? tierFilter : undefined,
-    isAdmin: roleFilter === 'admin' ? true : roleFilter === 'user' ? false : undefined
+    tier: tierFilter !== 'all' ? tierFilter : undefined
   };
 
   const { data, isLoading, isError, isRefetching, refetch } = useUsersQuery(queryParams);
@@ -125,18 +121,6 @@ export function UsersContainer() {
             <span>FILTER:</span>
           </div>
 
-          {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }}
-            className="bg-surface border border-border px-2 py-1 text-xs text-foreground focus:outline-none focus:border-accent"
-          >
-            <option value="all">ALL STATUSES</option>
-            <option value="active">ACTIVE ONLY</option>
-            <option value="suspended">SUSPENDED ONLY</option>
-            <option value="banned">BANNED ONLY</option>
-          </select>
-
           {/* Tier Filter */}
           <select
             value={tierFilter}
@@ -149,17 +133,6 @@ export function UsersContainer() {
             <option value="pro">PRO</option>
             <option value="premium">PREMIUM</option>
             <option value="vip">VIP</option>
-          </select>
-
-          {/* Role Filter */}
-          <select
-            value={roleFilter}
-            onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
-            className="bg-surface border border-border px-2 py-1 text-xs text-foreground focus:outline-none focus:border-accent"
-          >
-            <option value="all">ALL ROLES</option>
-            <option value="admin">ADMINS ONLY</option>
-            <option value="user">STANDARD TRADERS</option>
           </select>
         </div>
 

@@ -1,24 +1,22 @@
 import { MarketInstrument, StreamSymbolEntity, OhlcSymbolEntity } from '../../domain/entities/MarketInstrument';
-import { PriceTick } from '../../domain/value-objects/PriceTick';
+import { PriceTick, coerceFinite } from '../../domain/value-objects/PriceTick';
 
 export class MarketMapper {
   public static toPriceTick(dto: any, existing?: Partial<PriceTick>): PriceTick {
     const symbol = (dto.symbol || dto.s || '').toUpperCase();
-    const rawPrice = Number(dto.p ?? 0);
-    const bid = Number(dto.bid ?? (rawPrice > 0 ? rawPrice : existing?.bid ?? 0));
-    const ask = Number(dto.ask ?? (rawPrice > 0 ? rawPrice : existing?.ask ?? 0));
-    const spread = dto.spread ?? Math.max(0, ask - bid);
-    const change24hPercent = Number(dto.change24hPercent ?? dto.c24p ?? existing?.change24hPercent ?? 0);
+    const rawPrice = coerceFinite(dto.p, 0);
+    const bidFallback = rawPrice > 0 ? rawPrice : coerceFinite(existing?.bid, 0);
+    const askFallback = rawPrice > 0 ? rawPrice : coerceFinite(existing?.ask, 0);
 
     return new PriceTick({
       symbol,
-      bid,
-      ask,
-      spread,
-      change24h: Number(dto.change24h ?? existing?.change24h ?? 0),
-      change24hPercent,
-      volume: Number(dto.volume24h ?? dto.v ?? existing?.volume ?? 0),
-      timestamp: dto.timestamp ?? dto.t ?? Date.now()
+      bid: coerceFinite(dto.bid, bidFallback),
+      ask: coerceFinite(dto.ask, askFallback),
+      spread: coerceFinite(dto.spread, Math.max(0, coerceFinite(dto.ask, askFallback) - coerceFinite(dto.bid, bidFallback))),
+      change24h: coerceFinite(dto.change24h ?? existing?.change24h, 0),
+      change24hPercent: coerceFinite(dto.change24hPercent ?? dto.c24p ?? existing?.change24hPercent, 0),
+      volume: coerceFinite(dto.volume24h ?? dto.v ?? existing?.volume, 0),
+      timestamp: coerceFinite(dto.timestamp ?? dto.t, 0) || Date.now()
     });
   }
 

@@ -8,6 +8,7 @@ import { BroadcastMessageSchema, type BroadcastMessageInput } from '@/modules/op
 import { useBroadcastMutation, type BroadcastResponse } from '@/modules/operations/application/queries/use-broadcast';
 import { useUsersQuery } from '@/modules/identity/application/queries/use-users';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
+import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-confirm-dialog';
 import { formatFinancialNumber } from '@/shared/utils';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
 import type { User } from '@identity/domain/entities/User';
@@ -22,6 +23,7 @@ export function BroadcastContainer() {
   const [userSearch, setUserSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [lastResult, setLastResult] = useState<BroadcastResponse | null>(null);
+  const [pendingBroadcast, setPendingBroadcast] = useState<BroadcastMessageInput | null>(null);
 
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(userSearch), 350);
@@ -62,20 +64,9 @@ export function BroadcastContainer() {
     setSelectedUsers((prev) => prev.filter((x) => x.id !== id));
   };
 
-  const onSubmit = async (data: BroadcastMessageInput) => {
-    if (targetMode === 'SPECIFIC' && selectedUsers.length === 0) {
-      error('RECIPIENTS REQUIRED', 'Please select at least one trader account to send a targeted broadcast.');
-      return;
-    }
-
+  const dispatchBroadcast = async (data: BroadcastMessageInput) => {
     try {
-      const payload: BroadcastMessageInput = {
-        subject: data.subject,
-        body: data.body,
-        targetUserIds: targetMode === 'SPECIFIC' ? selectedUsers.map((u) => u.id) : undefined
-      };
-
-      const result = await broadcastMutation.mutateAsync(payload);
+      const result = await broadcastMutation.mutateAsync(data);
       setLastResult(result);
       success(
         'TRANSMISSION BROADCASTED',
@@ -88,6 +79,29 @@ export function BroadcastContainer() {
       error('TRANSMISSION FAILED', err.message || 'Unable to broadcast message.');
     }
   };
+
+  const onSubmit = async (data: BroadcastMessageInput) => {
+    if (targetMode === 'SPECIFIC' && selectedUsers.length === 0) {
+      error('RECIPIENTS REQUIRED', 'Please select at least one trader account to send a targeted broadcast.');
+      return;
+    }
+
+    const payload: BroadcastMessageInput = {
+      subject: data.subject,
+      body: data.body,
+      targetUserIds: targetMode === 'SPECIFIC' ? selectedUsers.map((u) => u.id) : undefined
+    };
+
+    // Global blast is irreversible — require an explicit type-to-confirm step.
+    if (targetMode === 'ALL') {
+      setPendingBroadcast(payload);
+      return;
+    }
+    await dispatchBroadcast(payload);
+  };
+
+  const handleConfirmGlobalBroadcast = () =>
+    pendingBroadcast ? dispatchBroadcast(pendingBroadcast).then(() => setPendingBroadcast(null)) : undefined;
 
   return (
     <div className="space-y-6 font-mono">
@@ -341,6 +355,17 @@ export function BroadcastContainer() {
           </div>
         </div>
       </div>
+
+      <DestructiveConfirmDialog
+        isOpen={pendingBroadcast !== null}
+        onClose={() => setPendingBroadcast(null)}
+        onConfirm={handleConfirmGlobalBroadcast}
+        title="DISPATCH BROADCAST TO ALL USERS?"
+        description="This transmission will be pushed to every registered account on the platform. It cannot be recalled once dispatched."
+        targetIdentifier="ALL USERS"
+        confirmButtonText="DISPATCH TO ALL"
+        isLoading={broadcastMutation.isPending}
+      />
     </div>
   );
 }

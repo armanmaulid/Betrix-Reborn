@@ -5,25 +5,27 @@ import type { PaginatedResult, PaginationQueryParams } from '@shared/domain/type
 export interface AuditLogQueryParams extends PaginationQueryParams {
   userId?: string;
   action?: string;
-  resource?: string;
+  actionType?: string;
 }
 
 export interface BroadcastMessageInput {
-  title: string;
+  subject: string;
   body: string;
-  severity?: 'info' | 'warning' | 'urgent';
-  targetTiers?: string[];
+  targetUserIds?: string[];
 }
 
 export interface SystemCleanupInput {
-  table: 'chat_messages' | 'audit_logs' | 'news_articles' | 'price_ticks' | 'all';
-  olderThanDays: number;
+  olderThanDays?: number;
 }
 
 export interface IOperationsRepository {
   getAuditLogs(params?: AuditLogQueryParams): Promise<PaginatedResult<AuditLog>>;
-  broadcastMessage(input: BroadcastMessageInput): Promise<{ messageId: string; deliveredCount: number }>;
+  broadcastMessage(input: BroadcastMessageInput): Promise<{ recipientsCount: number }>;
   getWorkers(): Promise<BackgroundWorker[]>;
   controlWorker(workerId: string, action: WorkerAction): Promise<BackgroundWorker>;
-  runSystemCleanup(input: SystemCleanupInput): Promise<{ deletedRows: number }>;
+  runSystemCleanup(input: SystemCleanupInput): Promise<{
+    expiredSessionsDeleted: number;
+    expiredTokensDeleted: number;
+    oldLoginAttemptsDeleted: number;
+  }>;
 }

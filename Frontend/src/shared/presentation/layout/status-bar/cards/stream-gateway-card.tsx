@@ -13,8 +13,9 @@ interface StreamGatewayCardProps {
 export const StreamGatewayCard = React.memo(function StreamGatewayCard({
   onClose
 }: StreamGatewayCardProps) {
-  const { data: workers = [] } = useWorkersQuery(10000);
+  const { data: workers = [], isLoading, isError } = useWorkersQuery(10000);
   const { isWsLive, wsWorker } = getWorkerStats(workers);
+  const isUnknown = isError || (!isLoading && workers.length === 0);
 
   return (
     <div className="border border-border bg-surface p-3 space-y-2">
@@ -31,8 +32,8 @@ export const StreamGatewayCard = React.memo(function StreamGatewayCard({
           [SYMBOLS]
         </Link>
       </div>
-      <div className="text-base font-bold text-info tabular-nums">
-        {isWsLive ? 'LIVE SSE HUB' : 'OFFLINE'}
+      <div className={`text-base font-bold tabular-nums ${isUnknown ? 'text-muted-foreground' : 'text-info'}`}>
+        {isUnknown ? 'STATUS UNKNOWN' : isWsLive ? 'LIVE SSE HUB' : 'OFFLINE'}
       </div>
       <div className="text-[10px] text-muted-foreground space-y-0.5 pt-1 border-t border-border/50">
         <div className="flex justify-between">
