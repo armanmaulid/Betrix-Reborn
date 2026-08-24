@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 export const BASE_TITLE = 'BETRIX // ADMIN TERMINAL';
 
@@ -13,20 +13,9 @@ export function formatPageTitle(subTitle?: string): string {
 }
 
 export function usePageTitle(subTitle?: string) {
-  const currentTitleRef = useRef<string>('');
-
   useEffect(() => {
-    const formatted = formatPageTitle(subTitle);
-    currentTitleRef.current = formatted;
-
     if (typeof document !== 'undefined') {
-      document.title = formatted;
+      document.title = formatPageTitle(subTitle);
     }
-
-    return () => {
-      if (typeof document !== 'undefined' && document.title === currentTitleRef.current) {
-        // Leave intact to avoid brief flash during route transitions
-      }
-    };
   }, [subTitle]);
 }

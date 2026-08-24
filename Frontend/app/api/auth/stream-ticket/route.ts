@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { BACKEND_URL } from '@/lib/server-auth';
+import { getSessionToken, verifySession, BACKEND_URL } from '@/lib/server-auth';
 import { sanitizeBackendResponse } from '@/shared/infrastructure/http/api-client';
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('betrix_admin_token')?.value;
+    const token = await getSessionToken();
+    const user = await verifySession(token);
 
-    if (!token) {
+    if (!user) {
       return NextResponse.json(
         { success: false, error: { message: 'Authentication required for SSE stream.' } },
         { status: 401 }

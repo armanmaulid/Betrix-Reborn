@@ -94,22 +94,24 @@ function LoginForm() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
+        const resultError = result?.error ?? {};
+
         // Check for 428 Precondition Required (CAPTCHA required)
-        if (response.status === 428 || result.error?.captchaId) {
+        if (response.status === 428 || resultError.captchaId) {
           setCaptchaData({
-            id: result.error.captchaId || 'captcha-req',
-            question: result.error.message || 'Math Challenge Required'
+            id: resultError.captchaId || 'captcha-req',
+            question: resultError.message || 'Math Challenge Required'
           });
-          setValue('captchaId', result.error.captchaId);
+          setValue('captchaId', resultError.captchaId || 'captcha-req');
         }
 
         // Check for progressive delay
-        if (result.error?.delayMs) {
-          const seconds = Math.ceil(result.error.delayMs / 1000);
+        if (resultError.delayMs) {
+          const seconds = Math.ceil(resultError.delayMs / 1000);
           setCooldownSeconds(seconds);
         }
 
-        setErrorMessage(result.error?.message || 'Authentication failed. Please verify credentials.');
+        setErrorMessage(resultError.message || 'Authentication failed. Please verify credentials.');
         return;
       }
 

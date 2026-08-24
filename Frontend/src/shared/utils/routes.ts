@@ -114,5 +114,7 @@ export const ADMIN_ROUTES: RouteDefinition[] = [
 ];
 
 export const ROUTE_SHORTCUT_MAP: Record<string, string> = Object.fromEntries(
-  ADMIN_ROUTES.map((r) => [r.shortcutKey, r.href])
+  ADMIN_ROUTES
+    .filter((r): r is typeof r & { shortcutKey: string } => Boolean(r.shortcutKey))
+    .map((r) => [r.shortcutKey, r.href])
 );

@@ -6,5 +6,5 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  return proxyGet(request, { prefix: 'market', useServerSession: true, pathSegments: path });
+  return proxyGet(request, { prefix: 'market', pathSegments: path });
 }

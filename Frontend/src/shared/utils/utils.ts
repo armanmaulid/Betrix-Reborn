@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import type { BackgroundWorker } from '@operations/domain/entities/BackgroundWorker';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -28,14 +27,26 @@ export function getDbPoolStats(active?: number, idle?: number): DbPoolStats {
   return { active: safeActive, idle: safeIdle, total, usagePct };
 }
 
+/**
+ * Minimal structural view of a worker record — keeps the shared layer free of
+ * imports from feature modules while still matching `BackgroundWorker`.
+ */
+export interface WorkerLike {
+  id?: string;
+  name?: string;
+  status?: string;
+  category?: string;
+  interval?: string | number;
+}
+
 export interface WorkerStats {
   running: number;
   total: number;
-  wsWorker?: BackgroundWorker | any;
+  wsWorker?: WorkerLike;
   isWsLive: boolean;
 }
 
-export function getWorkerStats(workers: (BackgroundWorker | any)[] = []): WorkerStats {
+export function getWorkerStats(workers: WorkerLike[] = []): WorkerStats {
   const running = workers.filter((w) => w.status === 'running').length;
   // No fabricated default count — an empty/failed fetch means unknown (0).
   const total = workers.length;

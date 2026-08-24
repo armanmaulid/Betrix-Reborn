@@ -6,7 +6,6 @@ import {
   getDbPoolStats,
   getWorkerStats
 } from './utils';
-import type { BackgroundWorkerInfo } from '@/modules/operations/domain/entities/BackgroundWorker';
 
 describe('Utility Functions (Frontend/lib/utils.ts)', () => {
   describe('cn', () => {
@@ -23,9 +22,9 @@ describe('Utility Functions (Frontend/lib/utils.ts)', () => {
     });
 
     it('should handle undefined, null or NaN safely', () => {
-      expect(formatFinancialNumber(undefined as any)).toBe('0');
-      expect(formatFinancialNumber(null as any)).toBe('0');
-      expect(formatFinancialNumber(NaN)).toBe('0');
+      expect(formatFinancialNumber(undefined as any)).toBe('—');
+      expect(formatFinancialNumber(null as any)).toBe('—');
+      expect(formatFinancialNumber(NaN)).toBe('—');
     });
   });
 
@@ -59,34 +58,20 @@ describe('Utility Functions (Frontend/lib/utils.ts)', () => {
 
   describe('getWorkerStats', () => {
     it('should compute running and total worker count and detect websocket stream worker', () => {
-      const mockWorkers: BackgroundWorkerInfo[] = [
+      const mockWorkers = [
         {
           id: 'finnhub-realtime-ws',
           name: 'Finnhub WS Ingester',
           status: 'running',
           category: 'market',
-          interval: '<50ms',
-          uptimeSeconds: 3600,
-          lastRunAt: new Date().toISOString(),
-          nextRunAt: new Date().toISOString(),
-          processedCount: 100,
-          errorCount: 0,
-          lastError: null,
-          description: 'Streaming quotes'
+          interval: '<50ms'
         },
         {
           id: 'news-poller',
           name: 'News Poller',
           status: 'paused',
           category: 'market',
-          interval: '60s',
-          uptimeSeconds: 1200,
-          lastRunAt: new Date().toISOString(),
-          nextRunAt: new Date().toISOString(),
-          processedCount: 50,
-          errorCount: 0,
-          lastError: null,
-          description: 'News feed'
+          interval: '60s'
         }
       ];
 

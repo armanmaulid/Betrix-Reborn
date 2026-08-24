@@ -37,7 +37,8 @@ export async function verifySession(token: string | null): Promise<Record<string
   try {
     const res = await fetch(`${BACKEND_URL}/me/profile`, {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-      cache: 'no-store'
+      cache: 'no-store',
+      signal: AbortSignal.timeout(8000)
     });
     if (!res.ok) return null;
     const data = await res.json();

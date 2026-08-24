@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { BACKEND_URL, verifySession, getSessionToken } from '@/lib/server-auth';
+import { BACKEND_URL, verifySession } from '@/lib/server-auth';
 import { sanitizeBackendResponse } from '@/shared/infrastructure/http/api-client';
 
 /**
@@ -40,26 +40,25 @@ export async function requireAdminToken(): Promise<string | NextResponse> {
   const cookieStore = await cookies();
   const token = cookieStore.get('betrix_admin_token')?.value;
   if (!token) {
-    return NextResponse.json(
-      { success: false, error: { message: 'Unauthorized: Admin session required' } },
-      { status: 401 }
-    );
+    return unauthorized();
   }
   const user = await verifySession(token);
   if (!user) {
-    return NextResponse.json(
-      { success: false, error: { message: 'Unauthorized: Invalid or expired session' } },
-      { status: 401 }
-    );
+    return unauthorized();
   }
   return token;
+}
+
+function unauthorized(): NextResponse {
+  return NextResponse.json(
+    { success: false, error: { message: 'Unauthorized: Admin session required' } },
+    { status: 401 }
+  );
 }
 
 interface ProxyOptions {
   /** Backend route prefix, e.g. "market" → /market/... */
   prefix: string;
-  /** If true, use getSessionToken() (reads from cookie server-side). If false, read from request cookie directly. */
-  useServerSession?: boolean;
 }
 
 /**
@@ -71,40 +70,10 @@ export async function proxyGet(
   options: ProxyOptions & { pathSegments?: string[] }
 ): Promise<NextResponse> {
   try {
-    const token = options.useServerSession
-      ? await getSessionToken()
-      : null; // caller reads from cookie if needed
+    const tokenOrResponse = await requireAdminToken();
+    if (tokenOrResponse instanceof NextResponse) return tokenOrResponse;
 
-    if (token === null) {
-      // Fallback: read from cookie directly
-      const { cookies } = await import('next/headers');
-      const cookieStore = await cookies();
-      const cookieToken = cookieStore.get('betrix_admin_token')?.value ?? null;
-      if (!cookieToken) {
-        return NextResponse.json(
-          { success: false, error: { message: 'Unauthorized: Admin session required' } },
-          { status: 401 }
-        );
-      }
-      const user = await verifySession(cookieToken);
-      if (!user) {
-        return NextResponse.json(
-          { success: false, error: { message: 'Unauthorized: Admin session required' } },
-          { status: 401 }
-        );
-      }
-      return forwardGet(request, options.prefix, cookieToken, options.pathSegments);
-    }
-
-    const user = await verifySession(token);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: { message: 'Unauthorized: Admin session required' } },
-        { status: 401 }
-      );
-    }
-
-    return forwardGet(request, options.prefix, token, options.pathSegments);
+    return await forwardGet(request, options.prefix, tokenOrResponse, options.pathSegments);
   } catch {
     return NextResponse.json(
       { success: false, error: { message: 'Internal proxy error' } },
@@ -136,7 +105,9 @@ async function forwardGet(
       Accept: 'application/json',
       Authorization: `Bearer ${token}`
     },
-    cache: 'no-store'
+    cache: 'no-store',
+    redirect: 'error',
+    signal: AbortSignal.timeout(30000)
   });
 
   const data = await backendRes.json();

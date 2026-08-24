@@ -56,7 +56,9 @@ export function DestructiveConfirmDialog({
   return (
     <TerminalModal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => {
+        if (!isLoading) onClose();
+      }}
       title="DESTRUCTIVE ACTION WARNING"
       icon={AlertOctagon}
       variant="negative"

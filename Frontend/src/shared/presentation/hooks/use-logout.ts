@@ -16,10 +16,17 @@ export function useLogout() {
       }
       setIsLoggingOut(true);
       try {
-        await fetch('/api/auth/logout', { method: 'POST' });
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          signal: AbortSignal.timeout(10000)
+        });
         success('SESSION TERMINATED', 'Administrator logged out cleanly.');
-        router.push('/login');
-        router.refresh();
+        // Give the toast viewport a beat to paint before the dashboard shell
+        // (which hosts it) unmounts on navigation.
+        setTimeout(() => {
+          router.push('/login');
+          router.refresh();
+        }, 600);
       } catch {
         error('LOGOUT FAILED', 'Unable to reach logout endpoint.');
       } finally {

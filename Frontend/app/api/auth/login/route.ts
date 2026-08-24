@@ -18,8 +18,23 @@ async function fallbackFingerprint(request: NextRequest): Promise<string> {
 }
 
 export async function POST(request: NextRequest) {
+  let body: {
+    email?: string;
+    password?: string;
+    deviceFingerprint?: string;
+    captchaId?: string;
+    captchaAnswer?: string;
+  };
   try {
-    const body = await request.json();
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { success: false, error: { message: 'Invalid request body' } },
+      { status: 400 }
+    );
+  }
+
+  try {
     const { email, password, deviceFingerprint, captchaId, captchaAnswer } = body;
 
     if (!email || !password) {
@@ -48,10 +63,22 @@ export async function POST(request: NextRequest) {
     const resData = await backendRes.json();
 
     if (!backendRes.ok) {
+      // Whitelist only known-safe fields from the upstream error — never
+      // spread the raw object (it may leak internals like stack/infra data).
+      const upstream = resData?.error;
+      const safeError: { message: string; captchaId?: string; delayMs?: number } = {
+        message:
+          (typeof upstream?.message === 'string' && upstream.message) ||
+          (typeof resData?.message === 'string' && resData.message) ||
+          'Authentication failed'
+      };
+      if (upstream?.captchaId) safeError.captchaId = upstream.captchaId;
+      if (upstream?.delayMs) safeError.delayMs = upstream.delayMs;
+
       return NextResponse.json(
         {
           success: false,
-          error: resData.error || { message: resData.message || 'Authentication failed' }
+          error: safeError
         },
         { status: backendRes.status }
       );

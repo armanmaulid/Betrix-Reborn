@@ -16,8 +16,8 @@ export function useSession() {
     user?: SessionUser;
   }>({
     queryKey: ['auth', 'session'],
-    queryFn: async () => {
-      const res = await fetch('/api/auth/session');
+    queryFn: async ({ signal }) => {
+      const res = await fetch('/api/auth/session', { signal });
       if (!res.ok) {
         return { authenticated: false };
       }

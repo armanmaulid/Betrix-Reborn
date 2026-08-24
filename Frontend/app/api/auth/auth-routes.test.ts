@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST as loginHandler } from './login/route';
 import { POST as logoutHandler } from './logout/route';
 import { GET as sessionHandler } from './session/route';
+import { GET as adminProxyHandler } from '../admin/[...path]/route';
 import { NextRequest } from 'next/server';
 
 // Mock cookies store
@@ -118,6 +119,110 @@ describe('Next.js Auth Route Handlers Integration Tests', () => {
     expect(body.success).toBe(false);
     expect(body.error.message).toContain('Access Denied');
     expect(mockCookieStore.set).not.toHaveBeenCalled();
+  });
+
+  it('Test Gate 1.4a: Malformed JSON request body returns 400 Invalid request body', async () => {
+    const req = new NextRequest('http://localhost:3001/api/auth/login', {
+      method: 'POST',
+      body: '{not-valid-json',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const res = await loginHandler(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.success).toBe(false);
+    expect(body.error.message).toBe('Invalid request body');
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('Test Gate 1.4b: Upstream 4xx error is whitelisted to safe fields only', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({
+        success: false,
+        message: 'Upstream says no',
+        error: {
+          message: 'Invalid credentials',
+          captchaId: 'cap-challenge-9',
+          delayMs: 4000,
+          stack: 'sensitive-stack-trace',
+          internalHost: 'db-node-01:5432'
+        }
+      })
+    });
+
+    const req = new NextRequest('http://localhost:3001/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: 'admin@betrix.io',
+        password: 'wrong-password',
+        deviceFingerprint: 'device-fp-123'
+      })
+    });
+
+    const res = await loginHandler(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(401);
+    expect(body.success).toBe(false);
+    expect(body.error.message).toBe('Invalid credentials');
+    expect(body.error.captchaId).toBe('cap-challenge-9');
+    expect(body.error.delayMs).toBe(4000);
+    // Internal fields must be stripped, never spread through
+    expect(body.error.stack).toBeUndefined();
+    expect(body.error.internalHost).toBeUndefined();
+    expect(Object.keys(body.error).sort()).toEqual(['captchaId', 'delayMs', 'message']);
+  });
+
+  it('Admin proxy: upstream 204 responds success with preserved 204 status and never parses a body', async () => {
+    mockCookieMap.set('betrix_admin_token', { value: 'valid-admin-token' });
+
+    const adminFetch = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString();
+      if (url.includes('/me/profile')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ success: true, data: ADMIN_USER })
+        };
+      }
+      return {
+        ok: true,
+        status: 204,
+        headers: new Headers({
+          'content-type': 'application/json',
+          'content-length': '0'
+        }),
+        json: async () => {
+          throw new Error('204 upstream body must not be parsed');
+        }
+      };
+    });
+    global.fetch = adminFetch as unknown as typeof fetch;
+
+    const req = new NextRequest('http://localhost:3001/api/admin/users?page=1', {
+      method: 'GET'
+    });
+    const res = await adminProxyHandler(req, {
+      params: Promise.resolve({ path: ['users'] })
+    });
+
+    expect(res.status).toBe(204);
+    // No body may exist on a 204 per the fetch spec
+    await expect(res.text()).resolves.toBe('');
+
+    // Both the session verification and the proxied call went through
+    expect(adminFetch).toHaveBeenCalledTimes(2);
+    const [firstUrl, firstInit] = adminFetch.mock.calls[0];
+    expect(String(firstUrl)).toContain('/me/profile');
+    const [secondUrl] = adminFetch.mock.calls[1];
+    expect(String(secondUrl)).toContain('/admin/users?page=1');
+    expect(((firstInit ?? {}) as RequestInit).headers).toMatchObject({
+      Authorization: 'Bearer valid-admin-token'
+    });
   });
 
   it('Test Gate 1.5: Logout revokes session on backend and clears client cookie', async () => {

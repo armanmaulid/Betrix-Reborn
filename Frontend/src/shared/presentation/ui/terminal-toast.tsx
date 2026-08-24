@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { CheckCircle2, AlertTriangle, XCircle, Info, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -26,6 +26,16 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const timeoutsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  // Clear pending auto-dismiss timers when the provider unmounts.
+  useEffect(() => {
+    const timeouts = timeoutsRef.current;
+    return () => {
+      timeouts.forEach(clearTimeout);
+      timeouts.clear();
+    };
+  }, []);
 
   const dismiss = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -39,9 +49,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
       setToasts((prev) => [...prev.slice(-4), newToast]);
 
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
+        timeoutsRef.current.delete(timeoutId);
         dismiss(id);
       }, 5000);
+      timeoutsRef.current.add(timeoutId);
     },
     [dismiss]
   );
@@ -57,6 +69,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {/* Toast HUD Viewport */}
       <aside
         aria-label="Terminal notifications"
+        aria-live="polite"
         className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"
       >
         {toasts.map((item) => {

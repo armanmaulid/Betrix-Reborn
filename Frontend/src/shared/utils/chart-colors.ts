@@ -1,11 +1,16 @@
+/**
+ * Chart palette resolved from the global CSS theme tokens (globals.css).
+ * Using `var(--color-*)` keeps Recharts fills/strokes in lockstep with the
+ * Tailwind theme — there is exactly one color source for the whole app.
+ */
 export const CHART_COLORS = {
-  accent: '#FF8000',
-  accentDim: '#B35900',
-  positive: '#00D964',
-  negative: '#FF3B30',
-  info: '#4A9EFF',
-  border: '#1A1A1A',
-  surface: '#0A0A0A',
-  text: '#E8E8E8',
-  mutedText: '#888888'
+  accent: 'var(--color-accent)',
+  accentDim: 'var(--color-accent-dim)',
+  positive: 'var(--color-positive)',
+  negative: 'var(--color-negative)',
+  info: 'var(--color-info)',
+  border: 'var(--color-border)',
+  surface: 'var(--color-surface)',
+  text: 'var(--color-foreground)',
+  mutedText: 'var(--color-muted-foreground)'
 } as const;

@@ -3,7 +3,9 @@
  */
 
 export function formatFinancialNumber(val: number, decimals: number = 0): string {
-  if (val === undefined || val === null || isNaN(val)) return '0';
+  // Missing/broken data renders as an em-dash so it can never be mistaken for
+  // a legitimate zero value in gauges, counters, or tables.
+  if (val === undefined || val === null || Number.isNaN(val)) return '—';
   return new Intl.NumberFormat('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals
@@ -28,7 +30,8 @@ export function formatDate(date: string | number | Date | null | undefined): str
   try {
     const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
     if (isNaN(d.getTime())) return 'N/A';
-    return d.toISOString().substring(0, 10);
+    // Values are normalized to UTC everywhere; label it so operators are never guessing.
+    return d.toISOString().substring(0, 10) + ' UTC';
   } catch {
     return 'N/A';
   }
@@ -39,7 +42,7 @@ export function formatDateTime(date: string | number | Date | null | undefined):
   try {
     const d = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
     if (isNaN(d.getTime())) return 'N/A';
-    return d.toISOString().substring(0, 19).replace('T', ' ');
+    return d.toISOString().substring(0, 19).replace('T', ' ') + ' UTC';
   } catch {
     return 'N/A';
   }

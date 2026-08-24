@@ -14,7 +14,7 @@ describe('Phase 3 Dashboard & Analytics Component Tests', () => {
       expect(formatFinancialNumber(1250000)).toBe('1,250,000');
       expect(formatFinancialNumber(45.678, 2)).toBe('45.68');
       expect(formatFinancialNumber(0)).toBe('0');
-      expect(formatFinancialNumber(null as any)).toBe('0');
+      expect(formatFinancialNumber(null as any)).toBe('—');
     });
 
     it('formatUptime should format seconds into Xd Yh Zm', () => {

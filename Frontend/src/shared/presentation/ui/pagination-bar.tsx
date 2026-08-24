@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatFinancialNumber } from '@/shared/utils/formatters';
 
@@ -32,6 +32,14 @@ export function PaginationBar({
   hideIfSinglePage = false
 }: PaginationBarProps) {
   const effectiveTotalPages = Math.max(1, totalPages);
+
+  // Self-heal when the current page falls out of range (e.g. the last row of
+  // the last page was deleted and totalPages shrank after a refetch).
+  useEffect(() => {
+    if (!isLoading && page > effectiveTotalPages) {
+      onPageChange(effectiveTotalPages);
+    }
+  }, [page, effectiveTotalPages, isLoading, onPageChange]);
 
   if (hideIfSinglePage && effectiveTotalPages <= 1) {
     return null;
@@ -72,7 +80,7 @@ export function PaginationBar({
       {/* Right side: Page navigation */}
       <div className="flex items-center gap-3">
         <span className="text-muted-foreground">
-          PAGE <strong className="text-foreground">{page}</strong> OF{' '}
+          PAGE <strong className="text-foreground">{Math.min(page, effectiveTotalPages)}</strong> OF{' '}
           <strong className="text-foreground">{effectiveTotalPages}</strong>
         </span>
         <div className="flex items-center gap-1">

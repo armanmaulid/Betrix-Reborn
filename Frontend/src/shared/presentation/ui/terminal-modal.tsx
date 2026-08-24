@@ -1,7 +1,10 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { X, type LucideIcon } from 'lucide-react';
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export interface TerminalModalProps {
   isOpen: boolean;
@@ -30,9 +33,34 @@ export function TerminalModal({
   closeOnEscape = true,
   closeOnBackdrop = false
 }: TerminalModalProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const titleId = useId();
+
+  // Focus management + background scroll lock for the lifetime of the dialog.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+
+    const raf = requestAnimationFrame(() => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const firstFocusable = panel.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+      (firstFocusable ?? panel).focus();
+    });
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      cancelAnimationFrame(raf);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocusedRef.current?.focus?.();
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || !closeOnEscape) return;
@@ -88,6 +116,24 @@ export function TerminalModal({
     }
   }[variant];
 
+  // Keep Tab cycling inside the dialog while it is open.
+  const handleTrapKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Tab') return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const focusables = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (closeOnBackdrop && e.target === e.currentTarget) {
       onClose();
@@ -100,8 +146,13 @@ export function TerminalModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in select-none"
     >
       <div
-        ref={modalRef}
-        className={`w-full ${maxWidthStyles} border-2 ${variantStyles.border} bg-surface shadow-2xl font-mono flex flex-col max-h-[90vh] overflow-hidden ${className}`}
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onKeyDown={handleTrapKeyDown}
+        className={`w-full ${maxWidthStyles} border-2 ${variantStyles.border} bg-surface shadow-2xl font-mono flex flex-col max-h-[90vh] overflow-hidden outline-none ${className}`}
       >
         {/* Header */}
         <div
@@ -109,7 +160,7 @@ export function TerminalModal({
         >
           <div className="flex items-center space-x-2">
             {Icon && <Icon className={`w-4 h-4 shrink-0 ${variantStyles.iconColor}`} />}
-            <span className="text-xs font-bold tracking-widest uppercase truncate">
+            <span id={titleId} className="text-xs font-bold tracking-widest uppercase truncate">
               {title}
             </span>
           </div>

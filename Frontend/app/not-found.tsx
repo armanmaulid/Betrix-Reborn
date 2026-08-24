@@ -2,10 +2,8 @@ import React from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
-  LayoutDashboard,
-  Terminal
+  LayoutDashboard
 } from 'lucide-react';
-import { ADMIN_ROUTES } from '@/shared/utils/routes';
 
 export default function NotFound() {
   return (
@@ -58,31 +56,6 @@ export default function NotFound() {
             <LayoutDashboard className="w-3.5 h-3.5" />
             <span>[01] RETURN TO TERMINAL DASHBOARD</span>
           </Link>
-        </div>
-
-        {/* Quick Directory Jump Table */}
-        <div className="space-y-2 pt-4 border-t border-border/80">
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wider">
-            <Terminal className="w-3 h-3 text-accent" />
-            <span>AVAILABLE OPERATIONAL DIRECTORIES:</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            {ADMIN_ROUTES.map((route) => {
-              const Icon = route.icon;
-              return (
-                <Link
-                  key={route.href}
-                  href={route.href}
-                  className="flex items-center gap-2 border border-border/80 bg-black p-2 text-[11px] text-muted-foreground hover:text-accent hover:border-accent transition-colors group"
-                >
-                  <span className="text-[9px] text-accent/80 font-bold">[{route.num}]</span>
-                  <Icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-accent" />
-                  <span className="truncate">{route.name}</span>
-                </Link>
-              );
-            })}
-          </div>
         </div>
 
         {/* Footer */}

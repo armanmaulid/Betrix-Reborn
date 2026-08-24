@@ -21,8 +21,30 @@ export function useCopyFeedback(timeoutMs: number = 2000) {
       options?: { toastTitle?: string; toastMessage?: string; showToast?: boolean }
     ): Promise<boolean> => {
       const showToast = options?.showToast ?? Boolean(options?.toastTitle || options?.toastMessage);
+
+      const legacyCopy = (): boolean => {
+        try {
+          const textarea = document.createElement('textarea');
+          textarea.value = text;
+          textarea.setAttribute('readonly', '');
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.select();
+          const ok = document.execCommand('copy');
+          document.body.removeChild(textarea);
+          return ok;
+        } catch {
+          return false;
+        }
+      };
+
       try {
-        await navigator.clipboard.writeText(text);
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else if (!legacyCopy()) {
+          throw new Error('Clipboard unavailable');
+        }
         setCopiedKey(keyOrTitle);
 
         if (timerRef.current) clearTimeout(timerRef.current);

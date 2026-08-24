@@ -46,4 +46,7 @@ USER nextjs
 
 EXPOSE 3001
 
+# Node-based healthcheck (curl/wget are unavailable on alpine-slim images).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD node -e "fetch('http://127.0.0.1:3001/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
 CMD ["node", "server.js"]
