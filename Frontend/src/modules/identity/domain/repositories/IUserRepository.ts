@@ -17,6 +17,11 @@ export interface CreateUserInput {
   credits?: number;
 }
 
+export interface CreateUserResult {
+  user: User;
+  generatedPassword?: string;
+}
+
 export interface UpdateUserInput {
   email?: string;
   name?: string | null;
