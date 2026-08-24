@@ -46,11 +46,10 @@ export function CreateUserDialog({ isOpen, onClose }: CreateUserDialogProps) {
 
   const onSubmit = async (data: CreateAdminUserInput) => {
     try {
-      const result: any = await createUserMutation.mutateAsync(data);
-      const gen = result?.generatedPassword || result?.data?.generatedPassword || null;
-      if (gen) {
+      const result = await createUserMutation.mutateAsync(data);
+      if (result.generatedPassword) {
         // Show the generated password once — never retrievable again
-        setGeneratedPassword(gen);
+        setGeneratedPassword(result.generatedPassword);
       } else {
         success('USER CREATED', `Account for ${data.email} provisioned successfully.`);
         reset();

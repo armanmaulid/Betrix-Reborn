@@ -37,7 +37,7 @@ export interface UpdateUserInput {
 export interface IUserRepository {
   getUsers(params?: UserQueryParams): Promise<PaginatedResult<User>>;
   getUserById(id: string): Promise<User>;
-  createUser(input: CreateUserInput): Promise<User>;
+  createUser(input: CreateUserInput): Promise<CreateUserResult>;
   updateUser(id: string, input: UpdateUserInput): Promise<User>;
   deleteUser(id: string): Promise<void>;
   resetPassword(userId: string, newPassword?: string): Promise<{ temporaryPassword?: string }>;

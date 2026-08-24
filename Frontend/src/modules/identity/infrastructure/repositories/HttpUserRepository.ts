@@ -2,6 +2,7 @@ import type {
   IUserRepository,
   UserQueryParams,
   CreateUserInput,
+  CreateUserResult,
   UpdateUserInput
 } from '../../domain/repositories/IUserRepository';
 import { User } from '../../domain/entities/User';
@@ -25,9 +26,17 @@ export class HttpUserRepository implements IUserRepository {
     return UserMapper.toDomain(userData);
   }
 
-  async createUser(input: CreateUserInput): Promise<User> {
-    const res = await this.client.post<{ data: any }>('/api/admin/users', input);
-    return UserMapper.toDomain(res.data || res);
+  async createUser(input: CreateUserInput): Promise<CreateUserResult> {
+    const res = await this.client.post<{
+      data?: { user?: any; generatedPassword?: string };
+      user?: any;
+      generatedPassword?: string;
+    }>('/api/admin/users', input);
+    const body = res.data ?? res;
+    return {
+      user: UserMapper.toDomain(body.user ?? body),
+      generatedPassword: body.generatedPassword
+    };
   }
 
   async updateUser(id: string, input: UpdateUserInput): Promise<User> {

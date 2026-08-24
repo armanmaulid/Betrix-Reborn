@@ -4,6 +4,9 @@ import { toDomainPaginated } from '@shared/domain/types/Pagination';
 
 export class UserMapper {
   public static toDomain(dto: AdminUser | any): User {
+    if (!dto || typeof dto !== 'object' || !dto.id) {
+      throw new Error('UserMapper.toDomain: invalid DTO — missing id');
+    }
     return new User({
       id: dto.id,
       email: dto.email,

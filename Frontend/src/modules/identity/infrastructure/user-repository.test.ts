@@ -50,4 +50,42 @@ describe('Identity Infrastructure: UserMapper & HttpUserRepository', () => {
     expect(result.data[0].email).toBe('u1@betrix.io');
     expect(result.meta.total).toBe(1);
   });
+
+  it('should unwrap { data: { user, generatedPassword } } envelope on createUser', async () => {
+    const backendEnvelope = {
+      success: true,
+      data: {
+        user: { id: 'usr-new', email: 'new@betrix.io', name: 'New User', status: 'active', tier: 'free', isAdmin: false, credits: 100, createdAt: '2026-08-24T00:00:00Z' },
+        generatedPassword: 'a1b2c3d4e5f6'
+      }
+    };
+
+    const postSpy = vi.spyOn(mockHttpClient, 'post').mockResolvedValue(backendEnvelope);
+
+    const result = await userRepo.createUser({ email: 'new@betrix.io', credits: 100 });
+
+    expect(postSpy).toHaveBeenCalledWith('/api/admin/users', { email: 'new@betrix.io', credits: 100 });
+    expect(result.user.id).toBe('usr-new');
+    expect(result.user.email).toBe('new@betrix.io');
+    expect(result.generatedPassword).toBe('a1b2c3d4e5f6');
+  });
+
+  it('should surface generatedPassword as undefined when admin supplied an explicit password', async () => {
+    vi.spyOn(mockHttpClient, 'post').mockResolvedValue({
+      success: true,
+      data: {
+        user: { id: 'usr-pw', email: 'pw@betrix.io', createdAt: '2026-08-24T00:00:00Z' }
+      }
+    });
+
+    const result = await userRepo.createUser({ email: 'pw@betrix.io', password: 'Sup3rSecret!' });
+
+    expect(result.generatedPassword).toBeUndefined();
+    expect(result.user.id).toBe('usr-pw');
+  });
+
+  it('should throw when UserMapper receives a DTO without id', () => {
+    expect(() => UserMapper.toDomain({ email: 'broken@betrix.io' })).toThrowError(/missing id/);
+    expect(() => UserMapper.toDomain(null)).toThrowError(/missing id/);
+  });
 });
