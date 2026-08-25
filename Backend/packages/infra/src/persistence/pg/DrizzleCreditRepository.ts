@@ -89,12 +89,19 @@ export class DrizzleCreditRepository implements ICreditRepository {
     const result = await this.db
       .update(users)
       .set({ reservedCredits: sql`${users.reservedCredits} + ${amount}` })
-      .where(and(eq(users.id, userId), sql`${users.credits} - ${users.reservedCredits} >= ${amount}`))
+      .where(
+        and(eq(users.id, userId), sql`${users.credits} - ${users.reservedCredits} >= ${amount}`)
+      )
       .returning({ reservedCredits: users.reservedCredits });
     return result.length > 0;
   }
 
-  async settleReservation(userId: string, reservedAmount: number, actualCost: number, action: string): Promise<number> {
+  async settleReservation(
+    userId: string,
+    reservedAmount: number,
+    actualCost: number,
+    action: string
+  ): Promise<number> {
     return await this.db.transaction(async (tx) => {
       // Charge actual cost (floor 0), release exactly this reservation.
       // ponytail: actualCost > reservedAmount is allowed to under-charge — ceiling

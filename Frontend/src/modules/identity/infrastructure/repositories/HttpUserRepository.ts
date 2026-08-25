@@ -21,7 +21,9 @@ export class HttpUserRepository implements IUserRepository {
   }
 
   async getUserById(id: string): Promise<User> {
-    const res = await this.client.get<{ data: { user: any } }>(`/api/admin/users/${encodeURIComponent(id)}`);
+    const res = await this.client.get<{ data: { user: any } }>(
+      `/api/admin/users/${encodeURIComponent(id)}`
+    );
     const userData = res.data?.user || res.data || res;
     return UserMapper.toDomain(userData);
   }
@@ -40,7 +42,10 @@ export class HttpUserRepository implements IUserRepository {
   }
 
   async updateUser(id: string, input: UpdateUserInput): Promise<User> {
-    const res = await this.client.patch<{ data: any }>(`/api/admin/users/${encodeURIComponent(id)}`, input);
+    const res = await this.client.patch<{ data: any }>(
+      `/api/admin/users/${encodeURIComponent(id)}`,
+      input
+    );
     return UserMapper.toDomain(res.data || res);
   }
 
@@ -48,7 +53,10 @@ export class HttpUserRepository implements IUserRepository {
     await this.client.delete(`/api/admin/users/${encodeURIComponent(id)}`);
   }
 
-  async resetPassword(userId: string, newPassword?: string): Promise<{ temporaryPassword?: string }> {
+  async resetPassword(
+    userId: string,
+    newPassword?: string
+  ): Promise<{ temporaryPassword?: string }> {
     const res = await this.client.post<{ data?: { temporaryPassword?: string } }>(
       `/api/admin/users/${encodeURIComponent(userId)}/reset-password`,
       newPassword ? { newPassword } : {}
@@ -57,7 +65,9 @@ export class HttpUserRepository implements IUserRepository {
   }
 
   async revokeSession(userId: string, sessionId: string): Promise<void> {
-    await this.client.delete(`/api/admin/users/${encodeURIComponent(userId)}/sessions/${encodeURIComponent(sessionId)}`);
+    await this.client.delete(
+      `/api/admin/users/${encodeURIComponent(userId)}/sessions/${encodeURIComponent(sessionId)}`
+    );
   }
 
   async revokeAllSessions(userId: string): Promise<number> {
@@ -68,7 +78,9 @@ export class HttpUserRepository implements IUserRepository {
   }
 
   async removeDevice(userId: string, deviceId: string): Promise<void> {
-    await this.client.delete(`/api/admin/users/${encodeURIComponent(userId)}/devices/${encodeURIComponent(deviceId)}`);
+    await this.client.delete(
+      `/api/admin/users/${encodeURIComponent(userId)}/devices/${encodeURIComponent(deviceId)}`
+    );
   }
 }
 

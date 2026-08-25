@@ -1,6 +1,16 @@
 export class NewsTagging {
   private static readonly KEYWORD_MAP: Record<string, string[]> = {
-    usd: ['dollar', 'fed', 'federal reserve', 'powell', 'cpi', 'inflation', 'treasury', 'yield', 'fomc'],
+    usd: [
+      'dollar',
+      'fed',
+      'federal reserve',
+      'powell',
+      'cpi',
+      'inflation',
+      'treasury',
+      'yield',
+      'fomc'
+    ],
     eur: ['euro', 'ecb', 'lagarde', 'germany', 'bundesbank', 'eurozone'],
     gbp: ['pound', 'sterling', 'boe', 'bank of england', 'bailey', 'uk inflation', 'britain'],
     jpy: ['yen', 'boj', 'bank of japan', 'ueda', 'tokyo inflation', 'japan yield'],

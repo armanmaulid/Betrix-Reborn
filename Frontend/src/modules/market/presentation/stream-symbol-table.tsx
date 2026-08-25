@@ -67,7 +67,9 @@ export function StreamSymbolTable({
                   <td className="p-3 font-bold text-accent select-all">
                     {item.symbol}
                     {item.description && (
-                      <div className="text-[10px] text-muted-foreground font-normal">{item.description}</div>
+                      <div className="text-[10px] text-muted-foreground font-normal">
+                        {item.description}
+                      </div>
                     )}
                   </td>
                   <td className="p-3 font-mono text-foreground select-all">{item.finnhubSymbol}</td>
@@ -78,7 +80,9 @@ export function StreamSymbolTable({
                   <td className="p-3 text-right text-muted-foreground tabular-nums">
                     {tick ? `${tick.bid.toFixed(2)} / ${tick.ask.toFixed(2)}` : '--'}
                   </td>
-                  <td className={`p-3 text-right font-bold tabular-nums ${isPositive ? 'text-positive' : 'text-negative'}`}>
+                  <td
+                    className={`p-3 text-right font-bold tabular-nums ${isPositive ? 'text-positive' : 'text-negative'}`}
+                  >
                     {tick ? `${isPositive ? '+' : ''}${change.toFixed(2)}%` : '--'}
                   </td>
                   <td className="p-3">

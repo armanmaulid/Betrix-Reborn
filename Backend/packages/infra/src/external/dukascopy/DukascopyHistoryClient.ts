@@ -62,7 +62,7 @@ export class DukascopyHistoryClient implements IHistoricalProvider {
     }
 
     // Weekend snapping: If Saturday or Sunday, snap to Friday 23:59:00 UTC
-    let adjustedToDate = new Date(toDate);
+    const adjustedToDate = new Date(toDate);
     const dayOfWeek = adjustedToDate.getUTCDay(); // 0 = Sunday, 6 = Saturday
     if (dayOfWeek === 6) {
       adjustedToDate.setUTCDate(adjustedToDate.getUTCDate() - 1);
@@ -88,7 +88,8 @@ export class DukascopyHistoryClient implements IHistoricalProvider {
 
       if (Array.isArray(rawRates) && rawRates.length > 0) {
         return rawRates.map((c: any) => {
-          const timestampMs = typeof c.timestamp === 'number' ? c.timestamp : new Date(c.timestamp).getTime();
+          const timestampMs =
+            typeof c.timestamp === 'number' ? c.timestamp : new Date(c.timestamp).getTime();
           return new OHLCBar({
             time: Math.floor(timestampMs / 1000), // Unix seconds
             open: Number(c.open),

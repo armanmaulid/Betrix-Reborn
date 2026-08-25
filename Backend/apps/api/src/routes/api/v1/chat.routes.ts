@@ -1,9 +1,5 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
-import {
-  SendMessageSchema,
-  StreamMessageSchema,
-  SessionIdParamSchema
-} from '@betrix/application';
+import { SendMessageSchema, StreamMessageSchema, SessionIdParamSchema } from '@betrix/application';
 import { Type } from '@sinclair/typebox';
 
 export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
@@ -38,7 +34,8 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       schema: {
         tags: ['Chat'],
         summary: 'Streaming AI market intelligence analysis (SSE)',
-        description: 'Streams AI reasoning process (<think>) and incremental response chunks via Server-Sent Events.',
+        description:
+          'Streams AI reasoning process (<think>) and incremental response chunks via Server-Sent Events.',
         body: StreamMessageSchema,
         security: [{ bearerAuth: [] }]
       }
@@ -48,7 +45,7 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       reply.raw.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
-        'Connection': 'keep-alive',
+        Connection: 'keep-alive',
         'X-Accel-Buffering': 'no'
       });
 
@@ -62,26 +59,22 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       };
 
       try {
-        await useCases.streamMessageUseCase.execute(
-          request.user.userId,
-          request.body,
-          {
-            onThink: (chunk: string) => {
-              writeEvent('think', chunk);
-            },
-            onDelta: (chunk: string) => {
-              writeEvent('delta', chunk);
-            },
-            onDone: (meta) => {
-              writeEvent('done', meta);
-              reply.raw.end();
-            },
-            onError: (err: Error) => {
-              writeEvent('error', { message: err.message });
-              reply.raw.end();
-            }
+        await useCases.streamMessageUseCase.execute(request.user.userId, request.body, {
+          onThink: (chunk: string) => {
+            writeEvent('think', chunk);
+          },
+          onDelta: (chunk: string) => {
+            writeEvent('delta', chunk);
+          },
+          onDone: (meta) => {
+            writeEvent('done', meta);
+            reply.raw.end();
+          },
+          onError: (err: Error) => {
+            writeEvent('error', { message: err.message });
+            reply.raw.end();
           }
-        );
+        });
       } catch (err: any) {
         writeEvent('error', { message: err.message || 'Stream processing failed' });
         reply.raw.end();
@@ -146,7 +139,10 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.deleteChatSessionUseCase.execute(request.params.sessionId, request.user.userId);
+      const result = await useCases.deleteChatSessionUseCase.execute(
+        request.params.sessionId,
+        request.user.userId
+      );
       return reply.send({
         success: true,
         data: result
@@ -167,10 +163,16 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const markdown = await useCases.exportChatUseCase.execute(request.params.sessionId, request.user.userId);
+      const markdown = await useCases.exportChatUseCase.execute(
+        request.params.sessionId,
+        request.user.userId
+      );
 
       reply.header('Content-Type', 'text/markdown; charset=utf-8');
-      reply.header('Content-Disposition', `attachment; filename="chat-${request.params.sessionId}.md"`);
+      reply.header(
+        'Content-Disposition',
+        `attachment; filename="chat-${request.params.sessionId}.md"`
+      );
       return reply.send(markdown);
     }
   );
@@ -203,7 +205,10 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (_request, reply) => {
-      const agents = await useCases.listAgentsUseCase.execute({ activeOnly: true, visibility: 'public' });
+      const agents = await useCases.listAgentsUseCase.execute({
+        activeOnly: true,
+        visibility: 'public'
+      });
       return reply.send({
         success: true,
         data: agents.map((a) => a.toJSON())

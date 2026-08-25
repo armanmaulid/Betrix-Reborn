@@ -8,3 +8,4 @@ export * from './market.schema.js';
 export * from './intelligence.schema.js';
 export * from './news.schema.js';
 export * from './operations.schema.js';
+export * from './calendar.schema.js';

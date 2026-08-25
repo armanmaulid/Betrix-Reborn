@@ -46,16 +46,8 @@ import {
   SetDefaultAgentUseCase,
   TestAgentUseCase
 } from './use-cases/intelligence/index.js';
-import {
-  GetSymbolsUseCase,
-  GetPricesUseCase,
-  GetOHLCUseCase
-} from './use-cases/market/index.js';
-import {
-  FetchNewsUseCase,
-  StoreNewsUseCase,
-  GetNewsUseCase
-} from './use-cases/news/index.js';
+import { GetSymbolsUseCase, GetPricesUseCase, GetOHLCUseCase } from './use-cases/market/index.js';
+import { FetchNewsUseCase, StoreNewsUseCase, GetNewsUseCase } from './use-cases/news/index.js';
 import {
   GetInboxUseCase,
   GetSentMessagesUseCase,
@@ -101,7 +93,9 @@ import {
 // Mock in-memory store helpers
 class InMemoryCaptchaStore {
   private store = new Map<string, string>();
-  async save(id: string, ans: string): Promise<void> { this.store.set(id, ans); }
+  async save(id: string, ans: string): Promise<void> {
+    this.store.set(id, ans);
+  }
   async getAndDelete(id: string): Promise<string | null> {
     const val = this.store.get(id) || null;
     this.store.delete(id);
@@ -111,7 +105,9 @@ class InMemoryCaptchaStore {
 
 class InMemoryTicketStore {
   private store = new Map<string, string>();
-  async save(ticket: string, userId: string): Promise<void> { this.store.set(ticket, userId); }
+  async save(ticket: string, userId: string): Promise<void> {
+    this.store.set(ticket, userId);
+  }
   async getAndDelete(ticket: string): Promise<string | null> {
     const val = this.store.get(ticket) || null;
     this.store.delete(ticket);
@@ -213,9 +209,25 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
 
     it('MarketDataService calculates 24h change and retrieves OHLC (ADR-27)', async () => {
       const mockSymbolRepo = {
-        findAll: vi.fn().mockResolvedValue([new Symbol({ symbol: 'EURUSD', category: 'forex', isActive: true, createdAt: new Date(), updatedAt: new Date() })]),
+        findAll: vi.fn().mockResolvedValue([
+          new Symbol({
+            symbol: 'EURUSD',
+            category: 'forex',
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          })
+        ]),
         findByCategory: vi.fn().mockResolvedValue([]),
-        findBySymbol: vi.fn().mockResolvedValue(new Symbol({ symbol: 'EURUSD', category: 'forex', isActive: true, createdAt: new Date(), updatedAt: new Date() }))
+        findBySymbol: vi.fn().mockResolvedValue(
+          new Symbol({
+            symbol: 'EURUSD',
+            category: 'forex',
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          })
+        )
       };
 
       const mockCacheStore = {
@@ -227,7 +239,14 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
 
       const mockHistoricalProvider = {
         fetchHistory: vi.fn().mockResolvedValue([
-          new OHLCBar({ time: 1000, open: 1.0800, high: 1.0850, low: 1.0790, close: 1.0840, volume: 100 })
+          new OHLCBar({
+            time: 1000,
+            open: 1.08,
+            high: 1.085,
+            low: 1.079,
+            close: 1.084,
+            volume: 100
+          })
         ])
       };
 
@@ -238,7 +257,7 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       );
 
       // Test 24h change calculation
-      const change = marketDataService.calculate24hChange(1.0850, 1.0800);
+      const change = marketDataService.calculate24hChange(1.085, 1.08);
       expect(change.changeAmount).toBe(0.005);
       expect(change.changePercent).toBe(0.46);
 
@@ -250,11 +269,31 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
 
     it('MarketDataService.getOHLC trims results to requested limit', async () => {
       const mockSymbolRepo = { findAll: vi.fn(), findByCategory: vi.fn(), findBySymbol: vi.fn() };
-      const mockCacheStore = { getOHLC: vi.fn(), cacheOHLC: vi.fn(), getPrice: vi.fn(), getAllPrices: vi.fn() };
-      const fiveBars = Array.from({ length: 5 }, (_, i) => new OHLCBar({ time: 1000 + i * 60, open: 1.08, high: 1.09, low: 1.07, close: 1.085, volume: 100 }));
+      const mockCacheStore = {
+        getOHLC: vi.fn(),
+        cacheOHLC: vi.fn(),
+        getPrice: vi.fn(),
+        getAllPrices: vi.fn()
+      };
+      const fiveBars = Array.from(
+        { length: 5 },
+        (_, i) =>
+          new OHLCBar({
+            time: 1000 + i * 60,
+            open: 1.08,
+            high: 1.09,
+            low: 1.07,
+            close: 1.085,
+            volume: 100
+          })
+      );
       const mockHistoricalProvider = { fetchHistory: vi.fn().mockResolvedValue(fiveBars) };
 
-      const service = new MarketDataService(mockSymbolRepo as any, mockCacheStore as any, mockHistoricalProvider as any);
+      const service = new MarketDataService(
+        mockSymbolRepo as any,
+        mockCacheStore as any,
+        mockHistoricalProvider as any
+      );
       const bars = await service.getOHLC('EURUSD', 'h1', 3);
       expect(bars).toHaveLength(3); // trimmed from 5 to 3
     });
@@ -263,19 +302,43 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       const mockSymbolRepo = {
         findAll: vi.fn(),
         findByCategory: vi.fn(),
-        findBySymbol: vi.fn().mockResolvedValue(new Symbol({ symbol: 'EURUSD', category: 'forex', isActive: true, createdAt: new Date(), updatedAt: new Date() }))
+        findBySymbol: vi.fn().mockResolvedValue(
+          new Symbol({
+            symbol: 'EURUSD',
+            category: 'forex',
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          })
+        )
       };
-      const mockCacheStore = { getOHLC: vi.fn(), cacheOHLC: vi.fn(), getPrice: vi.fn(), getAllPrices: vi.fn() };
+      const mockCacheStore = {
+        getOHLC: vi.fn(),
+        cacheOHLC: vi.fn(),
+        getPrice: vi.fn(),
+        getAllPrices: vi.fn()
+      };
       const mockHistoricalProvider = { fetchHistory: vi.fn() };
 
-      const service = new MarketDataService(mockSymbolRepo as any, mockCacheStore as any, mockHistoricalProvider as any);
+      const service = new MarketDataService(
+        mockSymbolRepo as any,
+        mockCacheStore as any,
+        mockHistoricalProvider as any
+      );
       const sym = await service.getSymbol('eurusd');
       expect(mockSymbolRepo.findBySymbol).toHaveBeenCalledWith('EURUSD');
       expect(sym).not.toBeNull();
     });
 
     it('MarketDataService delegates getPrice and getAllPrices to cacheStore', async () => {
-      const tick = new PriceTick({ symbol: 'EURUSD', bid: 1.085, ask: 1.0852, spread: 2, volume: 100, timestamp: Date.now() });
+      const tick = new PriceTick({
+        symbol: 'EURUSD',
+        bid: 1.085,
+        ask: 1.0852,
+        spread: 2,
+        volume: 100,
+        timestamp: Date.now()
+      });
       const mockSymbolRepo = { findAll: vi.fn(), findByCategory: vi.fn(), findBySymbol: vi.fn() };
       const mockCacheStore = {
         getOHLC: vi.fn(),
@@ -285,7 +348,11 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       };
       const mockHistoricalProvider = { fetchHistory: vi.fn() };
 
-      const service = new MarketDataService(mockSymbolRepo as any, mockCacheStore as any, mockHistoricalProvider as any);
+      const service = new MarketDataService(
+        mockSymbolRepo as any,
+        mockCacheStore as any,
+        mockHistoricalProvider as any
+      );
 
       const singlePrice = await service.getPrice('EURUSD');
       expect(singlePrice?.symbol).toBe('EURUSD');
@@ -296,17 +363,19 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
 
     it('ContextInjectionService computes indicators and formats market context with fallback (ADR-28)', async () => {
       const mockBars: OHLCBar[] = [];
-      let basePrice = 1.0800;
+      let basePrice = 1.08;
       for (let i = 0; i < 40; i++) {
-        basePrice += (i % 2 === 0 ? 0.0010 : -0.0005);
-        mockBars.push(new OHLCBar({
-          time: 10000 + i * 3600,
-          open: basePrice,
-          high: basePrice + 0.0020,
-          low: basePrice - 0.0010,
-          close: basePrice + 0.0005,
-          volume: 500
-        }));
+        basePrice += i % 2 === 0 ? 0.001 : -0.0005;
+        mockBars.push(
+          new OHLCBar({
+            time: 10000 + i * 3600,
+            open: basePrice,
+            high: basePrice + 0.002,
+            low: basePrice - 0.001,
+            close: basePrice + 0.0005,
+            volume: 500
+          })
+        );
       }
 
       const mockMarketDataService = {
@@ -355,7 +424,9 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
         symbol: 'XAUUSD',
         timeframe: 'h1'
       });
-      expect(fallbackResult.contextBlock).toContain('Notice: Live/Historical candle data for XAUUSD is currently unavailable');
+      expect(fallbackResult.contextBlock).toContain(
+        'Notice: Live/Historical candle data for XAUUSD is currently unavailable'
+      );
     });
 
     it('WorkerManagerService auto-discovers and controls modular background workers', async () => {
@@ -375,7 +446,7 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       };
 
       const manager = new WorkerManagerService([customWorker]);
-      const workers = manager.getAllWorkers();
+      const workers = await manager.getAllWorkers();
 
       expect(workers).toHaveLength(1);
       expect(workers[0].id).toBe('custom-ai-sentiment');
@@ -433,23 +504,48 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
 
       mockUserRepo = {
         findById: vi.fn(async (id: string) => mockUsersDb.get(id) || null),
-        findByEmail: vi.fn(async (email: string) => Array.from(mockUsersDb.values()).find((u) => u.email === email) || null),
+        findByEmail: vi.fn(
+          async (email: string) =>
+            Array.from(mockUsersDb.values()).find((u) => u.email === email) || null
+        ),
         findByGoogleId: vi.fn(async () => null),
-        save: vi.fn(async (u: User) => { mockUsersDb.set(u.id, u); return u; }),
-        update: vi.fn(async (u: User) => { mockUsersDb.set(u.id, u); return u; }),
-        delete: vi.fn(async (id: string) => { return mockUsersDb.delete(id); }),
-        findAll: vi.fn(async () => ({ data: Array.from(mockUsersDb.values()), total: mockUsersDb.size, page: 1, limit: 20, totalPages: 1 }))
+        save: vi.fn(async (u: User) => {
+          mockUsersDb.set(u.id, u);
+          return u;
+        }),
+        update: vi.fn(async (u: User) => {
+          mockUsersDb.set(u.id, u);
+          return u;
+        }),
+        delete: vi.fn(async (id: string) => {
+          return mockUsersDb.delete(id);
+        }),
+        findAll: vi.fn(async () => ({
+          data: Array.from(mockUsersDb.values()),
+          total: mockUsersDb.size,
+          page: 1,
+          limit: 20,
+          totalPages: 1
+        }))
       };
 
       mockSessionRepo = {
-        save: vi.fn(async (s: Session) => { mockSessionsDb.set(s.token, s); return s; }),
+        save: vi.fn(async (s: Session) => {
+          mockSessionsDb.set(s.token, s);
+          return s;
+        }),
         findByToken: vi.fn(async (t: string) => mockSessionsDb.get(t) || null),
-        findByUserId: vi.fn(async (uid: string) => Array.from(mockSessionsDb.values()).filter((s) => s.userId === uid)),
+        findByUserId: vi.fn(async (uid: string) =>
+          Array.from(mockSessionsDb.values()).filter((s) => s.userId === uid)
+        ),
         delete: vi.fn(async (t: string) => mockSessionsDb.delete(t)),
         deleteByUserId: vi.fn(async (uid: string) => {
           let count = 0;
           for (const [k, v] of mockSessionsDb.entries()) {
-            if (v.userId === uid) { mockSessionsDb.delete(k); count++; }
+            if (v.userId === uid) {
+              mockSessionsDb.delete(k);
+              count++;
+            }
           }
           return count;
         }),
@@ -458,36 +554,74 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
 
       mockDeviceRepo = {
         findByFingerprint: vi.fn(async (fp: string) => mockDevicesDb.get(fp) || null),
-        findByUserId: vi.fn(async (uid: string) => Array.from(mockDevicesDb.values()).filter((d) => d.userId === uid)),
-        save: vi.fn(async (d: Device) => { mockDevicesDb.set(d.fingerprint, d); return d; }),
+        findByUserId: vi.fn(async (uid: string) =>
+          Array.from(mockDevicesDb.values()).filter((d) => d.userId === uid)
+        ),
+        save: vi.fn(async (d: Device) => {
+          mockDevicesDb.set(d.fingerprint, d);
+          return d;
+        }),
         updateLastSeen: vi.fn(async () => true),
         deleteByUserId: vi.fn(async () => 0)
       };
 
       mockVerificationRepo = {
-        create: vi.fn(async (userId, token, type) => ({ id: 'v-1', userId, token, type, expiresAt: new Date(Date.now() + 3600000), createdAt: new Date() })),
-        verify: vi.fn(async (token, type) => ({ id: 'v-1', userId: 'usr-1', token, type, expiresAt: new Date(Date.now() + 3600000), createdAt: new Date() })),
+        create: vi.fn(async (userId, token, type) => ({
+          id: 'v-1',
+          userId,
+          token,
+          type,
+          expiresAt: new Date(Date.now() + 3600000),
+          createdAt: new Date()
+        })),
+        verify: vi.fn(async (token, type) => ({
+          id: 'v-1',
+          userId: 'usr-1',
+          token,
+          type,
+          expiresAt: new Date(Date.now() + 3600000),
+          createdAt: new Date()
+        })),
         invalidateUserTokens: vi.fn(async () => 1),
         cleanupExpired: vi.fn(async () => 0)
       };
 
       mockVoucherRepo = {
-        create: vi.fn(async (v: CreditVoucher) => { mockVouchersDb.set(v.code, v); return v; }),
+        create: vi.fn(async (v: CreditVoucher) => {
+          mockVouchersDb.set(v.code, v);
+          return v;
+        }),
         findByCode: vi.fn(async (code: string) => mockVouchersDb.get(code) || null),
-        findById: vi.fn(async (id: string) => Array.from(mockVouchersDb.values()).find((v) => v.id === id) || null),
+        findById: vi.fn(
+          async (id: string) => Array.from(mockVouchersDb.values()).find((v) => v.id === id) || null
+        ),
         redeem: vi.fn(async (id: string, userId: string) => {
           const voucher = Array.from(mockVouchersDb.values()).find((v) => v.id === id);
           if (!voucher) return false;
-          const redeemed = new CreditVoucher({ ...voucher['props'], isRedeemed: true, redeemedById: userId, redeemedAt: new Date() });
+          const redeemed = new CreditVoucher({
+            ...voucher['props'],
+            isRedeemed: true,
+            redeemedById: userId,
+            redeemedAt: new Date()
+          });
           mockVouchersDb.set(redeemed.code, redeemed);
           return true;
         }),
         revoke: vi.fn(async (id: string) => {
           const voucher = Array.from(mockVouchersDb.values()).find((v) => v.id === id);
-          if (voucher) { mockVouchersDb.delete(voucher.code); return true; }
+          if (voucher) {
+            mockVouchersDb.delete(voucher.code);
+            return true;
+          }
           return false;
         }),
-        findAll: vi.fn(async () => ({ data: Array.from(mockVouchersDb.values()), total: mockVouchersDb.size, page: 1, limit: 20, totalPages: 1 }))
+        findAll: vi.fn(async () => ({
+          data: Array.from(mockVouchersDb.values()),
+          total: mockVouchersDb.size,
+          page: 1,
+          limit: 20,
+          totalPages: 1
+        }))
       };
 
       mockCreditRepo = {
@@ -529,7 +663,13 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
         save: vi.fn(async (msg) => msg),
         findBySessionId: vi.fn(async () => []),
         findRecentBySessionId: vi.fn(async () => []),
-        findByUserId: vi.fn(async () => ({ data: [], total: 0, page: 1, limit: 20, totalPages: 1 })),
+        findByUserId: vi.fn(async () => ({
+          data: [],
+          total: 0,
+          page: 1,
+          limit: 20,
+          totalPages: 1
+        })),
         deleteSession: vi.fn(async () => 2)
       };
 
@@ -611,7 +751,9 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       expect(result.newBalance).toBe(300); // 100 initial + 200 voucher
 
       // Check that voucher cannot be redeemed twice
-      await expect(redeemUseCase.execute('usr-1', { code: 'PRO200' })).rejects.toThrow('already been redeemed');
+      await expect(redeemUseCase.execute('usr-1', { code: 'PRO200' })).rejects.toThrow(
+        'already been redeemed'
+      );
     });
 
     it('GetStreamTicketUseCase issues one-time ticket (ADR-18)', async () => {
@@ -703,7 +845,9 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
         {
           onThink: (c) => thinks.push(c),
           onDelta: (c) => deltas.push(c),
-          onDone: (meta) => { doneMeta = meta; }
+          onDone: (meta) => {
+            doneMeta = meta;
+          }
         }
       );
 
@@ -729,20 +873,32 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
     it('GetPricesUseCase returns all prices enriched with 24h change', async () => {
       const mockMarketDataService = {
         getAllPrices: vi.fn().mockResolvedValue([
-          new PriceTick({ symbol: 'EURUSD', bid: 1.0850, ask: 1.0852, spread: 2, volume: 100, timestamp: 1700000000 })
+          new PriceTick({
+            symbol: 'EURUSD',
+            bid: 1.085,
+            ask: 1.0852,
+            spread: 2,
+            volume: 100,
+            timestamp: 1700000000
+          })
         ]),
         getPrice: vi.fn().mockResolvedValue(null),
         getOHLC: vi.fn().mockResolvedValue([
-          new OHLCBar({ time: 1000, open: 1.0800, high: 1.0860, low: 1.0790, close: 1.0840, volume: 200 })
+          new OHLCBar({
+            time: 1000,
+            open: 1.08,
+            high: 1.086,
+            low: 1.079,
+            close: 1.084,
+            volume: 200
+          })
         ]),
         calculate24hChange: vi.fn().mockReturnValue({ changeAmount: 0.0051, changePercent: 0.47 })
       };
 
-      const getPricesUseCase = new GetPricesUseCase(
-        mockMarketDataService as any
-      );
+      const getPricesUseCase = new GetPricesUseCase(mockMarketDataService as any);
 
-      const prices = await getPricesUseCase.execute() as any[];
+      const prices = (await getPricesUseCase.execute()) as any[];
       expect(prices).toHaveLength(1);
       expect(prices[0].symbol).toBe('EURUSD');
       expect(prices[0].change24hPercent).toBe(0.47);
@@ -753,13 +909,20 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
         getPrice: vi.fn().mockResolvedValue(null), // cache miss
         getAllPrices: vi.fn(),
         getOHLC: vi.fn().mockResolvedValue([
-          new OHLCBar({ time: 1000, open: 1.0800, high: 1.0860, low: 1.0790, close: 1.0840, volume: 200 })
+          new OHLCBar({
+            time: 1000,
+            open: 1.08,
+            high: 1.086,
+            low: 1.079,
+            close: 1.084,
+            volume: 200
+          })
         ]),
         calculate24hChange: vi.fn().mockReturnValue({ changeAmount: 0.004, changePercent: 0.37 })
       };
 
       const getPricesUseCase = new GetPricesUseCase(mockMarketDataService as any);
-      const result = await getPricesUseCase.execute('EURUSD') as any;
+      const result = (await getPricesUseCase.execute('EURUSD')) as any;
 
       // Falls back to getOHLC for live tick + d1 baseline
       expect(result.symbol).toBe('EURUSD');
@@ -776,7 +939,7 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       };
 
       const getPricesUseCase = new GetPricesUseCase(mockMarketDataService as any);
-      const result = await getPricesUseCase.execute('UNKNOWN') as any;
+      const result = (await getPricesUseCase.execute('UNKNOWN')) as any;
 
       expect(result.symbol).toBe('UNKNOWN');
       expect(result.bid).toBe(0);
@@ -793,7 +956,7 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       };
 
       const getPricesUseCase = new GetPricesUseCase(mockMarketDataService as any);
-      const result = await getPricesUseCase.execute() as any[];
+      const result = (await getPricesUseCase.execute()) as any[];
       expect(result).toHaveLength(0);
     });
     it('CreateVoucherUseCase creates a valid credit voucher (ADR-29)', async () => {
@@ -801,7 +964,10 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
         save: vi.fn().mockResolvedValue({})
       };
 
-      const createVoucherUseCase = new CreateVoucherUseCase(mockVoucherRepo, mockAdminActionRepo as any);
+      const createVoucherUseCase = new CreateVoucherUseCase(
+        mockVoucherRepo,
+        mockAdminActionRepo as any
+      );
       const created = await createVoucherUseCase.execute('admin-1', {
         code: 'SUMMER1000',
         amount: 1000
@@ -839,9 +1005,11 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
     it('CreateAgentUseCase, ListAgentsUseCase, and SetDefaultAgentUseCase manage dynamic database AI agents', async () => {
       const agents: any[] = [];
       const mockAgentRepo = {
-        findById: vi.fn().mockImplementation((id: string) => agents.find((a) => a.id === id) || null),
+        findById: vi
+          .fn()
+          .mockImplementation((id: string) => agents.find((a) => a.id === id) || null),
         findAll: vi.fn().mockImplementation((filter: any) => {
-          const activeOnly = typeof filter === 'boolean' ? filter : filter?.activeOnly ?? false;
+          const activeOnly = typeof filter === 'boolean' ? filter : (filter?.activeOnly ?? false);
           const visibility = typeof filter === 'object' ? filter?.visibility : undefined;
           return agents.filter((a) => {
             if (activeOnly && !a.isActive) return false;
@@ -855,7 +1023,9 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
           return Promise.resolve(agent);
         }),
         setDefault: vi.fn().mockImplementation((id: string) => {
-          agents.forEach((a) => { a.isDefault = a.id === id; });
+          agents.forEach((a) => {
+            a.isDefault = a.id === id;
+          });
           return Promise.resolve(true);
         }),
         delete: vi.fn().mockResolvedValue(true)
@@ -947,7 +1117,9 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       };
 
       const mockAgentRepo = {
-        findById: vi.fn().mockImplementation((id: string) => id === 'test-qa-agent' ? mockAgent : null)
+        findById: vi
+          .fn()
+          .mockImplementation((id: string) => (id === 'test-qa-agent' ? mockAgent : null))
       };
 
       const mockAiGateway = {
@@ -1078,9 +1250,9 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
         localMockAdminActionRepo as any
       );
 
-      await expect(
-        deleteUserUseCase.execute('admin-1', 'admin-1')
-      ).rejects.toThrow('SELF_DELETION_FORBIDDEN');
+      await expect(deleteUserUseCase.execute('admin-1', 'admin-1')).rejects.toThrow(
+        'SELF_DELETION_FORBIDDEN'
+      );
 
       const otherAdmin = {
         id: 'admin-2',
@@ -1091,10 +1263,9 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       };
       localMockUserRepo.findById = vi.fn().mockResolvedValue(otherAdmin);
 
-      await expect(
-        deleteUserUseCase.execute('admin-1', 'admin-2')
-      ).rejects.toThrow('ADMIN_DELETION_FORBIDDEN');
+      await expect(deleteUserUseCase.execute('admin-1', 'admin-2')).rejects.toThrow(
+        'ADMIN_DELETION_FORBIDDEN'
+      );
     });
   });
 });
-

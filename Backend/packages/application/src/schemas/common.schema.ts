@@ -2,14 +2,13 @@ import { Type, Static, TSchema, FormatRegistry } from '@sinclair/typebox';
 
 // Register standard formats for TypeBox runtime validation
 if (!FormatRegistry.Has('email')) {
-  FormatRegistry.Set('email', (value) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-  );
+  FormatRegistry.Set('email', (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value));
 }
 
 if (!FormatRegistry.Has('date-time')) {
-  FormatRegistry.Set('date-time', (value) =>
-    typeof value === 'string' && !isNaN(Date.parse(value))
+  FormatRegistry.Set(
+    'date-time',
+    (value) => typeof value === 'string' && !isNaN(Date.parse(value))
   );
 }
 

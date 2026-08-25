@@ -4,6 +4,7 @@ import { FinnhubWsWorker } from './ws-worker.js';
 import { NewsWorker } from './news-worker.js';
 import { SyncWorker } from './sync-worker.js';
 import { CleanupWorker } from './cleanup-worker.js';
+import { CalendarWorker } from './calendar-worker.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -22,6 +23,7 @@ async function startMasterWorker() {
   const newsWorker = new NewsWorker();
   const syncWorker = new SyncWorker();
   const cleanupWorker = new CleanupWorker();
+  const calendarWorker = new CalendarWorker();
 
   const shutdown = async () => {
     logger.info('Received termination signal. Gracefully stopping all workers...');
@@ -29,7 +31,8 @@ async function startMasterWorker() {
       wsWorker.stop(),
       newsWorker.stop(),
       syncWorker.stop(),
-      cleanupWorker.stop()
+      cleanupWorker.stop(),
+      calendarWorker.stop()
     ]);
     logger.info('All workers stopped. Exiting cleanly.');
     process.exit(0);
@@ -39,15 +42,19 @@ async function startMasterWorker() {
   process.on('SIGTERM', shutdown);
 
   try {
-    // Start all 4 workers concurrently
+    // Start all 5 workers concurrently. Each worker's own start() checks
+    // worker_states (the SSOT — see IWorkerStateRepository) before running:
+    // a worker an admin previously paused/stopped does not silently
+    // auto-start again just because this process restarted.
     await Promise.all([
       wsWorker.start(),
       newsWorker.start(),
       syncWorker.start(),
-      cleanupWorker.start()
+      cleanupWorker.start(),
+      calendarWorker.start()
     ]);
 
-    logger.info(' All 4 Worker subsystems are running actively in the background.');
+    logger.info(' All 5 Worker subsystems are running actively in the background.');
   } catch (err: any) {
     logger.error({ err: err.message }, 'Fatal error during worker startup');
     process.exit(1);

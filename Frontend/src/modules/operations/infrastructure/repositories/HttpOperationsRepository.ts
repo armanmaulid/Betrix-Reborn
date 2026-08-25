@@ -53,7 +53,9 @@ export class HttpOperationsRepository implements IOperationsRepository {
         oldLoginAttemptsDeleted: number;
       };
     }>('/api/admin/cleanup', input);
-    return res.data ?? { expiredSessionsDeleted: 0, expiredTokensDeleted: 0, oldLoginAttemptsDeleted: 0 };
+    return (
+      res.data ?? { expiredSessionsDeleted: 0, expiredTokensDeleted: 0, oldLoginAttemptsDeleted: 0 }
+    );
   }
 }
 

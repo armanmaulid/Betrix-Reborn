@@ -101,9 +101,7 @@ export function NewsListTable({
                 <tr
                   key={article.id}
                   className={`transition-colors ${
-                    isSelected
-                      ? 'bg-accent/10 hover:bg-accent/15'
-                      : 'hover:bg-surface-hover/80'
+                    isSelected ? 'bg-accent/10 hover:bg-accent/15' : 'hover:bg-surface-hover/80'
                   }`}
                 >
                   {/* Selection Checkbox */}

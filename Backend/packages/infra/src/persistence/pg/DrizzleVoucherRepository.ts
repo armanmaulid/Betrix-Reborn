@@ -85,14 +85,23 @@ export class DrizzleVoucherRepository implements IVoucherRepository {
     return result.length > 0;
   }
 
-  async findAll(pagination: PaginationParams, filter?: VoucherFilter, sort?: VoucherSort): Promise<PaginatedResult<CreditVoucher>> {
+  async findAll(
+    pagination: PaginationParams,
+    filter?: VoucherFilter,
+    sort?: VoucherSort
+  ): Promise<PaginatedResult<CreditVoucher>> {
     const offset = (pagination.page - 1) * pagination.limit;
-    const whereClause = filter?.isRedeemed !== undefined ? eq(creditVouchers.isRedeemed, filter.isRedeemed) : undefined;
+    const whereClause =
+      filter?.isRedeemed !== undefined
+        ? eq(creditVouchers.isRedeemed, filter.isRedeemed)
+        : undefined;
 
     const sortColumn =
-      sort?.sortBy === 'amount' ? creditVouchers.amount
-      : sort?.sortBy === 'redeemedAt' ? creditVouchers.redeemedAt
-      : creditVouchers.createdAt;
+      sort?.sortBy === 'amount'
+        ? creditVouchers.amount
+        : sort?.sortBy === 'redeemedAt'
+          ? creditVouchers.redeemedAt
+          : creditVouchers.createdAt;
     const order = sort?.sortOrder === 'asc' ? asc : desc;
 
     const [countResult, rows] = await Promise.all([

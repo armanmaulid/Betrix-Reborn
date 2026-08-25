@@ -20,11 +20,7 @@ export interface AgentFormProps {
   isPending?: boolean;
 }
 
-export function AgentForm({
-  initialData,
-  onSubmit,
-  isPending = false
-}: AgentFormProps) {
+export function AgentForm({ initialData, onSubmit, isPending = false }: AgentFormProps) {
   const isEdit = Boolean(initialData);
 
   // Key by isEdit+initialData.id to force a full remount when switching between
@@ -32,49 +28,55 @@ export function AgentForm({
   // that react-hook-form v8 cannot fully reset at runtime.
   const formKey = `${isEdit ? 'edit' : 'create'}-${initialData?.id ?? 'new'}`;
 
-  const defaultValues = isEdit && initialData
-    ? {
-        name: initialData.name,
-        modelName: initialData.modelName,
-        baseUrl: initialData.baseUrl || '',
-        apiKey: '',
-        taskType: initialData.taskType,
-        tier: initialData.tier,
-        creditsPer1kTokens: initialData.creditsPer1kTokens,
-        maxTokens: initialData.maxTokens,
-        temperature: initialData.temperature,
-        supportsThinking: initialData.supportsThinking,
-        isDefault: initialData.isDefault,
-        isActive: initialData.isActive,
-        visibility: initialData.visibility || 'public',
-        systemPrompt: initialData.systemPrompt || '',
-        description: initialData.description || ''
-      }
-    : {
-        id: '',
-        name: '',
-        modelName: '',
-        baseUrl: '',
-        apiKey: '',
-        taskType: 'trade_reasoning',
-        tier: 'deep' as const,
-        creditsPer1kTokens: 1,
-        maxTokens: 8192,
-        temperature: 0.7,
-        supportsThinking: true,
-        isDefault: false,
-        isActive: true,
-        visibility: 'public' as const,
-        systemPrompt: '',
-        description: ''
-      };
+  const defaultValues =
+    isEdit && initialData
+      ? {
+          name: initialData.name,
+          modelName: initialData.modelName,
+          baseUrl: initialData.baseUrl || '',
+          apiKey: '',
+          taskType: initialData.taskType,
+          tier: initialData.tier,
+          creditsPer1kTokens: initialData.creditsPer1kTokens,
+          maxTokens: initialData.maxTokens,
+          temperature: initialData.temperature,
+          supportsThinking: initialData.supportsThinking,
+          isDefault: initialData.isDefault,
+          isActive: initialData.isActive,
+          visibility: initialData.visibility || 'public',
+          systemPrompt: initialData.systemPrompt || '',
+          description: initialData.description || ''
+        }
+      : {
+          id: '',
+          name: '',
+          modelName: '',
+          baseUrl: '',
+          apiKey: '',
+          taskType: 'trade_reasoning',
+          tier: 'deep' as const,
+          creditsPer1kTokens: 1,
+          maxTokens: 8192,
+          temperature: 0.7,
+          supportsThinking: true,
+          isDefault: false,
+          isActive: true,
+          visibility: 'public' as const,
+          systemPrompt: '',
+          description: ''
+        };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const form = useForm<any>({
     resolver: zodResolver(isEdit ? UpdateAgentSchema : CreateAgentSchema),
     defaultValues
   });
-  const { register, handleSubmit, watch, formState: { errors } } = form;
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors }
+  } = form;
 
   const temperatureValue = watch('temperature', initialData?.temperature ?? 0.7);
 
@@ -119,7 +121,9 @@ export function AgentForm({
                 className="w-full bg-black border border-border px-3 py-2 text-foreground focus:outline-none focus:border-accent font-bold"
               />
             )}
-            {errors.id && <p className="text-[10px] text-negative">{errors.id.message as string}</p>}
+            {errors.id && (
+              <p className="text-[10px] text-negative">{errors.id.message as string}</p>
+            )}
           </div>
 
           {/* Display Name */}
@@ -137,7 +141,9 @@ export function AgentForm({
               placeholder="e.g. GPT-4o Market Intelligence"
               className="w-full bg-black border border-border px-3 py-2 text-foreground focus:outline-none focus:border-accent"
             />
-            {errors.name && <p className="text-[10px] text-negative">{errors.name.message as string}</p>}
+            {errors.name && (
+              <p className="text-[10px] text-negative">{errors.name.message as string}</p>
+            )}
           </div>
 
           {/* LLM Model Name */}
@@ -155,7 +161,9 @@ export function AgentForm({
               placeholder="e.g. gpt-4o, claude-3-7-sonnet-20250219"
               className="w-full bg-black border border-border px-3 py-2 text-foreground focus:outline-none focus:border-accent"
             />
-            {errors.modelName && <p className="text-[10px] text-negative">{errors.modelName.message as string}</p>}
+            {errors.modelName && (
+              <p className="text-[10px] text-negative">{errors.modelName.message as string}</p>
+            )}
           </div>
 
           {/* Task Type */}
@@ -264,7 +272,9 @@ export function AgentForm({
               className="w-full bg-black border border-border px-3 py-2 text-foreground tabular-nums focus:outline-none focus:border-accent"
             />
             {errors.creditsPer1kTokens && (
-              <p className="text-[10px] text-negative">{errors.creditsPer1kTokens.message as string}</p>
+              <p className="text-[10px] text-negative">
+                {errors.creditsPer1kTokens.message as string}
+              </p>
             )}
           </div>
 
@@ -335,18 +345,25 @@ export function AgentForm({
             <option value="private">PRIVATE (INTERNAL QA / ADMIN TESTING ONLY)</option>
           </select>
           <p className="text-[10px] text-muted-foreground">
-            Private models remain available to administrators for testing & QA, but are hidden from the public chat interface.
+            Private models remain available to administrators for testing & QA, but are hidden from
+            the public chat interface.
           </p>
         </div>
 
         {/* Feature Switches */}
-        <div className={`grid grid-cols-1 ${isEdit ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-3 pt-3 border-t border-border/60 text-xs`}>
+        <div
+          className={`grid grid-cols-1 ${isEdit ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-3 pt-3 border-t border-border/60 text-xs`}
+        >
           <label className="border border-border bg-black p-3 flex items-center justify-between cursor-pointer">
             <div>
               <div className="font-bold text-foreground">THINKING MODE</div>
               <div className="text-[10px] text-muted-foreground">Chain-of-thought support</div>
             </div>
-            <input type="checkbox" {...register('supportsThinking')} className="accent-accent w-4 h-4" />
+            <input
+              type="checkbox"
+              {...register('supportsThinking')}
+              className="accent-accent w-4 h-4"
+            />
           </label>
 
           <label className="border border-border bg-black p-3 flex items-center justify-between cursor-pointer">
@@ -429,8 +446,8 @@ export function AgentForm({
               ? 'SAVING PARAMETERS...'
               : 'DEPLOYING AGENT...'
             : isEdit
-            ? 'SAVE CHANGES'
-            : 'DEPLOY MODEL TO FLEET'}
+              ? 'SAVE CHANGES'
+              : 'DEPLOY MODEL TO FLEET'}
         </button>
       </div>
     </form>

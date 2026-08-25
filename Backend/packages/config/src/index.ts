@@ -12,7 +12,7 @@ function loadEnvFile() {
 
   for (const envPath of possiblePaths) {
     if (fs.existsSync(envPath)) {
-      dotenv.config({ path: envPath });
+      dotenv.config({ path: envPath, quiet: true });
       break;
     }
   }
@@ -42,14 +42,17 @@ export type EnvConfig = Static<typeof EnvSchema>;
 // Fail fast: JWT_SECRET must be set and strong — never fall back to a known value.
 const jwtSecret = process.env.JWT_SECRET;
 if (!jwtSecret || jwtSecret.length < 32) {
-  throw new Error('JWT_SECRET must be set (min 32 chars) — refusing to start with a default secret');
+  throw new Error(
+    'JWT_SECRET must be set (min 32 chars) — refusing to start with a default secret'
+  );
 }
 
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: Number(process.env.PORT) || 3000,
   HOST: process.env.HOST || '0.0.0.0',
-  DATABASE_URL: process.env.DATABASE_URL || 'postgresql://betrix:betrixpass@localhost:5432/betrix_reborn',
+  DATABASE_URL:
+    process.env.DATABASE_URL || 'postgresql://betrix:betrixpass@localhost:5432/betrix_reborn',
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL || 'http://localhost:8079',
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN || 'local_dev_token',
   JWT_SECRET: jwtSecret,
@@ -71,5 +74,11 @@ export const env = {
   SMTP_SECURE: process.env.SMTP_SECURE === 'true',
   SMTP_USER: process.env.SMTP_USER || '',
   SMTP_PASS: process.env.SMTP_PASS || '',
-  SMTP_FROM: process.env.SMTP_FROM || 'no-reply@betrix.io'
+  SMTP_FROM: process.env.SMTP_FROM || 'no-reply@betrix.io',
+  FXMACRODATA_BASE_URL: process.env.FXMACRODATA_BASE_URL || 'https://api.fxmacrodata.com',
+  FXMACRODATA_CALENDAR_CURRENCY: process.env.FXMACRODATA_CALENDAR_CURRENCY || 'usd',
+  FXMACRODATA_API_KEY: process.env.FXMACRODATA_API_KEY || '',
+  FXMACRODATA_RETRY_MAX_ATTEMPTS: Number(process.env.FXMACRODATA_RETRY_MAX_ATTEMPTS) || 3,
+  FXMACRODATA_RETRY_BASE_DELAY_MS: Number(process.env.FXMACRODATA_RETRY_BASE_DELAY_MS) || 1000,
+  FXMACRODATA_SSE_RECONNECT_DELAY_MS: Number(process.env.FXMACRODATA_SSE_RECONNECT_DELAY_MS) || 5000
 };

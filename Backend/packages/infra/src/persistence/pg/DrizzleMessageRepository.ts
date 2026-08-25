@@ -1,5 +1,12 @@
 import { and, desc, eq, isNull, or, sql } from 'drizzle-orm';
-import { IMessageRepository, Message, NotificationPreference, Nullable, PaginatedResult, PaginationParams } from '@betrix/domain';
+import {
+  IMessageRepository,
+  Message,
+  NotificationPreference,
+  Nullable,
+  PaginatedResult,
+  PaginationParams
+} from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { messages, notificationPreferences } from '../drizzle/schema.js';
 

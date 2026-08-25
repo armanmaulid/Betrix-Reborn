@@ -3,12 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Command } from 'cmdk';
-import {
-  PlusCircle,
-  LogOut,
-  Search,
-  X
-} from 'lucide-react';
+import { PlusCircle, LogOut, Search, X } from 'lucide-react';
 import { useLogout } from '@/shared/presentation/hooks/use-logout';
 import { ADMIN_ROUTES } from '@/shared/utils/routes';
 
@@ -87,7 +82,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
             </Command.Empty>
 
             {/* Navigation Group */}
-            <Command.Group heading="[01] NAVIGATION DIRECTORY" className="text-[10px] text-accent/80 font-bold px-2 mb-1 uppercase tracking-wider">
+            <Command.Group
+              heading="[01] NAVIGATION DIRECTORY"
+              className="text-[10px] text-accent/80 font-bold px-2 mb-1 uppercase tracking-wider"
+            >
               {ADMIN_ROUTES.map((route) => {
                 const Icon = route.icon;
                 return (
@@ -101,14 +99,19 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       <Icon className="w-3.5 h-3.5 text-muted-foreground" />
                       <span>{route.description}</span>
                     </div>
-                    <kbd className="text-[9px] text-muted-foreground border border-border px-1">{route.href}</kbd>
+                    <kbd className="text-[9px] text-muted-foreground border border-border px-1">
+                      {route.href}
+                    </kbd>
                   </Command.Item>
                 );
               })}
             </Command.Group>
 
             {/* Quick Actions Group */}
-            <Command.Group heading="[02] QUICK OPERATIONAL ACTIONS" className="text-[10px] text-accent/80 font-bold px-2 mb-1 uppercase tracking-wider">
+            <Command.Group
+              heading="[02] QUICK OPERATIONAL ACTIONS"
+              className="text-[10px] text-accent/80 font-bold px-2 mb-1 uppercase tracking-wider"
+            >
               <Command.Item
                 onSelect={() => handleNavigate('/vouchers?action=new')}
                 className="flex items-center justify-between px-2.5 py-1.5 text-xs text-foreground hover:bg-accent/10 hover:text-accent cursor-pointer transition-colors"
@@ -133,7 +136,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
             </Command.Group>
 
             {/* System Actions Group */}
-            <Command.Group heading="[03] SESSION CONTROLS" className="text-[10px] text-accent/80 font-bold px-2 mb-1 uppercase tracking-wider">
+            <Command.Group
+              heading="[03] SESSION CONTROLS"
+              className="text-[10px] text-accent/80 font-bold px-2 mb-1 uppercase tracking-wider"
+            >
               <Command.Item
                 onSelect={handleLogout}
                 className="flex items-center justify-between px-2.5 py-1.5 text-xs text-negative hover:bg-negative/10 cursor-pointer transition-colors"
@@ -150,10 +156,17 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           {/* Footer Bar */}
           <div className="border-t border-border bg-black px-3.5 py-1.5 flex items-center justify-between text-[10px] text-muted-foreground">
             <div className="flex items-center gap-2">
-              <span>Navigate: <kbd className="border border-border px-1">↑</kbd> <kbd className="border border-border px-1">↓</kbd></span>
-              <span>Select: <kbd className="border border-border px-1">↵</kbd></span>
+              <span>
+                Navigate: <kbd className="border border-border px-1">↑</kbd>{' '}
+                <kbd className="border border-border px-1">↓</kbd>
+              </span>
+              <span>
+                Select: <kbd className="border border-border px-1">↵</kbd>
+              </span>
             </div>
-            <span>Dismiss: <kbd className="border border-border px-1">ESC</kbd></span>
+            <span>
+              Dismiss: <kbd className="border border-border px-1">ESC</kbd>
+            </span>
           </div>
         </Command>
       </div>

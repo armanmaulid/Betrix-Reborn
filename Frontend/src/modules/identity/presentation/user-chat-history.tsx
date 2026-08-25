@@ -188,9 +188,7 @@ export function UserChatHistory({ userId, userEmail }: UserChatHistoryProps) {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-                          <span>
-                            {formatDateTime(item.createdAt)}
-                          </span>
+                          <span>{formatDateTime(item.createdAt)}</span>
                           <span>•</span>
                           <button
                             type="button"
@@ -255,7 +253,9 @@ export function UserChatHistory({ userId, userEmail }: UserChatHistoryProps) {
                             <Bot className="w-3.5 h-3.5" />
                             <span>AI COMPLETION ({item.modelUsed || 'UNKNOWN_MODEL'})</span>
                           </div>
-                          <span>OUTPUT: {formatFinancialNumber(item.outputTokens || 0)} TOKENS</span>
+                          <span>
+                            OUTPUT: {formatFinancialNumber(item.outputTokens || 0)} TOKENS
+                          </span>
                         </div>
                         <div className="text-foreground whitespace-pre-wrap select-all font-sans leading-relaxed text-xs">
                           {item.reply}
@@ -269,13 +269,16 @@ export function UserChatHistory({ userId, userEmail }: UserChatHistoryProps) {
                         </div>
                         <div className="flex items-center gap-4">
                           <span>
-                            INPUT TOKENS: <strong className="text-foreground">{item.inputTokens || 0}</strong>
+                            INPUT TOKENS:{' '}
+                            <strong className="text-foreground">{item.inputTokens || 0}</strong>
                           </span>
                           <span>
-                            OUTPUT TOKENS: <strong className="text-info">{item.outputTokens || 0}</strong>
+                            OUTPUT TOKENS:{' '}
+                            <strong className="text-info">{item.outputTokens || 0}</strong>
                           </span>
                           <span>
-                            LATENCY: <strong className="text-accent">{item.latencyMs || 0}ms</strong>
+                            LATENCY:{' '}
+                            <strong className="text-accent">{item.latencyMs || 0}ms</strong>
                           </span>
                         </div>
                       </div>

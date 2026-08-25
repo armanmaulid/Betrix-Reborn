@@ -22,4 +22,3 @@ export interface INewsProvider {
   getPollingIntervalMs(): number;
   fetchNews(category?: string): Promise<NewsArticle[]>;
 }
-

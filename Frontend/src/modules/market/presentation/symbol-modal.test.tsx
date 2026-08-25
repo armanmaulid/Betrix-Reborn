@@ -6,14 +6,7 @@ import { SymbolModal } from './symbol-modal';
 
 describe('SymbolModal Component', () => {
   it('should render correctly in add catalog mode', () => {
-    render(
-      <SymbolModal
-        isOpen={true}
-        onClose={vi.fn()}
-        onSave={vi.fn()}
-        mode="catalog"
-      />
-    );
+    render(<SymbolModal isOpen={true} onClose={vi.fn()} onSave={vi.fn()} mode="catalog" />);
 
     expect(screen.getByText('ADD NEW MARKET INSTRUMENT')).toBeInTheDocument();
     expect(screen.getByText(/DUKASCOPY TICKER MAPPING/i)).toBeInTheDocument();
@@ -46,14 +39,7 @@ describe('SymbolModal Component', () => {
 
   it('should submit form data on valid input', async () => {
     const onSave = vi.fn();
-    render(
-      <SymbolModal
-        isOpen={true}
-        onClose={vi.fn()}
-        onSave={onSave}
-        mode="catalog"
-      />
-    );
+    render(<SymbolModal isOpen={true} onClose={vi.fn()} onSave={onSave} mode="catalog" />);
 
     const symbolInput = screen.getByPlaceholderText('EURUSD');
     fireEvent.change(symbolInput, { target: { value: 'XAUUSD' } });

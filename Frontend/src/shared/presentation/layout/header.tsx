@@ -49,13 +49,14 @@ export function Header({ onOpenCommandPalette }: HeaderProps) {
       <div className="flex items-center space-x-3 shrink-0">
         <div className="hidden sm:flex items-center space-x-2 border border-border bg-surface px-2.5 py-1">
           <Shield className="w-3.5 h-3.5 text-accent" />
-          <span className="text-xs text-foreground/90 max-w-[140px] truncate" title={adminEmail || undefined}>
+          <span
+            className="text-xs text-foreground/90 max-w-[140px] truncate"
+            title={adminEmail || undefined}
+          >
             {isSessionLoading && !currentUser ? '…' : adminEmail || 'UNAUTHENTICATED'}
           </span>
           {currentUser?.isAdmin && (
-            <span className="text-[9px] bg-accent/20 text-accent px-1 font-bold">
-              ROOT
-            </span>
+            <span className="text-[9px] bg-accent/20 text-accent px-1 font-bold">ROOT</span>
           )}
         </div>
 

@@ -29,7 +29,10 @@ export class DeviceDomainService {
   }
 
   public static async registerDevice(
-    deviceRepo: { findByFingerprint(fp: string): Promise<Nullable<Device>>; save(d: Device): Promise<Device> },
+    deviceRepo: {
+      findByFingerprint(fp: string): Promise<Nullable<Device>>;
+      save(d: Device): Promise<Device>;
+    },
     userId: string,
     fingerprintStr: string
   ): Promise<Device> {

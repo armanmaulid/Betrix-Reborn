@@ -23,7 +23,9 @@ export const streamSymbols = pgTable('stream_symbols', {
 });
 
 export const ohlcSymbols = pgTable('ohlc_symbols', {
-  symbol: varchar('symbol', { length: 50 }).primaryKey().references(() => symbols.symbol, { onDelete: 'cascade' }),
+  symbol: varchar('symbol', { length: 50 })
+    .primaryKey()
+    .references(() => symbols.symbol, { onDelete: 'cascade' }),
   dukascopySymbol: varchar('dukascopy_symbol', { length: 100 }).notNull().unique(),
   description: text('description'),
   category: varchar('category', { length: 100 }).notNull(),

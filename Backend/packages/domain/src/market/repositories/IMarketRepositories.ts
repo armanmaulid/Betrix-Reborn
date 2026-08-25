@@ -59,7 +59,7 @@ export interface IOhlcSymbolRepository {
     category?: string;
     isActive?: boolean;
   }): Promise<OhlcSymbol>;
-  delete(symbol: string): Promise<boolean>
+  delete(symbol: string): Promise<boolean>;
 }
 
 /**

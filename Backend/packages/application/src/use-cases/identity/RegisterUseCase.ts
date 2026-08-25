@@ -93,9 +93,14 @@ export class RegisterUseCase {
     // 7. Send Verification Email
     if (this.emailService) {
       const verificationLink = `https://betrix.io/verify-email?token=${vToken}`;
-      await this.emailService.sendVerificationEmail(email, verificationLink, savedUser.name || undefined).catch((err) => {
-        console.warn(`[RegisterUseCase] Failed to send verification email to ${email}:`, err.message);
-      });
+      await this.emailService
+        .sendVerificationEmail(email, verificationLink, savedUser.name || undefined)
+        .catch((err) => {
+          console.warn(
+            `[RegisterUseCase] Failed to send verification email to ${email}:`,
+            err.message
+          );
+        });
     }
 
     // 8. Create Active Session

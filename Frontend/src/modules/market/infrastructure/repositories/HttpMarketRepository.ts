@@ -1,5 +1,9 @@
 import type { IMarketRepository } from '../../domain/repositories/IMarketRepository';
-import { MarketInstrument, StreamSymbolEntity, OhlcSymbolEntity } from '../../domain/entities/MarketInstrument';
+import {
+  MarketInstrument,
+  StreamSymbolEntity,
+  OhlcSymbolEntity
+} from '../../domain/entities/MarketInstrument';
 import { PriceTick } from '../../domain/value-objects/PriceTick';
 import { HttpClient, unwrapData, unwrapListData } from '@shared/infrastructure/http/api-client';
 import { MarketMapper } from '../mappers/MarketMapper';
@@ -14,7 +18,9 @@ export class HttpMarketRepository implements IMarketRepository {
     return unwrapListData(res).map(MarketMapper.toInstrumentEntity);
   }
 
-  public async saveSymbol(instrument: Partial<MarketInstrument> & { symbol: string }): Promise<MarketInstrument> {
+  public async saveSymbol(
+    instrument: Partial<MarketInstrument> & { symbol: string }
+  ): Promise<MarketInstrument> {
     const res = await this.http.post<{ data: any }>('/api/admin/symbols', instrument);
     return MarketMapper.toInstrumentEntity(unwrapData(res));
   }
@@ -31,7 +37,9 @@ export class HttpMarketRepository implements IMarketRepository {
     return unwrapListData(res).map(MarketMapper.toStreamSymbolEntity);
   }
 
-  public async saveStreamSymbol(streamData: Partial<StreamSymbolEntity> & { symbol: string; finnhubSymbol: string }): Promise<StreamSymbolEntity> {
+  public async saveStreamSymbol(
+    streamData: Partial<StreamSymbolEntity> & { symbol: string; finnhubSymbol: string }
+  ): Promise<StreamSymbolEntity> {
     const res = await this.http.post<{ data: any }>('/api/admin/stream-symbols', streamData);
     return MarketMapper.toStreamSymbolEntity(unwrapData(res));
   }
@@ -48,7 +56,12 @@ export class HttpMarketRepository implements IMarketRepository {
     return unwrapListData(res).map(MarketMapper.toOhlcSymbolEntity);
   }
 
-  public async saveOhlcSymbol(data: { symbol: string; dukascopySymbol: string; description?: string; isActive?: boolean }): Promise<OhlcSymbolEntity> {
+  public async saveOhlcSymbol(data: {
+    symbol: string;
+    dukascopySymbol: string;
+    description?: string;
+    isActive?: boolean;
+  }): Promise<OhlcSymbolEntity> {
     const res = await this.http.post<{ data: any }>('/api/admin/ohlc-symbols', data);
     return MarketMapper.toOhlcSymbolEntity(unwrapData(res));
   }

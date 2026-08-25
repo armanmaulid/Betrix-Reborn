@@ -30,12 +30,15 @@ export const WorkersCard = React.memo(function WorkersCard({ onClose }: WorkersC
           [MANAGE]
         </Link>
       </div>
-      <div className={`text-base font-bold tabular-nums ${isUnreachable ? 'text-negative' : 'text-positive'}`}>
+      <div
+        className={`text-base font-bold tabular-nums ${isUnreachable ? 'text-negative' : 'text-positive'}`}
+      >
         {isUnreachable ? (
           <span className="text-xs">WORKER STATUS UNAVAILABLE</span>
         ) : (
           <>
-            {running} <span className="text-xs text-muted-foreground font-normal">/ {total} Running</span>
+            {running}{' '}
+            <span className="text-xs text-muted-foreground font-normal">/ {total} Running</span>
           </>
         )}
       </div>
@@ -48,8 +51,8 @@ export const WorkersCard = React.memo(function WorkersCard({ onClose }: WorkersC
                 w.status === 'running'
                   ? 'text-positive'
                   : w.status === 'paused'
-                  ? 'text-accent'
-                  : 'text-negative'
+                    ? 'text-accent'
+                    : 'text-negative'
               }`}
             >
               {w.status.toUpperCase()}

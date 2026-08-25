@@ -66,12 +66,8 @@ export function DestructiveConfirmDialog({
     >
       <div className="p-5 space-y-4 font-mono" onKeyDown={handleKeyDown}>
         <div>
-          <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">
-            {title}
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-            {description}
-          </p>
+          <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">{title}</h3>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{description}</p>
         </div>
 
         {targetIdentifier && (

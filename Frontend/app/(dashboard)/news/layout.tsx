@@ -4,10 +4,6 @@ export const metadata: Metadata = {
   title: 'FINANCIAL NEWS'
 };
 
-export default function NewsSegmentLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+export default function NewsSegmentLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

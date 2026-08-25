@@ -16,9 +16,7 @@ export interface EnrichedPriceTick {
  * Depends only on MarketDataService — no direct infrastructure access (DDD Phase C).
  */
 export class GetPricesUseCase {
-  constructor(
-    private readonly marketDataService: MarketDataService
-  ) {}
+  constructor(private readonly marketDataService: MarketDataService) {}
 
   public async execute(symbol?: string): Promise<EnrichedPriceTick | EnrichedPriceTick[]> {
     if (symbol) {
@@ -68,7 +66,10 @@ export class GetPricesUseCase {
         d1Open = tick.last;
       }
 
-      const { changeAmount, changePercent } = this.marketDataService.calculate24hChange(tick.last, d1Open || tick.last);
+      const { changeAmount, changePercent } = this.marketDataService.calculate24hChange(
+        tick.last,
+        d1Open || tick.last
+      );
 
       return {
         symbol: tick.symbol,
@@ -96,7 +97,10 @@ export class GetPricesUseCase {
           // Use tick.last as fallback
         }
 
-        const { changeAmount, changePercent } = this.marketDataService.calculate24hChange(tick.last, d1Open);
+        const { changeAmount, changePercent } = this.marketDataService.calculate24hChange(
+          tick.last,
+          d1Open
+        );
         return {
           symbol: tick.symbol,
           bid: tick.bid,

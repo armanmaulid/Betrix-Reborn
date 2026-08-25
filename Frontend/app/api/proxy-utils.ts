@@ -111,5 +111,7 @@ async function forwardGet(
   });
 
   const data = await backendRes.json();
-  return NextResponse.json(sanitizeBackendResponse(data, backendRes.status), { status: backendRes.status });
+  return NextResponse.json(sanitizeBackendResponse(data, backendRes.status), {
+    status: backendRes.status
+  });
 }

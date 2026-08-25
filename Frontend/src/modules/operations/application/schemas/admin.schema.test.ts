@@ -5,7 +5,10 @@ import {
   BroadcastMessageSchema,
   SystemCleanupSchema
 } from './admin.schema';
-import { CreateAgentSchema, UpdateAgentSchema } from '@/modules/intelligence/application/schemas/agent.schema';
+import {
+  CreateAgentSchema,
+  UpdateAgentSchema
+} from '@/modules/intelligence/application/schemas/agent.schema';
 
 describe('Admin & Agent Zod Schemas Validation Parity Tests', () => {
   describe('UpdateAdminUserSchema', () => {

@@ -29,16 +29,9 @@ export function usePollNewsMutation() {
 }
 
 export function useDeleteNewsMutation() {
-  return useAdminMutation(
-    (id: string) => newsRepository.deleteNews(id),
-    [newsKeys.all]
-  );
+  return useAdminMutation((id: string) => newsRepository.deleteNews(id), [newsKeys.all]);
 }
 
 export function useBatchDeleteNewsMutation() {
-  return useAdminMutation(
-    (ids: string[]) => newsRepository.batchDeleteNews(ids),
-    [newsKeys.all]
-  );
+  return useAdminMutation((ids: string[]) => newsRepository.batchDeleteNews(ids), [newsKeys.all]);
 }
-

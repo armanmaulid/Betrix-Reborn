@@ -1,7 +1,16 @@
 'use client';
 
 import React from 'react';
-import { Users, Radio, MessageSquare, Zap, Database, Clock, ArrowUp, ArrowDown } from 'lucide-react';
+import {
+  Users,
+  Radio,
+  MessageSquare,
+  Zap,
+  Database,
+  Clock,
+  ArrowUp,
+  ArrowDown
+} from 'lucide-react';
 import { formatFinancialNumber, formatUptime, getDbPoolStats } from '@/shared/utils';
 import type { SystemMetrics } from '@/modules/analytics/domain/entities/SystemMetrics';
 
@@ -42,7 +51,9 @@ export function LiveGauges({
     return (
       <div className="border border-negative/40 bg-negative/5 p-8 text-center font-mono">
         <p className="text-xs text-negative font-bold">SYSTEM METRICS GATEWAY OFFLINE</p>
-        <p className="text-[10px] text-muted-foreground mt-1">Unable to retrieve real-time infrastructure metrics.</p>
+        <p className="text-[10px] text-muted-foreground mt-1">
+          Unable to retrieve real-time infrastructure metrics.
+        </p>
       </div>
     );
   }
@@ -57,7 +68,10 @@ export function LiveGauges({
     uptimeSeconds: 0
   };
 
-  const { total: poolTotal, usagePct: poolActivePercent } = getDbPoolStats(data.dbPoolActive, data.dbPoolIdle);
+  const { total: poolTotal, usagePct: poolActivePercent } = getDbPoolStats(
+    data.dbPoolActive,
+    data.dbPoolIdle
+  );
   const intervalSeconds = Math.round(intervalMs / 1000);
 
   const renderDelta = (delta: number) => {
@@ -69,7 +83,11 @@ export function LiveGauges({
           isPositive ? 'text-positive' : 'text-negative'
         }`}
       >
-        {isPositive ? <ArrowUp className="w-2.5 h-2.5 mr-0.5" /> : <ArrowDown className="w-2.5 h-2.5 mr-0.5" />}
+        {isPositive ? (
+          <ArrowUp className="w-2.5 h-2.5 mr-0.5" />
+        ) : (
+          <ArrowDown className="w-2.5 h-2.5 mr-0.5" />
+        )}
         {Math.abs(delta)}
       </span>
     );
@@ -155,7 +173,8 @@ export function LiveGauges({
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-lg font-bold text-foreground tabular-nums">
-              {data.dbPoolActive} <span className="text-xs text-muted-foreground font-normal">/ {poolTotal}</span>
+              {data.dbPoolActive}{' '}
+              <span className="text-xs text-muted-foreground font-normal">/ {poolTotal}</span>
             </span>
             <span className="text-[10px] text-accent font-bold tabular-nums">
               {poolActivePercent}%
@@ -180,7 +199,9 @@ export function LiveGauges({
               {formatUptime(data.uptimeSeconds)}
             </span>
           </div>
-          <div className={`text-[9px] font-bold mt-1 ${isError ? 'text-negative' : 'text-positive'}`}>
+          <div
+            className={`text-[9px] font-bold mt-1 ${isError ? 'text-negative' : 'text-positive'}`}
+          >
             {isError ? 'GATEWAY OFFLINE' : 'FASTIFY 5 ACTIVE'}
           </div>
         </div>

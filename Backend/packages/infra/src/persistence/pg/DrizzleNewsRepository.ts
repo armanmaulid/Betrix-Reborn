@@ -1,5 +1,11 @@
 import { and, arrayContains, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
-import { INewsRepository, NewsArticle, Nullable, PaginatedResult, PaginationParams } from '@betrix/domain';
+import {
+  INewsRepository,
+  NewsArticle,
+  Nullable,
+  PaginatedResult,
+  PaginationParams
+} from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { newsArticles } from '../drizzle/schema.js';
 
@@ -66,7 +72,11 @@ export class DrizzleNewsRepository implements INewsRepository {
   }
 
   async findById(id: string): Promise<Nullable<NewsArticle>> {
-    const result = await this.db.select().from(newsArticles).where(eq(newsArticles.id, id)).limit(1);
+    const result = await this.db
+      .select()
+      .from(newsArticles)
+      .where(eq(newsArticles.id, id))
+      .limit(1);
     return result[0] ? this.mapToDomain(result[0]) : null;
   }
 
@@ -120,16 +130,12 @@ export class DrizzleNewsRepository implements INewsRepository {
     if (search) {
       const cleanSearch = search.replace(/^#/, '').trim();
       const q = `%${cleanSearch}%`;
-      conditions.push(
-        or(
-          ilike(newsArticles.headline, q),
-          ilike(newsArticles.summary, q)
-        )
-      );
+      conditions.push(or(ilike(newsArticles.headline, q), ilike(newsArticles.summary, q)));
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    const orderClause = sortOrder === 'asc' ? asc(newsArticles.datetime) : desc(newsArticles.datetime);
+    const orderClause =
+      sortOrder === 'asc' ? asc(newsArticles.datetime) : desc(newsArticles.datetime);
 
     const [countResult, rows] = await Promise.all([
       this.db
@@ -172,4 +178,3 @@ export class DrizzleNewsRepository implements INewsRepository {
     return result.length;
   }
 }
-

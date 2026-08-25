@@ -18,5 +18,9 @@ export interface IVoucherRepository {
   findById(id: string): Promise<Nullable<CreditVoucher>>;
   redeem(voucherId: string, userId: string): Promise<boolean>;
   revoke(voucherId: string): Promise<boolean>;
-  findAll(pagination: PaginationParams, filter?: VoucherFilter, sort?: VoucherSort): Promise<PaginatedResult<CreditVoucher>>;
+  findAll(
+    pagination: PaginationParams,
+    filter?: VoucherFilter,
+    sort?: VoucherSort
+  ): Promise<PaginatedResult<CreditVoucher>>;
 }

@@ -39,7 +39,7 @@ export class SseHub {
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
-      'Connection': 'keep-alive',
+      Connection: 'keep-alive',
       'X-Accel-Buffering': 'no'
     });
 
@@ -48,7 +48,8 @@ export class SseHub {
       userId,
       channel,
       reply,
-      symbols: symbols && symbols.length > 0 ? new Set(symbols.map((s) => s.toUpperCase())) : undefined,
+      symbols:
+        symbols && symbols.length > 0 ? new Set(symbols.map((s) => s.toUpperCase())) : undefined,
       connectedAt: new Date()
     };
 

@@ -60,7 +60,9 @@ export function TopModelsChart({ data = [], isLoading }: TopModelsChartProps) {
           <div className="h-full flex flex-col items-center justify-center text-xs text-muted-foreground border border-dashed border-border p-4 text-center">
             <Cpu className="w-6 h-6 text-muted-foreground/40 mb-2" />
             <span className="font-bold text-foreground">NO MODEL TELEMETRY RECORDED</span>
-            <span className="text-[10px] text-muted-foreground mt-1">Inference records will populate here as agents process requests</span>
+            <span className="text-[10px] text-muted-foreground mt-1">
+              Inference records will populate here as agents process requests
+            </span>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -88,7 +90,9 @@ export function TopModelsChart({ data = [], isLoading }: TopModelsChartProps) {
                     const count = payload[0].value as number;
                     return (
                       <div className="border border-info bg-black p-2.5 shadow-2xl font-mono text-xs">
-                        <div className="text-muted-foreground text-[10px] uppercase">MODEL: {label}</div>
+                        <div className="text-muted-foreground text-[10px] uppercase">
+                          MODEL: {label}
+                        </div>
                         <div className="text-info font-bold mt-1 tabular-nums">
                           {formatFinancialNumber(count)} INFERENCES
                         </div>

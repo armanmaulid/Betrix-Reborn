@@ -2,7 +2,7 @@ import { ValidationError } from '@betrix/core';
 
 export type WorkerStatus = 'running' | 'paused' | 'stopped' | 'idle' | 'error';
 export type WorkerAction = 'start' | 'pause' | 'stop' | 'restart';
-export type WorkerCategory = 'market' | 'news' | 'maintenance' | 'intelligence';
+export type WorkerCategory = 'market' | 'news' | 'maintenance' | 'intelligence' | 'calendar';
 
 export interface BackgroundWorkerProps {
   id: string;

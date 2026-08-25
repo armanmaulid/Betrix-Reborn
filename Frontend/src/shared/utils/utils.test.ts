@@ -1,16 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import {
-  cn,
-  formatFinancialNumber,
-  formatUptime,
-  getDbPoolStats,
-  getWorkerStats
-} from './utils';
+import { cn, formatFinancialNumber, formatUptime, getDbPoolStats, getWorkerStats } from './utils';
 
 describe('Utility Functions (Frontend/lib/utils.ts)', () => {
   describe('cn', () => {
     it('should merge class names properly', () => {
-      expect(cn('px-2', 'py-1', { 'bg-black': true, 'text-white': false })).toBe('px-2 py-1 bg-black');
+      expect(cn('px-2', 'py-1', { 'bg-black': true, 'text-white': false })).toBe(
+        'px-2 py-1 bg-black'
+      );
     });
   });
 

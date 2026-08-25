@@ -20,10 +20,15 @@ export * from './persistence/pg/DrizzleAdminRepositories.js';
 export * from './persistence/pg/DrizzleAuthRepositories.js';
 export * from './persistence/pg/DrizzleVoucherRepository.js';
 export * from './persistence/pg/DrizzleAiAgentRepository.js';
+export * from './persistence/pg/DrizzleCalendarRepository.js';
+export * from './messaging/RedisWorkerCommandBus.js';
 
 // Persistence - Redis
 export * from './persistence/redis/RedisClient.js';
-export { RedisMarketCacheStore, RedisMarketCacheStore as RedisMarketDataRepository } from './persistence/redis/RedisMarketDataRepository.js';
+export {
+  RedisMarketCacheStore,
+  RedisMarketCacheStore as RedisMarketDataRepository
+} from './persistence/redis/RedisMarketDataRepository.js';
 export * from './persistence/redis/RedisEphemeralStores.js';
 
 // External Adapters
@@ -35,3 +40,4 @@ export * from './external/market/CachedMarketDataProvider.js';
 export * from './external/ai/AiGatewayClient.js';
 export * from './external/email/SmtpEmailService.js';
 export * from './external/sse/SseManager.js';
+export * from './external/fxmacrodata/FxMacroDataClient.js';

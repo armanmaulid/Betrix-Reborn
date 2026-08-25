@@ -69,10 +69,7 @@ export function useCopyFeedback(timeoutMs: number = 2000) {
     [timeoutMs, toast]
   );
 
-  const isCopied = useCallback(
-    (key: string = 'default') => copiedKey === key,
-    [copiedKey]
-  );
+  const isCopied = useCallback((key: string = 'default') => copiedKey === key, [copiedKey]);
 
   return {
     copiedKey,

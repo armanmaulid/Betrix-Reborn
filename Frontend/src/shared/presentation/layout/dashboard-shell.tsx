@@ -87,10 +87,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
         {/* Main Terminal Shell: Sidebar + Content */}
         <div className="flex flex-1 overflow-hidden">
-          <Sidebar
-            isCollapsed={isSidebarCollapsed}
-            onToggleCollapse={handleToggleSidebar}
-          />
+          <Sidebar isCollapsed={isSidebarCollapsed} onToggleCollapse={handleToggleSidebar} />
 
           {/* Dynamic Content Viewport */}
           <main className="flex-1 overflow-y-auto bg-background p-4 sm:p-6 select-text">
@@ -102,10 +99,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <StatusBar />
 
         {/* Global Keyboard Command Palette */}
-        <CommandPalette
-          isOpen={isCommandPaletteOpen}
-          onClose={handleCloseCommandPalette}
-        />
+        <CommandPalette isOpen={isCommandPaletteOpen} onClose={handleCloseCommandPalette} />
       </div>
     </Providers>
   );

@@ -57,6 +57,10 @@ export * from './admin/entities/AdminAction.js';
 export * from './admin/entities/BackgroundWorker.js';
 export * from './admin/repositories/IAdminRepositories.js';
 
+// Calendar Bounded Context
+export * from './calendar/entities/CalendarEvent.js';
+export * from './calendar/repositories/ICalendarRepository.js';
+
 // Shared Kernel
 export * from './shared/events/EventDispatcher.js';
 export * from './shared/ports/INotifier.js';

@@ -70,4 +70,3 @@ export function JsonTreeViewer({ isOpen, onClose, title, data }: JsonTreeViewerP
     </TerminalModal>
   );
 }
-

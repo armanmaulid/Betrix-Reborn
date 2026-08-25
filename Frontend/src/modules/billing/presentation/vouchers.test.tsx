@@ -21,10 +21,9 @@ describe('Phase 5 Credit Voucher Component Tests', () => {
   describe('CreateVoucherDialog (Test Gate 5.1)', () => {
     it('should validate credit amount bounds (1 to 1,000,000)', async () => {
       const onCloseMock = vi.fn();
-      render(
-        <CreateVoucherDialog isOpen={true} onClose={onCloseMock} />,
-        { wrapper: createWrapper() }
-      );
+      render(<CreateVoucherDialog isOpen={true} onClose={onCloseMock} />, {
+        wrapper: createWrapper()
+      });
 
       const amountInput = screen.getByLabelText(/CREDIT VALUE/i);
       const submitBtn = screen.getByRole('button', { name: /ISSUE VOUCHER/i });

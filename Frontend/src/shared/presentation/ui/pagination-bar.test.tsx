@@ -6,13 +6,7 @@ import { PaginationBar } from './pagination-bar';
 
 describe('PaginationBar Component', () => {
   it('should render current page and total pages', () => {
-    render(
-      <PaginationBar
-        page={2}
-        totalPages={5}
-        onPageChange={vi.fn()}
-      />
-    );
+    render(<PaginationBar page={2} totalPages={5} onPageChange={vi.fn()} />);
 
     expect(screen.getByText(/PAGE/i)).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
@@ -21,13 +15,7 @@ describe('PaginationBar Component', () => {
 
   it('should call onPageChange when clicking next and prev buttons', () => {
     const onPageChange = vi.fn();
-    render(
-      <PaginationBar
-        page={2}
-        totalPages={5}
-        onPageChange={onPageChange}
-      />
-    );
+    render(<PaginationBar page={2} totalPages={5} onPageChange={onPageChange} />);
 
     const prevButton = screen.getByLabelText('Previous Page');
     const nextButton = screen.getByLabelText('Next Page');
@@ -40,24 +28,12 @@ describe('PaginationBar Component', () => {
   });
 
   it('should disable prev button on first page and next button on last page', () => {
-    const { rerender } = render(
-      <PaginationBar
-        page={1}
-        totalPages={3}
-        onPageChange={vi.fn()}
-      />
-    );
+    const { rerender } = render(<PaginationBar page={1} totalPages={3} onPageChange={vi.fn()} />);
 
     expect(screen.getByLabelText('Previous Page')).toBeDisabled();
     expect(screen.getByLabelText('Next Page')).not.toBeDisabled();
 
-    rerender(
-      <PaginationBar
-        page={3}
-        totalPages={3}
-        onPageChange={vi.fn()}
-      />
-    );
+    rerender(<PaginationBar page={3} totalPages={3} onPageChange={vi.fn()} />);
 
     expect(screen.getByLabelText('Previous Page')).not.toBeDisabled();
     expect(screen.getByLabelText('Next Page')).toBeDisabled();
@@ -101,12 +77,7 @@ describe('PaginationBar Component', () => {
 
   it('should render null if hideIfSinglePage is true and totalPages <= 1', () => {
     const { container } = render(
-      <PaginationBar
-        page={1}
-        totalPages={1}
-        onPageChange={vi.fn()}
-        hideIfSinglePage={true}
-      />
+      <PaginationBar page={1} totalPages={1} onPageChange={vi.fn()} hideIfSinglePage={true} />
     );
 
     expect(container.firstChild).toBeNull();

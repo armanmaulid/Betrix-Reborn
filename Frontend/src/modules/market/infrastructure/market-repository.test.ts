@@ -30,9 +30,7 @@ describe('Market Infrastructure: MarketMapper & HttpMarketRepository', () => {
   });
 
   it('should fetch and map market prices snapshot via HttpMarketRepository', async () => {
-    const mockPrices = [
-      { s: 'BTCUSDT', bid: 60000, ask: 60010, c24p: 2.5, v: 1000 }
-    ];
+    const mockPrices = [{ s: 'BTCUSDT', bid: 60000, ask: 60010, c24p: 2.5, v: 1000 }];
 
     vi.spyOn(mockHttpClient, 'get').mockResolvedValue({ data: mockPrices });
 

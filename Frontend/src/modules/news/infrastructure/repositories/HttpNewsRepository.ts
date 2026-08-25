@@ -20,10 +20,12 @@ export class HttpNewsRepository implements INewsRepository {
   }
 
   async batchDeleteNews(ids: string[]): Promise<number> {
-    const res = await this.http.post<{ data: { deletedCount: number } }>('/api/admin/news/batch-delete', { ids });
+    const res = await this.http.post<{ data: { deletedCount: number } }>(
+      '/api/admin/news/batch-delete',
+      { ids }
+    );
     return res.data?.deletedCount ?? ids.length;
   }
 }
 
 export const newsRepository = new HttpNewsRepository();
-

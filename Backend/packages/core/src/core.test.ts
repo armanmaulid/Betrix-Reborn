@@ -40,7 +40,9 @@ describe('Core Error Hierarchy', () => {
     const conflict = new ConflictError();
     expect(conflict.statusCode).toBe(409);
 
-    const captchaErr = new PreconditionRequiredError('Math challenge required', { challenge: '5 + 3' });
+    const captchaErr = new PreconditionRequiredError('Math challenge required', {
+      challenge: '5 + 3'
+    });
     expect(captchaErr.statusCode).toBe(428);
     expect(captchaErr.code).toBe('CAPTCHA_REQUIRED');
 

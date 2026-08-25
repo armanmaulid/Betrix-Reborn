@@ -30,7 +30,7 @@ export class DrizzleAiAgentRepository implements IAiAgentRepository {
   }
 
   async findAll(filter: AgentFilter | boolean = false): Promise<AiAgent[]> {
-    const activeOnly = typeof filter === 'boolean' ? filter : filter.activeOnly ?? false;
+    const activeOnly = typeof filter === 'boolean' ? filter : (filter.activeOnly ?? false);
     const visibility = typeof filter === 'object' ? filter.visibility : undefined;
 
     const conditions = [];
@@ -41,9 +41,13 @@ export class DrizzleAiAgentRepository implements IAiAgentRepository {
       conditions.push(eq(aiAgents.visibility, visibility));
     }
 
-    const query = conditions.length > 0
-      ? this.db.select().from(aiAgents).where(and(...conditions))
-      : this.db.select().from(aiAgents);
+    const query =
+      conditions.length > 0
+        ? this.db
+            .select()
+            .from(aiAgents)
+            .where(and(...conditions))
+        : this.db.select().from(aiAgents);
 
     const rows = await query.orderBy(desc(aiAgents.isDefault), aiAgents.name);
     return rows.map((r) => this.mapToDomain(r));
@@ -64,7 +68,13 @@ export class DrizzleAiAgentRepository implements IAiAgentRepository {
     const defaultPublicRows = await this.db
       .select()
       .from(aiAgents)
-      .where(and(eq(aiAgents.isDefault, true), eq(aiAgents.isActive, true), eq(aiAgents.visibility, 'public')))
+      .where(
+        and(
+          eq(aiAgents.isDefault, true),
+          eq(aiAgents.isActive, true),
+          eq(aiAgents.visibility, 'public')
+        )
+      )
       .limit(1);
 
     if (defaultPublicRows[0]) return this.mapToDomain(defaultPublicRows[0]);

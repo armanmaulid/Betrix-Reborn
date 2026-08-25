@@ -76,4 +76,3 @@ export class NewsService {
     return this.newsRepo.deleteMany(ids);
   }
 }
-

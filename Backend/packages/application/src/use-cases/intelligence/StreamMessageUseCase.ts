@@ -46,10 +46,14 @@ export class StreamMessageUseCase {
     // 1. Atomic credit reservation (Bug 8 fix — no check-then-deduct race)
     const maxTokens = dto.maxTokens || 8192;
     const estimatedInputTokens = Math.ceil((dto.message.length + 8000) / 4);
-    const reservationAmount = Math.max(1, Math.ceil(((estimatedInputTokens + maxTokens) / 1000)));
+    const reservationAmount = Math.max(1, Math.ceil((estimatedInputTokens + maxTokens) / 1000));
     const reserved = await this.creditRepo.reserveCredits(userId, reservationAmount);
     if (!reserved) {
-      throw new AppError('Insufficient credits to initiate AI chat. Please top up or redeem a voucher.', 402, 'PAYMENT_REQUIRED');
+      throw new AppError(
+        'Insufficient credits to initiate AI chat. Please top up or redeem a voucher.',
+        402,
+        'PAYMENT_REQUIRED'
+      );
     }
 
     // 2. Resolve Dynamic Agent from Database (Zero Backend Restart)
@@ -102,79 +106,80 @@ export class StreamMessageUseCase {
 
     // 6. Stream from AI Gateway with dual think/delta callbacks
     try {
-    await this.aiGateway.stream(
-      {
-        model: modelName,
-        messages,
-        temperature: agent?.temperature !== undefined ? agent.temperature / 100 : (dto.temperature ?? 0.7),
-        maxTokens: agent?.maxTokens || dto.maxTokens,
-        baseUrl: agent?.baseUrl || undefined,
-        apiKey: agent?.apiKey || undefined
-      },
-      {
-        onThink: (chunk) => {
-          callbacks.onThink?.(chunk);
+      await this.aiGateway.stream(
+        {
+          model: modelName,
+          messages,
+          temperature:
+            agent?.temperature !== undefined ? agent.temperature / 100 : (dto.temperature ?? 0.7),
+          maxTokens: agent?.maxTokens || dto.maxTokens,
+          baseUrl: agent?.baseUrl || undefined,
+          apiKey: agent?.apiKey || undefined
         },
-        onDelta: (chunk) => {
-          fullReply += chunk;
-          callbacks.onDelta?.(chunk);
-        },
-        onDone: (meta) => {
-          const totalTokens = meta.inputTokens + meta.outputTokens;
-          const creditsRate = agent?.creditsPer1kTokens ?? 1;
-          const creditsSpent = Math.max(1, Math.ceil((totalTokens / 1000) * creditsRate));
+        {
+          onThink: (chunk) => {
+            callbacks.onThink?.(chunk);
+          },
+          onDelta: (chunk) => {
+            fullReply += chunk;
+            callbacks.onDelta?.(chunk);
+          },
+          onDone: (meta) => {
+            const totalTokens = meta.inputTokens + meta.outputTokens;
+            const creditsRate = agent?.creditsPer1kTokens ?? 1;
+            const creditsSpent = Math.max(1, Math.ceil((totalTokens / 1000) * creditsRate));
 
-          // Actual usage is now known — record it so the finally block, if it
-          // ends up running before this settles (or if this call fails), retries
-          // with this exact amount instead of a full no-cost release.
-          pendingSettleCreditsSpent = creditsSpent;
+            // Actual usage is now known — record it so the finally block, if it
+            // ends up running before this settles (or if this call fails), retries
+            // with this exact amount instead of a full no-cost release.
+            pendingSettleCreditsSpent = creditsSpent;
 
-          // Kick off settlement now (keeps the SSE response snappy — callbacks.onDone
-          // below fires without waiting for it), but keep the promise itself so the
-          // finally block can await the SAME attempt rather than racing it.
-          settlePromise = this.creditRepo.settleReservation(
-            userId,
-            reservationAmount,
-            creditsSpent,
-            `AI_CHAT:${agent?.id || modelName}:${sessionId}`
-          );
-          settlePromise.catch(() => {
-            // Swallow here — the finally block below awaits this same promise
-            // and handles the failure by retrying settlement.
-          });
+            // Kick off settlement now (keeps the SSE response snappy — callbacks.onDone
+            // below fires without waiting for it), but keep the promise itself so the
+            // finally block can await the SAME attempt rather than racing it.
+            settlePromise = this.creditRepo.settleReservation(
+              userId,
+              reservationAmount,
+              creditsSpent,
+              `AI_CHAT:${agent?.id || modelName}:${sessionId}`
+            );
+            settlePromise.catch(() => {
+              // Swallow here — the finally block below awaits this same promise
+              // and handles the failure by retrying settlement.
+            });
 
-          // Emit onDone SSE event with metadata
-          callbacks.onDone?.({
-            sessionId,
-            agentId: agent?.id,
-            inputTokens: meta.inputTokens,
-            outputTokens: meta.outputTokens,
-            latencyMs: meta.latencyMs,
-            creditsSpent
-          });
+            // Emit onDone SSE event with metadata
+            callbacks.onDone?.({
+              sessionId,
+              agentId: agent?.id,
+              inputTokens: meta.inputTokens,
+              outputTokens: meta.outputTokens,
+              latencyMs: meta.latencyMs,
+              creditsSpent
+            });
 
-          // 7. Asynchronous Persistence & Credit Billing (ADR-21)
-          const event: ChatMessageStreamedEvent = {
-            userId,
-            sessionId,
-            taskType,
-            model: agent?.id || modelName,
-            userMessage: dto.message,
-            aiReply: fullReply,
-            inputTokens: meta.inputTokens,
-            outputTokens: meta.outputTokens,
-            latencyMs: meta.latencyMs,
-            creditsSpent,
-            createdAt: new Date()
-          };
+            // 7. Asynchronous Persistence & Credit Billing (ADR-21)
+            const event: ChatMessageStreamedEvent = {
+              userId,
+              sessionId,
+              taskType,
+              model: agent?.id || modelName,
+              userMessage: dto.message,
+              aiReply: fullReply,
+              inputTokens: meta.inputTokens,
+              outputTokens: meta.outputTokens,
+              latencyMs: meta.latencyMs,
+              creditsSpent,
+              createdAt: new Date()
+            };
 
-          this.eventDispatcher.dispatch('chat:streamed', event);
-        },
-        onError: (err) => {
-          callbacks.onError?.(err);
+            this.eventDispatcher.dispatch('chat:streamed', event);
+          },
+          onError: (err) => {
+            callbacks.onError?.(err);
+          }
         }
-      }
-    );
+      );
     } finally {
       // Resolve the credit hold exactly once, however the stream ended:
       // - onDone fired and settlement already in flight: await that SAME
@@ -191,8 +196,13 @@ export class StreamMessageUseCase {
       }
       if (!settled) {
         const actualCost = pendingSettleCreditsSpent ?? 0;
-        const action = pendingSettleCreditsSpent !== null ? `AI_CHAT_RETRY:${sessionId}` : `AI_CHAT_RELEASE:${sessionId}`;
-        await this.creditRepo.settleReservation(userId, reservationAmount, actualCost, action).catch(() => {});
+        const action =
+          pendingSettleCreditsSpent !== null
+            ? `AI_CHAT_RETRY:${sessionId}`
+            : `AI_CHAT_RELEASE:${sessionId}`;
+        await this.creditRepo
+          .settleReservation(userId, reservationAmount, actualCost, action)
+          .catch(() => {});
       }
     }
   }

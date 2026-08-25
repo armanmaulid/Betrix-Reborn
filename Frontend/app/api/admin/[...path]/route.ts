@@ -5,7 +5,10 @@ import { sanitizeBackendResponse } from '@/shared/infrastructure/http/api-client
 
 const MAX_BODY_CHARS = 2_000_000;
 
-async function handleProxy(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+async function handleProxy(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
   try {
     const { path } = await params;
     const tokenOrResponse = await requireAdminToken();
@@ -87,9 +90,7 @@ async function handleProxy(request: NextRequest, { params }: { params: Promise<{
 
     const contentLength = backendRes.headers.get('content-length');
     const hasJsonBody =
-      backendRes.status !== 204 &&
-      contentLength !== '0' &&
-      upstreamContentType.includes('json');
+      backendRes.status !== 204 && contentLength !== '0' && upstreamContentType.includes('json');
 
     if (!hasJsonBody) {
       // 204/205/304 forbid a response body per the fetch spec.
@@ -100,7 +101,9 @@ async function handleProxy(request: NextRequest, { params }: { params: Promise<{
     }
 
     const data = await backendRes.json();
-    return NextResponse.json(sanitizeBackendResponse(data, backendRes.status), { status: backendRes.status });
+    return NextResponse.json(sanitizeBackendResponse(data, backendRes.status), {
+      status: backendRes.status
+    });
   } catch {
     // Never leak internal/infra error details (hostnames, ports) to the client
     return NextResponse.json(

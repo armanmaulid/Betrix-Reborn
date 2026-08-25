@@ -18,7 +18,8 @@ export class ModelPolicy {
       creditsPer1kTokens: 1,
       maxTokens: 8192,
       supportsThinking: true,
-      description: 'Flagship deep reasoning institutional market analyst with chain-of-thought analysis.'
+      description:
+        'Flagship deep reasoning institutional market analyst with chain-of-thought analysis.'
     },
     'dahono/deepseek-v4-flash-0731': {
       id: 'dahono/deepseek-v4-flash-0731',
@@ -27,7 +28,8 @@ export class ModelPolicy {
       creditsPer1kTokens: 1,
       maxTokens: 4096,
       supportsThinking: false,
-      description: 'Ultra-fast, low-latency market analysis engine for quick trade scans and price action checks.'
+      description:
+        'Ultra-fast, low-latency market analysis engine for quick trade scans and price action checks.'
     },
     'dahono/glm-5.3': {
       id: 'dahono/glm-5.3',
@@ -36,7 +38,8 @@ export class ModelPolicy {
       creditsPer1kTokens: 1,
       maxTokens: 8192,
       supportsThinking: true,
-      description: 'Balanced quantitative strategist with strong multi-indicator mathematical synthesis.'
+      description:
+        'Balanced quantitative strategist with strong multi-indicator mathematical synthesis.'
     },
     'dahono/kimi-k3': {
       id: 'dahono/kimi-k3',
@@ -102,7 +105,11 @@ export class ModelPolicy {
     return Math.max(1, Math.ceil(rawCost));
   }
 
-  public static calculateTokenCost(modelId: string, inputTokens: number, outputTokens: number): number {
+  public static calculateTokenCost(
+    modelId: string,
+    inputTokens: number,
+    outputTokens: number
+  ): number {
     return ModelPolicy.calculateCreditCost(modelId, inputTokens + outputTokens);
   }
 }

@@ -37,7 +37,11 @@ function LoginForm() {
   useEffect(() => {
     let fp = localStorage.getItem('betrix_device_fp');
     if (!fp) {
-      fp = 'BTX-ADM-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
+      fp =
+        'BTX-ADM-' +
+        Math.random().toString(36).substring(2, 10).toUpperCase() +
+        '-' +
+        Date.now().toString(36).toUpperCase();
       localStorage.setItem('betrix_device_fp', fp);
     }
     setFingerprint(fp);
@@ -279,7 +283,13 @@ function LoginForm() {
 
 export default function TerminalLoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center font-mono text-xs text-accent">INITIALIZING TERMINAL AUTH...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center font-mono text-xs text-accent">
+          INITIALIZING TERMINAL AUTH...
+        </div>
+      }
+    >
       <LoginForm />
     </Suspense>
   );

@@ -137,8 +137,13 @@ export class User {
     this.gender = props.gender ?? null;
     this.bio = props.bio ?? null;
     this.lastActive = props.lastActive ?? null;
-    this.createdAt = typeof props.createdAt === 'string' ? new Date(props.createdAt) : props.createdAt;
-    this.updatedAt = props.updatedAt ? (typeof props.updatedAt === 'string' ? new Date(props.updatedAt) : props.updatedAt) : null;
+    this.createdAt =
+      typeof props.createdAt === 'string' ? new Date(props.createdAt) : props.createdAt;
+    this.updatedAt = props.updatedAt
+      ? typeof props.updatedAt === 'string'
+        ? new Date(props.updatedAt)
+        : props.updatedAt
+      : null;
   }
 
   public isActive(): boolean {

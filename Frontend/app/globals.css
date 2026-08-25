@@ -1,32 +1,32 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   --background: #000000;
-  --foreground: #E8E8E8;
-  --accent: #FF8000;
-  --accent-dim: #B35900;
-  --positive: #00D964;
-  --negative: #FF3B30;
-  --info: #4A9EFF;
-  --premium: #A855F7;
-  --vip: #FACC15;
-  --border: #1A1A1A;
-  --surface: #0A0A0A;
+  --foreground: #e8e8e8;
+  --accent: #ff8000;
+  --accent-dim: #b35900;
+  --positive: #00d964;
+  --negative: #ff3b30;
+  --info: #4a9eff;
+  --premium: #a855f7;
+  --vip: #facc15;
+  --border: #1a1a1a;
+  --surface: #0a0a0a;
   --surface-hover: #141414;
-  --muted: #1A1A1A;
+  --muted: #1a1a1a;
   --muted-foreground: #888888;
-  --card: #0A0A0A;
-  --card-foreground: #E8E8E8;
-  --popover: #0A0A0A;
-  --popover-foreground: #E8E8E8;
-  --primary: #FF8000;
+  --card: #0a0a0a;
+  --card-foreground: #e8e8e8;
+  --popover: #0a0a0a;
+  --popover-foreground: #e8e8e8;
+  --primary: #ff8000;
   --primary-foreground: #000000;
   --secondary: #141414;
-  --secondary-foreground: #E8E8E8;
-  --destructive: #FF3B30;
-  --destructive-foreground: #FFFFFF;
-  --input: #1A1A1A;
-  --ring: #FF8000;
+  --secondary-foreground: #e8e8e8;
+  --destructive: #ff3b30;
+  --destructive-foreground: #ffffff;
+  --input: #1a1a1a;
+  --ring: #ff8000;
   --radius: 0.2rem;
 }
 
@@ -59,7 +59,8 @@
   --color-ring: var(--ring);
 
   --font-mono: 'JetBrains Mono', 'IBM Plex Mono', Menlo, Consolas, Monaco, monospace;
-  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans:
+    'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 * {
@@ -92,11 +93,11 @@ body {
   background: #000000;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1A1A1A;
+  background: #1a1a1a;
   border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #B35900;
+  background: #b35900;
 }
 
 /* Hide scrollbar while keeping scrollability (status-bar strips, chip rows) */
@@ -110,16 +111,30 @@ body {
 
 /* ── Entrance animation utilities (tailwindcss-animate equivalents) ── */
 @keyframes enter-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes enter-slide-in-from-bottom {
-  from { transform: translateY(0.5rem); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(0.5rem);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 @keyframes enter-zoom-in {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @utility animate-in {

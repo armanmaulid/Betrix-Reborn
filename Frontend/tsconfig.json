@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -23,37 +19,17 @@
       }
     ],
     "paths": {
-      "@shared/*": [
-        "./src/shared/*"
-      ],
-      "@modules/*": [
-        "./src/modules/*"
-      ],
-      "@identity/*": [
-        "./src/modules/identity/*"
-      ],
-      "@intelligence/*": [
-        "./src/modules/intelligence/*"
-      ],
-      "@market/*": [
-        "./src/modules/market/*"
-      ],
-      "@billing/*": [
-        "./src/modules/billing/*"
-      ],
-      "@analytics/*": [
-        "./src/modules/analytics/*"
-      ],
-      "@operations/*": [
-        "./src/modules/operations/*"
-      ],
-      "@news/*": [
-        "./src/modules/news/*"
-      ],
-      "@/*": [
-        "./src/*",
-        "./*"
-      ]
+      "@shared/*": ["./src/shared/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@identity/*": ["./src/modules/identity/*"],
+      "@intelligence/*": ["./src/modules/intelligence/*"],
+      "@market/*": ["./src/modules/market/*"],
+      "@billing/*": ["./src/modules/billing/*"],
+      "@analytics/*": ["./src/modules/analytics/*"],
+      "@operations/*": ["./src/modules/operations/*"],
+      "@news/*": ["./src/modules/news/*"],
+      "@calendar/*": ["./src/modules/calendar/*"],
+      "@/*": ["./src/*", "./*"]
     }
   },
   "include": [
@@ -63,7 +39,5 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

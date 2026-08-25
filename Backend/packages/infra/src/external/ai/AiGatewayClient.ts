@@ -1,4 +1,10 @@
-import { IAiGateway, AiCompletionRequest, AiCompletionResponse, AiStreamCallbacks, ThinkingFilter } from '@betrix/domain';
+import {
+  IAiGateway,
+  AiCompletionRequest,
+  AiCompletionResponse,
+  AiStreamCallbacks,
+  ThinkingFilter
+} from '@betrix/domain';
 import { AppError } from '@betrix/core';
 
 export class AiGatewayClient implements IAiGateway {
@@ -69,7 +75,10 @@ export class AiGatewayClient implements IAiGateway {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new AppError(`AI Gateway stream error (${response.status}): ${errorText}`, response.status);
+        throw new AppError(
+          `AI Gateway stream error (${response.status}): ${errorText}`,
+          response.status
+        );
       }
 
       if (!response.body) {

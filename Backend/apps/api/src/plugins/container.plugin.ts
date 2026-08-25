@@ -27,6 +27,9 @@ import {
   DrizzleLoginAttemptRepository,
   DrizzleVoucherRepository,
   DrizzleAiAgentRepository,
+  DrizzleWorkerStateRepository,
+  RedisWorkerCommandBus,
+  DrizzleCalendarRepository,
   DukascopyHistoryClient,
   FinnhubNewsAdapter,
   AiGatewayClient,
@@ -42,6 +45,7 @@ import {
   NewsService,
   ContextInjectionService,
   WorkerManagerService,
+  IWorkerCommandPublisher,
   RegisterUseCase,
   LoginUseCase,
   GoogleOAuthUseCase,
@@ -76,6 +80,7 @@ import {
   FetchNewsUseCase,
   StoreNewsUseCase,
   GetNewsUseCase,
+  GetCalendarUseCase,
   GetInboxUseCase,
   GetSentMessagesUseCase,
   GetThreadUseCase,
@@ -206,6 +211,7 @@ export interface AppContainer {
     fetchNewsUseCase: FetchNewsUseCase;
     storeNewsUseCase: StoreNewsUseCase;
     getNewsUseCase: GetNewsUseCase;
+    getCalendarUseCase: GetCalendarUseCase;
 
     // Messaging
     getInboxUseCase: GetInboxUseCase;
@@ -329,7 +335,17 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const marketDataService = new MarketDataService(symbolRepo, marketDataRepo, historicalProvider);
   const newsService = new NewsService(newsRepo, newsProvider, notifier);
   const contextInjectionService = new ContextInjectionService(marketDataService, newsService);
-  const workerManagerService = new WorkerManagerService();
+
+  // SSOT wiring: worker_states in Postgres is what apps/worker reads on boot,
+  // Redis pub/sub is only the real-time transport to a currently-live process.
+  const workerStateRepo = new DrizzleWorkerStateRepository(db);
+  const workerCommandBus = new RedisWorkerCommandBus(redis);
+  const workerCommandPublisher: IWorkerCommandPublisher = {
+    async publishCommand(workerId, action, adminId) {
+      await workerCommandBus.publishCommand(workerId, { action, adminId, timestamp: Date.now() });
+    }
+  };
+  const workerManagerService = new WorkerManagerService(undefined, workerStateRepo, workerCommandPublisher);
 
   // Wire active Redis market price fetcher into SseHub
   if (fastify.sseHub && env.NODE_ENV !== 'test' && !process.env.VITEST) {
@@ -398,6 +414,9 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const fetchNewsUseCase = new FetchNewsUseCase(newsService, adminActionRepo);
   const storeNewsUseCase = new StoreNewsUseCase(newsRepo);
   const getNewsUseCase = new GetNewsUseCase(newsService);
+
+  const calendarRepo = new DrizzleCalendarRepository(db);
+  const getCalendarUseCase = new GetCalendarUseCase(calendarRepo);
 
   const getInboxUseCase = new GetInboxUseCase(messageRepo);
   const getSentMessagesUseCase = new GetSentMessagesUseCase(messageRepo);
@@ -520,6 +539,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
       fetchNewsUseCase,
       storeNewsUseCase,
       getNewsUseCase,
+      getCalendarUseCase,
       getInboxUseCase,
       getSentMessagesUseCase,
       getThreadUseCase,

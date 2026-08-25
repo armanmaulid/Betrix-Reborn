@@ -23,6 +23,11 @@ export default defineConfig({
     command: 'pnpm start',
     url: 'http://127.0.0.1:3001',
     reuseExistingServer: !process.env.CI,
-    timeout: 60000
+    timeout: 60000,
+    env: {
+      // E2E harness flag — lets `verifySession` trust the `mock-admin-token`
+      // cookie without round-tripping to the real backend (see lib/server-auth.ts).
+      PLAYWRIGHT: 'true'
+    }
   }
 });

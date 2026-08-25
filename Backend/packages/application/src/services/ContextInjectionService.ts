@@ -27,7 +27,7 @@ export interface InjectedContextResult {
 function sanitizeUntrustedText(text: string): string {
   return text
     .replace(/[\r\n]+/g, ' ')
-    .replace(/[`*_#\[\]{}]/g, '')
+    .replace(/[`*_#[\]{}]/g, '')
     .trim();
 }
 
@@ -37,7 +37,9 @@ export class ContextInjectionService {
     private readonly newsService?: NewsService
   ) {}
 
-  public async buildMarketContext(options: MarketContextOptionsDTO): Promise<InjectedContextResult> {
+  public async buildMarketContext(
+    options: MarketContextOptionsDTO
+  ): Promise<InjectedContextResult> {
     const symbol = options.symbol.toUpperCase();
     const timeframe = (options.timeframe || 'h1').toLowerCase();
     const candleCount = options.candleCount || 30;
@@ -58,7 +60,10 @@ export class ContextInjectionService {
       }));
     } catch (err: any) {
       marketFetchError = err.message || 'Market data provider temporarily unavailable';
-      console.warn(`[ContextInjectionService] Fallback triggered for ${symbol} (${timeframe}):`, marketFetchError);
+      console.warn(
+        `[ContextInjectionService] Fallback triggered for ${symbol} (${timeframe}):`,
+        marketFetchError
+      );
     }
 
     // 2. Fetch Relevant News with Graceful Fallback (ADR-28)
@@ -66,7 +71,11 @@ export class ContextInjectionService {
     if (options.includeNews && this.newsService) {
       try {
         const newsLimit = options.newsLimit || 3;
-        let articles = await this.newsService.getRecentNews(newsLimit, undefined, symbol.toLowerCase());
+        let articles = await this.newsService.getRecentNews(
+          newsLimit,
+          undefined,
+          symbol.toLowerCase()
+        );
         if (articles.length === 0) {
           articles = await this.newsService.getRecentNews(newsLimit);
         }
@@ -136,7 +145,10 @@ export class ContextInjectionService {
 
       // Support & Resistance Swing Fractals
       if (indConfig.supportResistance !== false) {
-        const sr = IndicatorCalculator.calculateSupportResistance(candles, Math.min(30, candles.length));
+        const sr = IndicatorCalculator.calculateSupportResistance(
+          candles,
+          Math.min(30, candles.length)
+        );
         contextMarkdown += `• **Recent High/Low**: High ${sr.recentHigh} | Low ${sr.recentLow}\n`;
         if (sr.supports.length > 0) {
           contextMarkdown += `• **Key Support Levels**: ${sr.supports.join(', ')}\n`;

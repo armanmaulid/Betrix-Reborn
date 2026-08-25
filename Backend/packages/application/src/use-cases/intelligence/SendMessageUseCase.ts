@@ -44,10 +44,14 @@ export class SendMessageUseCase {
     const maxTokens = dto.maxTokens || 8192;
     // Worst case: input (message + history + system prompt) + maxTokens output, at agent rate
     const estimatedInputTokens = Math.ceil((dto.message.length + 8000) / 4);
-    const reservationAmount = Math.max(1, Math.ceil(((estimatedInputTokens + maxTokens) / 1000)));
+    const reservationAmount = Math.max(1, Math.ceil((estimatedInputTokens + maxTokens) / 1000));
     const reserved = await this.creditRepo.reserveCredits(userId, reservationAmount);
     if (!reserved) {
-      throw new AppError('Insufficient credits to initiate AI chat. Please top up or redeem a voucher.', 402, 'PAYMENT_REQUIRED');
+      throw new AppError(
+        'Insufficient credits to initiate AI chat. Please top up or redeem a voucher.',
+        402,
+        'PAYMENT_REQUIRED'
+      );
     }
 
     // 2. Resolve Dynamic Agent from Database (Zero Backend Restart)
@@ -97,65 +101,68 @@ export class SendMessageUseCase {
     // 6. Call AI Gateway — reservation already held; settle on any outcome
     let settled = false;
     try {
-    const response = await this.aiGateway.complete({
-      model: modelName,
-      messages,
-      temperature: agent?.temperature !== undefined ? agent.temperature / 100 : (dto.temperature ?? 0.7),
-      maxTokens: agent?.maxTokens || dto.maxTokens,
-      baseUrl: agent?.baseUrl || undefined,
-      apiKey: agent?.apiKey || undefined
-    });
+      const response = await this.aiGateway.complete({
+        model: modelName,
+        messages,
+        temperature:
+          agent?.temperature !== undefined ? agent.temperature / 100 : (dto.temperature ?? 0.7),
+        maxTokens: agent?.maxTokens || dto.maxTokens,
+        baseUrl: agent?.baseUrl || undefined,
+        apiKey: agent?.apiKey || undefined
+      });
 
-    // 7. Settle reservation with actual usage (ADR-21)
-    const totalTokens = response.inputTokens + response.outputTokens;
-    const creditsRate = agent?.creditsPer1kTokens ?? 1;
-    const creditsSpent = Math.max(1, Math.ceil((totalTokens / 1000) * creditsRate));
+      // 7. Settle reservation with actual usage (ADR-21)
+      const totalTokens = response.inputTokens + response.outputTokens;
+      const creditsRate = agent?.creditsPer1kTokens ?? 1;
+      const creditsSpent = Math.max(1, Math.ceil((totalTokens / 1000) * creditsRate));
 
-    const remainingCredits = await this.creditRepo.settleReservation(
-      userId,
-      reservationAmount,
-      creditsSpent,
-      `AI_CHAT:${agent?.id || modelName}:${sessionId}`
-    );
-    settled = true;
+      const remainingCredits = await this.creditRepo.settleReservation(
+        userId,
+        reservationAmount,
+        creditsSpent,
+        `AI_CHAT:${agent?.id || modelName}:${sessionId}`
+      );
+      settled = true;
 
-    // 8. Persist Chat Message
-    const chatMsg = new ChatMessage({
-      id: randomUUID(),
-      userId,
-      sessionId,
-      taskType,
-      modelUsed: modelName,
-      message: dto.message,
-      reply: response.reply,
-      latencyMs: response.latencyMs,
-      inputTokens: response.inputTokens,
-      outputTokens: response.outputTokens,
-      createdAt: new Date()
-    });
-
-    await this.chatRepo.save(chatMsg);
-
-    return {
-      reply: response.reply,
-      thinking: response.thinking,
-      sessionId,
-      taskType,
-      modelUsed: modelName,
-      agentId: agent?.id,
-      usage: {
+      // 8. Persist Chat Message
+      const chatMsg = new ChatMessage({
+        id: randomUUID(),
+        userId,
+        sessionId,
+        taskType,
+        modelUsed: modelName,
+        message: dto.message,
+        reply: response.reply,
+        latencyMs: response.latencyMs,
         inputTokens: response.inputTokens,
         outputTokens: response.outputTokens,
-        totalTokens,
-        latencyMs: response.latencyMs
-      },
-      creditsSpent,
-      remainingCredits
-    };
+        createdAt: new Date()
+      });
+
+      await this.chatRepo.save(chatMsg);
+
+      return {
+        reply: response.reply,
+        thinking: response.thinking,
+        sessionId,
+        taskType,
+        modelUsed: modelName,
+        agentId: agent?.id,
+        usage: {
+          inputTokens: response.inputTokens,
+          outputTokens: response.outputTokens,
+          totalTokens,
+          latencyMs: response.latencyMs
+        },
+        creditsSpent,
+        remainingCredits
+      };
     } finally {
       // Safety net: if anything threw between reserve and settle, release the hold uncharged.
       if (!settled) {
-        await this.creditRepo.settleReservation(userId, reservationAmount, 0, `AI_CHAT_RELEASE:${sessionId}`).catch(() => {});
+        await this.creditRepo
+          .settleReservation(userId, reservationAmount, 0, `AI_CHAT_RELEASE:${sessionId}`)
+          .catch(() => {});
       }
     }
   }

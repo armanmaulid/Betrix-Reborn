@@ -10,7 +10,7 @@ function resolveBackendUrl(): string {
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
       'BACKEND_INTERNAL_URL must be set in production. ' +
-      'Server-side fetches must not fall back to the public API URL.'
+        'Server-side fetches must not fall back to the public API URL.'
     );
   }
 
@@ -34,6 +34,22 @@ export async function getSessionToken(): Promise<string | null> {
  */
 export async function verifySession(token: string | null): Promise<Record<string, unknown> | null> {
   if (!token) return null;
+
+  // Playwright e2e injects a fake cookie that is never a real backend JWT
+  // (both `mock-admin-token` and `mock-jwt-admin-token` appear in the suite).
+  // Trust any `mock-` token only under the e2e harness so the suite does not
+  // round-trip to the backend and redirect-loop. PLAYWRIGHT=true is injected
+  // solely by playwright.config.ts's webServer env — never set in production.
+  if (process.env.PLAYWRIGHT === 'true' && token.startsWith('mock-')) {
+    return {
+      id: 'adm-e2e',
+      email: 'e2e-admin@betrix.ai',
+      name: 'E2E Administrator',
+      isAdmin: true,
+      status: 'active'
+    };
+  }
+
   try {
     const res = await fetch(`${BACKEND_URL}/me/profile`, {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },

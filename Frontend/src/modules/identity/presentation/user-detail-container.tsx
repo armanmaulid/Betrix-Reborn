@@ -20,7 +20,13 @@ import {
   HardDrive,
   MessageSquare
 } from 'lucide-react';
-import { useUserDetailQuery, useDeleteUserMutation, useRevokeSessionMutation, useRevokeAllSessionsMutation, useRemoveDeviceMutation } from '@/modules/identity/application/queries/use-users';
+import {
+  useUserDetailQuery,
+  useDeleteUserMutation,
+  useRevokeSessionMutation,
+  useRevokeAllSessionsMutation,
+  useRemoveDeviceMutation
+} from '@/modules/identity/application/queries/use-users';
 import { UpdateUserDialog } from './update-user-dialog';
 import { ResetPasswordDialog } from './reset-password-dialog';
 import { UserChatHistory } from './user-chat-history';
@@ -39,7 +45,13 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
   const router = useRouter();
   const { success, error } = useToast();
 
-  const { data: detail, isLoading, isError, error: detailError, refetch } = useUserDetailQuery(userId);
+  const {
+    data: detail,
+    isLoading,
+    isError,
+    error: detailError,
+    refetch
+  } = useUserDetailQuery(userId);
   const deleteMutation = useDeleteUserMutation();
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -52,7 +64,13 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
   const revokeAllSessionsMutation = useRevokeAllSessionsMutation();
   const removeDeviceMutation = useRemoveDeviceMutation();
 
-  usePageTitle(detail?.user?.name ? `USER // ${detail.user.name}` : detail?.user?.email ? `USER // ${detail.user.email}` : `USER // ${userId}`);
+  usePageTitle(
+    detail?.user?.name
+      ? `USER // ${detail.user.name}`
+      : detail?.user?.email
+        ? `USER // ${detail.user.email}`
+        : `USER // ${userId}`
+  );
 
   if (isLoading) {
     return (
@@ -88,7 +106,9 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
         <div className="border border-negative bg-surface p-8 text-center space-y-3">
           <div className="text-sm font-bold text-negative uppercase">TRADER ACCOUNT NOT FOUND</div>
           <p className="text-xs text-muted-foreground">
-            {detailError instanceof Error ? detailError.message : `No account discovered matching ID "${userId}".`}
+            {detailError instanceof Error
+              ? detailError.message
+              : `No account discovered matching ID "${userId}".`}
           </p>
         </div>
       </div>
@@ -159,28 +179,37 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-base font-bold text-foreground">{user.name || user.email.split('@')[0]}</h1>
+                <h1 className="text-base font-bold text-foreground">
+                  {user.name || user.email.split('@')[0]}
+                </h1>
                 {user.isAdmin && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold border border-accent/40 bg-accent/10 text-accent uppercase">
                     <Shield className="w-3 h-3" /> ADMIN
                   </span>
                 )}
-                <span className={`px-2 py-0.5 text-[9px] font-bold border uppercase ${getUserStatusBadgeClass(user.status)}`}>
+                <span
+                  className={`px-2 py-0.5 text-[9px] font-bold border uppercase ${getUserStatusBadgeClass(user.status)}`}
+                >
                   {user.status}
                 </span>
                 {user.tier && <UserTierBadge tier={user.tier} />}
               </div>
               <div className="text-xs text-muted-foreground mt-0.5 select-all">{user.email}</div>
-              <div className="text-[10px] text-muted-foreground/60 select-all font-mono mt-0.5">UUID: {user.id}</div>
+              <div className="text-[10px] text-muted-foreground/60 select-all font-mono mt-0.5">
+                UUID: {user.id}
+              </div>
             </div>
           </div>
 
           {/* Balance & Stats Callout */}
           <div className="flex items-center gap-3">
             <div className="border border-border bg-black/60 p-3 min-w-[140px] text-right">
-              <div className="text-[10px] text-muted-foreground uppercase tracking-wider">AVAILABLE CREDITS</div>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                AVAILABLE CREDITS
+              </div>
               <div className="text-lg font-bold text-accent tabular-nums">
-                {formatFinancialNumber(user.credits)} <span className="text-xs font-normal">CR</span>
+                {formatFinancialNumber(user.credits)}{' '}
+                <span className="text-xs font-normal">CR</span>
               </div>
             </div>
           </div>
@@ -260,11 +289,17 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
                                   { userId: user.id, sessionId: s.id },
                                   {
                                     onSuccess: () => {
-                                      success('SESSION REVOKED', `Session from ${s.ip} has been terminated.`);
+                                      success(
+                                        'SESSION REVOKED',
+                                        `Session from ${s.ip} has been terminated.`
+                                      );
                                       refetch();
                                     },
                                     onError: (err: any) => {
-                                      error('REVOKE FAILED', err.message || 'Unable to revoke session.');
+                                      error(
+                                        'REVOKE FAILED',
+                                        err.message || 'Unable to revoke session.'
+                                      );
                                     }
                                   }
                                 );
@@ -277,7 +312,9 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
                             </button>
                           </div>
                         </div>
-                        <div className="text-[10px] text-muted-foreground/80 truncate select-all">{s.userAgent}</div>
+                        <div className="text-[10px] text-muted-foreground/80 truncate select-all">
+                          {s.userAgent}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -319,11 +356,17 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
                                   { userId: user.id, deviceId: d.id },
                                   {
                                     onSuccess: () => {
-                                      success('DEVICE REMOVED', `Device ${d.fingerprint.slice(0, 8)}... has been removed.`);
+                                      success(
+                                        'DEVICE REMOVED',
+                                        `Device ${d.fingerprint.slice(0, 8)}... has been removed.`
+                                      );
                                       refetch();
                                     },
                                     onError: (err: any) => {
-                                      error('REMOVE FAILED', err.message || 'Unable to remove device.');
+                                      error(
+                                        'REMOVE FAILED',
+                                        err.message || 'Unable to remove device.'
+                                      );
                                     }
                                   }
                                 );
@@ -376,7 +419,10 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
         onConfirm={async () => {
           try {
             const count = await revokeAllSessionsMutation.mutateAsync(user.id);
-            success('SESSIONS REVOKED', `${count} session(s) for ${user.email} have been terminated.`);
+            success(
+              'SESSIONS REVOKED',
+              `${count} session(s) for ${user.email} have been terminated.`
+            );
             refetch();
           } catch (err: any) {
             error('REVOKE FAILED', err.message || 'Unable to revoke sessions.');

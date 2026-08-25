@@ -65,6 +65,7 @@ docs/
 *.key
 *.cert
 *.crt
+*.zip
 
 # Local Developer Scratch Scripts
 Backend/apps/api/src/test-ai-chat-live.ts

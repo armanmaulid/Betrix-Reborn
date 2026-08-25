@@ -36,9 +36,14 @@ export class ResendVerificationUseCase {
 
     if (this.emailService) {
       const link = `https://betrix.io/verify-email?token=${vToken}`;
-      await this.emailService.sendVerificationEmail(email, link, user.name || undefined).catch((err) => {
-        console.warn(`[ResendVerificationUseCase] Failed to send email to ${email}:`, err.message);
-      });
+      await this.emailService
+        .sendVerificationEmail(email, link, user.name || undefined)
+        .catch((err) => {
+          console.warn(
+            `[ResendVerificationUseCase] Failed to send email to ${email}:`,
+            err.message
+          );
+        });
     }
 
     return {

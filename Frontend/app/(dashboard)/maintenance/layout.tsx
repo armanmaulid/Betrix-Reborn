@@ -4,10 +4,6 @@ export const metadata: Metadata = {
   title: 'FLEET MAINTENANCE'
 };
 
-export default function MaintenanceSegmentLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+export default function MaintenanceSegmentLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

@@ -64,8 +64,12 @@ export function MarketCatalogTable({
                   )}
                 </td>
                 <td className="p-3 uppercase text-muted-foreground">{item.category}</td>
-                <td className="p-3 font-mono text-foreground select-all">{item.finnhubSymbol || '--'}</td>
-                <td className="p-3 font-mono text-muted-foreground select-all">{item.dukascopySymbol || '--'}</td>
+                <td className="p-3 font-mono text-foreground select-all">
+                  {item.finnhubSymbol || '--'}
+                </td>
+                <td className="p-3 font-mono text-muted-foreground select-all">
+                  {item.dukascopySymbol || '--'}
+                </td>
                 <td className="p-3 text-right tabular-nums text-foreground">{item.digits}</td>
                 <td className="p-3 text-right tabular-nums text-foreground">{item.pipSize}</td>
                 <td className="p-3">

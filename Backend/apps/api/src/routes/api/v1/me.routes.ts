@@ -49,7 +49,10 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const updated = await useCases.updateProfileUseCase.execute(request.user.userId, request.body);
+      const updated = await useCases.updateProfileUseCase.execute(
+        request.user.userId,
+        request.body
+      );
       return reply.send({
         success: true,
         data: updated.toJSON()
@@ -69,7 +72,11 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.changePasswordUseCase.execute(request.user.userId, request.body, request.user.sessionId);
+      const result = await useCases.changePasswordUseCase.execute(
+        request.user.userId,
+        request.body,
+        request.user.sessionId
+      );
       return reply.send({
         success: true,
         data: result
@@ -133,7 +140,10 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     async (request, reply) => {
       const page = request.query.page || 1;
       const limit = request.query.limit || 20;
-      const paginated = await useCases.getInboxUseCase.execute(request.user.userId, { page, limit });
+      const paginated = await useCases.getInboxUseCase.execute(request.user.userId, {
+        page,
+        limit
+      });
       return reply.send({
         success: true,
         data: paginated.data.map((m) => m.toJSON()),
@@ -161,7 +171,10 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     async (request, reply) => {
       const page = request.query.page || 1;
       const limit = request.query.limit || 20;
-      const paginated = await useCases.getSentMessagesUseCase.execute(request.user.userId, { page, limit });
+      const paginated = await useCases.getSentMessagesUseCase.execute(request.user.userId, {
+        page,
+        limit
+      });
       return reply.send({
         success: true,
         data: paginated.data.map((m) => m.toJSON()),
@@ -187,7 +200,10 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const messages = await useCases.getThreadUseCase.execute(request.params.threadId, request.user.userId);
+      const messages = await useCases.getThreadUseCase.execute(
+        request.params.threadId,
+        request.user.userId
+      );
       return reply.send({
         success: true,
         data: messages.map((m) => m.toJSON())
@@ -207,7 +223,10 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const saved = await useCases.sendUserMessageUseCase.execute(request.user.userId, request.body);
+      const saved = await useCases.sendUserMessageUseCase.execute(
+        request.user.userId,
+        request.body
+      );
       return reply.status(201).send({
         success: true,
         data: saved.toJSON()
@@ -227,7 +246,10 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.markMessageReadUseCase.execute(request.user.userId, request.params.id);
+      const result = await useCases.markMessageReadUseCase.execute(
+        request.user.userId,
+        request.params.id
+      );
       return reply.send({
         success: true,
         data: result
@@ -247,7 +269,10 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.deleteMessageUseCase.execute(request.user.userId, request.params.id);
+      const result = await useCases.deleteMessageUseCase.execute(
+        request.user.userId,
+        request.params.id
+      );
       return reply.send({
         success: true,
         data: result
@@ -267,7 +292,10 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const updated = await useCases.updateNotificationPrefsUseCase.execute(request.user.userId, request.body);
+      const updated = await useCases.updateNotificationPrefsUseCase.execute(
+        request.user.userId,
+        request.body
+      );
       return reply.send({
         success: true,
         data: updated

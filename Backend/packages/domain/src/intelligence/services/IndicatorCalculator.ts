@@ -33,7 +33,7 @@ export class IndicatorCalculator {
     const k = 2 / (period + 1);
     let ema = prices.slice(0, period).reduce((acc, v) => acc + v, 0) / period;
     for (let i = period; i < prices.length; i++) {
-      ema = (prices[i]! * k) + (ema * (1 - k));
+      ema = prices[i]! * k + ema * (1 - k);
     }
     return Number(ema.toFixed(5));
   }
@@ -66,7 +66,7 @@ export class IndicatorCalculator {
 
     if (avgLoss === 0) return 100;
     const rs = avgGain / avgLoss;
-    const rsi = 100 - (100 / (1 + rs));
+    const rsi = 100 - 100 / (1 + rs);
     return Number(rsi.toFixed(2));
   }
 
@@ -93,7 +93,10 @@ export class IndicatorCalculator {
     return Number(atr.toFixed(5));
   }
 
-  public static calculateSupportResistance(candles: RawCandle[], lookback: number = 20): {
+  public static calculateSupportResistance(
+    candles: RawCandle[],
+    lookback: number = 20
+  ): {
     supports: number[];
     resistances: number[];
     recentHigh: number;

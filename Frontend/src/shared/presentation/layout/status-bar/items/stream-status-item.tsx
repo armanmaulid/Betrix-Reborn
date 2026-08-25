@@ -23,8 +23,8 @@ export const StreamStatusItem = React.memo(function StreamStatusItem() {
           isWorkersError
             ? 'text-negative font-bold'
             : isWsLive
-            ? 'text-info font-bold'
-            : 'text-muted-foreground'
+              ? 'text-info font-bold'
+              : 'text-muted-foreground'
         }
       >
         {isWorkersError ? 'OFFLINE' : isWsLive ? 'WS/SSE LIVE' : 'IDLE'}

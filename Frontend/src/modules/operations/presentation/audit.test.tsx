@@ -28,7 +28,9 @@ describe('Phase 5 Audit Log Component Tests', () => {
         />
       );
 
-      expect(screen.getByText(/AUDIT METADATA INSPECTOR \/\/ \[UPDATE_USER\]/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/AUDIT METADATA INSPECTOR \/\/ \[UPDATE_USER\]/i)
+      ).toBeInTheDocument();
       expect(screen.getByText(/192\.168\.1\.1/i)).toBeInTheDocument();
       expect(screen.getByText(/changedFields/i)).toBeInTheDocument();
     });

@@ -39,7 +39,8 @@ export function useUserDetailQuery(userId: string) {
 
 export function useUpdateUserMutation() {
   return useAdminMutation(
-    ({ id, data }: { id: string; data: UpdateAdminUserInput }) => userRepository.updateUser(id, data),
+    ({ id, data }: { id: string; data: UpdateAdminUserInput }) =>
+      userRepository.updateUser(id, data),
     [identityKeys.all]
   );
 }

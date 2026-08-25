@@ -54,9 +54,7 @@ export function OhlcSymbolTable({
           ) : (
             symbols.map((item) => (
               <tr key={item.symbol} className="hover:bg-surface-hover/80 transition-colors">
-                <td className="p-3 font-bold text-accent select-all">
-                  {item.symbol}
-                </td>
+                <td className="p-3 font-bold text-accent select-all">{item.symbol}</td>
                 <td className="p-3 font-mono text-foreground select-all">{item.dukascopySymbol}</td>
                 <td className="p-3 uppercase text-muted-foreground">{item.category}</td>
                 <td className="p-3 text-muted-foreground max-w-[200px] truncate">

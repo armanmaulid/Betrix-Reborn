@@ -11,3 +11,4 @@ export * from './DrizzleMessageRepository.js';
 export * from './DrizzleAdminRepositories.js';
 export * from './DrizzleAuthRepositories.js';
 export * from './DrizzleVoucherRepository.js';
+export * from './DrizzleCalendarRepository.js';

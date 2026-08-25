@@ -4,7 +4,10 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { KeyRound, AlertTriangle } from 'lucide-react';
-import { ResetUserPasswordSchema, type ResetUserPasswordInput } from '@/modules/operations/application/schemas/admin.schema';
+import {
+  ResetUserPasswordSchema,
+  type ResetUserPasswordInput
+} from '@/modules/operations/application/schemas/admin.schema';
 import { useResetPasswordMutation } from '@/modules/identity/application/queries/use-users';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { TerminalModal } from '@/shared/presentation/ui/terminal-modal';
@@ -34,7 +37,10 @@ export function ResetPasswordDialog({ user, isOpen, onClose }: ResetPasswordDial
   const onSubmit = async (data: ResetUserPasswordInput) => {
     try {
       await resetMutation.mutateAsync({ id: user.id, data });
-      success('PASSWORD RESET COMPLETED', `Active sessions revoked and new password applied for ${user.email}.`);
+      success(
+        'PASSWORD RESET COMPLETED',
+        `Active sessions revoked and new password applied for ${user.email}.`
+      );
       reset();
       onClose();
     } catch (err: any) {
@@ -57,7 +63,9 @@ export function ResetPasswordDialog({ user, isOpen, onClose }: ResetPasswordDial
         <div className="border border-accent/40 bg-accent/10 p-3 flex items-start gap-2.5">
           <AlertTriangle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
           <p className="text-[11px] text-accent/90 leading-relaxed">
-            <strong>CRITICAL SECURITY NOTICE:</strong> Applying a forced credential reset will immediately revoke all active browser sessions and API tokens across all devices for this user.
+            <strong>CRITICAL SECURITY NOTICE:</strong> Applying a forced credential reset will
+            immediately revoke all active browser sessions and API tokens across all devices for
+            this user.
           </p>
         </div>
 
@@ -100,4 +108,3 @@ export function ResetPasswordDialog({ user, isOpen, onClose }: ResetPasswordDial
     </TerminalModal>
   );
 }
-

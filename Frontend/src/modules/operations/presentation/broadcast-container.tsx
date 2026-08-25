@@ -3,9 +3,24 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Radio, Send, Users, UserCheck, CheckCircle2, AlertTriangle, Search, X } from 'lucide-react';
-import { BroadcastMessageSchema, type BroadcastMessageInput } from '@/modules/operations/application/schemas/admin.schema';
-import { useBroadcastMutation, type BroadcastResponse } from '@/modules/operations/application/queries/use-broadcast';
+import {
+  Radio,
+  Send,
+  Users,
+  UserCheck,
+  CheckCircle2,
+  AlertTriangle,
+  Search,
+  X
+} from 'lucide-react';
+import {
+  BroadcastMessageSchema,
+  type BroadcastMessageInput
+} from '@/modules/operations/application/schemas/admin.schema';
+import {
+  useBroadcastMutation,
+  type BroadcastResponse
+} from '@/modules/operations/application/queries/use-broadcast';
 import { useUsersQuery } from '@/modules/identity/application/queries/use-users';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-confirm-dialog';
@@ -30,7 +45,11 @@ export function BroadcastContainer() {
     return () => clearTimeout(t);
   }, [userSearch]);
 
-  const { data: searchResults, isLoading: isSearchLoading, isError: isSearchError } = useUsersQuery({
+  const {
+    data: searchResults,
+    isLoading: isSearchLoading,
+    isError: isSearchError
+  } = useUsersQuery({
     search: debouncedSearch || undefined,
     limit: 10
   });
@@ -82,7 +101,10 @@ export function BroadcastContainer() {
 
   const onSubmit = async (data: BroadcastMessageInput) => {
     if (targetMode === 'SPECIFIC' && selectedUsers.length === 0) {
-      error('RECIPIENTS REQUIRED', 'Please select at least one trader account to send a targeted broadcast.');
+      error(
+        'RECIPIENTS REQUIRED',
+        'Please select at least one trader account to send a targeted broadcast.'
+      );
       return;
     }
 
@@ -101,7 +123,9 @@ export function BroadcastContainer() {
   };
 
   const handleConfirmGlobalBroadcast = () =>
-    pendingBroadcast ? dispatchBroadcast(pendingBroadcast).then(() => setPendingBroadcast(null)) : undefined;
+    pendingBroadcast
+      ? dispatchBroadcast(pendingBroadcast).then(() => setPendingBroadcast(null))
+      : undefined;
 
   return (
     <div className="space-y-6 font-mono">
@@ -115,7 +139,8 @@ export function BroadcastContainer() {
             </h1>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Dispatch operational alerts, scheduled maintenance bulletins, or compliance notices to traders
+            Dispatch operational alerts, scheduled maintenance bulletins, or compliance notices to
+            traders
           </p>
         </div>
       </div>
@@ -123,7 +148,10 @@ export function BroadcastContainer() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Form Input */}
         <div className="lg:col-span-2 space-y-4">
-          <form onSubmit={handleSubmit(onSubmit)} className="border border-border bg-surface p-5 space-y-4">
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="border border-border bg-surface p-5 space-y-4"
+          >
             <div className="text-xs font-bold text-accent uppercase tracking-wider border-b border-border pb-2">
               DISPATCH PARAMETERS
             </div>
@@ -241,7 +269,9 @@ export function BroadcastContainer() {
                           >
                             <div>
                               <div className="font-bold">{u.email}</div>
-                              <div className="text-[10px] text-muted-foreground select-all">{u.id}</div>
+                              <div className="text-[10px] text-muted-foreground select-all">
+                                {u.id}
+                              </div>
                             </div>
                             <input
                               type="checkbox"
@@ -301,7 +331,12 @@ export function BroadcastContainer() {
             {/* Action Button */}
             <div className="flex items-center justify-between border-t border-border pt-4">
               <div className="text-[10px] text-muted-foreground">
-                Targeting: <strong>{targetMode === 'ALL' ? 'GLOBAL AUDIENCE' : `${selectedUsers.length} SELECTED USERS`}</strong>
+                Targeting:{' '}
+                <strong>
+                  {targetMode === 'ALL'
+                    ? 'GLOBAL AUDIENCE'
+                    : `${selectedUsers.length} SELECTED USERS`}
+                </strong>
               </div>
 
               <button
@@ -336,7 +371,8 @@ export function BroadcastContainer() {
                   {subjectWatch || 'BULLETIN SUBJECT LINE'}
                 </div>
                 <p className="text-xs text-muted-foreground/90 whitespace-pre-wrap mt-2 leading-relaxed">
-                  {bodyWatch || 'Message transmission contents will display here in real-time as you compose...'}
+                  {bodyWatch ||
+                    'Message transmission contents will display here in real-time as you compose...'}
                 </p>
               </div>
             </div>
@@ -348,7 +384,8 @@ export function BroadcastContainer() {
                   <span>TRANSMISSION CONFIRMED</span>
                 </div>
                 <div className="text-[11px] text-foreground">
-                  Delivered to <strong>{formatFinancialNumber(lastResult.recipientsCount)}</strong> recipient accounts.
+                  Delivered to <strong>{formatFinancialNumber(lastResult.recipientsCount)}</strong>{' '}
+                  recipient accounts.
                 </div>
               </div>
             )}

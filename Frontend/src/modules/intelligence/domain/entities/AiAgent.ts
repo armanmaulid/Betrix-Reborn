@@ -65,7 +65,8 @@ export class AiAgent {
     this.isActive = Boolean(props.isActive);
     this.visibility = props.visibility || 'public';
     this.description = props.description ?? null;
-    this.createdAt = typeof props.createdAt === 'string' ? new Date(props.createdAt) : props.createdAt;
+    this.createdAt =
+      typeof props.createdAt === 'string' ? new Date(props.createdAt) : props.createdAt;
     this.updatedAt = props.updatedAt
       ? typeof props.updatedAt === 'string'
         ? new Date(props.updatedAt)

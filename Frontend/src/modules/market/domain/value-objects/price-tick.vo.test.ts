@@ -5,7 +5,7 @@ describe('Market Domain: PriceTick Value Object', () => {
   it('should compute last price and spread correctly', () => {
     const tick = new PriceTick({
       symbol: 'EURUSD',
-      bid: 1.08500,
+      bid: 1.085,
       ask: 1.08515,
       change24hPercent: 0.25
     });

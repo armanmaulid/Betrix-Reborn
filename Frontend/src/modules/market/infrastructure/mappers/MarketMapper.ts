@@ -1,4 +1,8 @@
-import { MarketInstrument, StreamSymbolEntity, OhlcSymbolEntity } from '../../domain/entities/MarketInstrument';
+import {
+  MarketInstrument,
+  StreamSymbolEntity,
+  OhlcSymbolEntity
+} from '../../domain/entities/MarketInstrument';
 import { PriceTick, coerceFinite } from '../../domain/value-objects/PriceTick';
 
 export class MarketMapper {
@@ -12,9 +16,15 @@ export class MarketMapper {
       symbol,
       bid: coerceFinite(dto.bid, bidFallback),
       ask: coerceFinite(dto.ask, askFallback),
-      spread: coerceFinite(dto.spread, Math.max(0, coerceFinite(dto.ask, askFallback) - coerceFinite(dto.bid, bidFallback))),
+      spread: coerceFinite(
+        dto.spread,
+        Math.max(0, coerceFinite(dto.ask, askFallback) - coerceFinite(dto.bid, bidFallback))
+      ),
       change24h: coerceFinite(dto.change24h ?? existing?.change24h, 0),
-      change24hPercent: coerceFinite(dto.change24hPercent ?? dto.c24p ?? existing?.change24hPercent, 0),
+      change24hPercent: coerceFinite(
+        dto.change24hPercent ?? dto.c24p ?? existing?.change24hPercent,
+        0
+      ),
       volume: coerceFinite(dto.volume24h ?? dto.v ?? existing?.volume, 0),
       timestamp: coerceFinite(dto.timestamp ?? dto.t, 0) || Date.now()
     });

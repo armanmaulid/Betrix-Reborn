@@ -17,7 +17,11 @@ export class FinnhubRealtimeClient implements IRealtimeProvider {
   private isConnecting = false;
   private shouldReconnect = true;
 
-  constructor(apiKey: string, wsUrl: string = 'wss://ws.finnhub.io', initialMap: FinnhubSymbolMap = {}) {
+  constructor(
+    apiKey: string,
+    wsUrl: string = 'wss://ws.finnhub.io',
+    initialMap: FinnhubSymbolMap = {}
+  ) {
     this.apiKey = apiKey;
     this.wsUrl = wsUrl;
     this.updateSymbolMap(initialMap);
@@ -33,11 +37,16 @@ export class FinnhubRealtimeClient implements IRealtimeProvider {
 
   public async connect(): Promise<void> {
     if (!this.apiKey) {
-      console.warn('[FinnhubRealtimeClient] FINNHUB_API_KEY is not configured. Realtime WebSocket disabled.');
+      console.warn(
+        '[FinnhubRealtimeClient] FINNHUB_API_KEY is not configured. Realtime WebSocket disabled.'
+      );
       return;
     }
 
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+    if (
+      this.ws &&
+      (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
+    ) {
       return;
     }
 
@@ -139,7 +148,9 @@ export class FinnhubRealtimeClient implements IRealtimeProvider {
   private scheduleReconnect(): void {
     this.reconnectAttempt++;
     const delay = Math.min(5000 * Math.min(this.reconnectAttempt, 5), 25000);
-    console.log(`[FinnhubRealtimeClient] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempt})...`);
+    console.log(
+      `[FinnhubRealtimeClient] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempt})...`
+    );
     setTimeout(() => {
       if (this.shouldReconnect) {
         this.connect().catch((err) => {

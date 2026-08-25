@@ -1,6 +1,6 @@
 export type WorkerStatus = 'running' | 'paused' | 'stopped' | 'idle' | 'error';
 export type WorkerAction = 'start' | 'pause' | 'stop' | 'restart';
-export type WorkerCategory = 'market' | 'news' | 'maintenance' | 'intelligence';
+export type WorkerCategory = 'market' | 'news' | 'maintenance' | 'intelligence' | 'calendar';
 
 export interface BackgroundWorkerProps {
   id: string;
@@ -21,9 +21,9 @@ export interface BackgroundWorkerProps {
 export interface BackgroundWorkerInfo {
   id: string;
   name: string;
-  category: 'market' | 'news' | 'maintenance' | 'intelligence';
+  category: WorkerCategory;
   description: string;
-  status: 'running' | 'paused' | 'stopped' | 'idle' | 'error';
+  status: WorkerStatus;
   interval: string;
   uptimeSeconds: number;
   lastRunAt: string | Date | null;

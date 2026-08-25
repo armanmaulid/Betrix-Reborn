@@ -4,8 +4,11 @@ import { IUserRepository, User } from '@betrix/domain';
 export class GetAdminUsersUseCase {
   constructor(private readonly userRepo: IUserRepository) {}
 
-  public async execute(pagination: PaginationParams, search?: string, tier?: string): Promise<PaginatedResult<User>> {
+  public async execute(
+    pagination: PaginationParams,
+    search?: string,
+    tier?: string
+  ): Promise<PaginatedResult<User>> {
     return this.userRepo.findAll(pagination, search, tier);
   }
 }
-

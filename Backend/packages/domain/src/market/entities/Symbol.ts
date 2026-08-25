@@ -4,7 +4,8 @@ export interface SymbolProps {
   symbol: string;
   description?: Nullable<string>;
   path?: Nullable<string>;
-  category: 'forex' | 'commodity' | 'metal' | 'energy' | 'crypto' | 'indices' | 'bonds' | 'stocks' | string;
+  category:
+    'forex' | 'commodity' | 'metal' | 'energy' | 'crypto' | 'indices' | 'bonds' | 'stocks' | string;
   finnhubSymbol?: Nullable<string>;
   dukascopySymbol?: Nullable<string>;
   isActive: boolean;
@@ -42,12 +43,20 @@ export class Symbol {
 
   /** True if this symbol has a Finnhub WebSocket mapping for real-time ticks */
   public hasFinnhubMapping(): boolean {
-    return this.finnhubSymbol !== null && this.finnhubSymbol !== undefined && this.finnhubSymbol.length > 0;
+    return (
+      this.finnhubSymbol !== null &&
+      this.finnhubSymbol !== undefined &&
+      this.finnhubSymbol.length > 0
+    );
   }
 
   /** True if this symbol has a Dukascopy mapping for historical OHLC data */
   public hasDukascopyMapping(): boolean {
-    return this.dukascopySymbol !== null && this.dukascopySymbol !== undefined && this.dukascopySymbol.length > 0;
+    return (
+      this.dukascopySymbol !== null &&
+      this.dukascopySymbol !== undefined &&
+      this.dukascopySymbol.length > 0
+    );
   }
 
   public toJSON() {

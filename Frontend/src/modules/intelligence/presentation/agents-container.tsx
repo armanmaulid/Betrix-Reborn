@@ -26,7 +26,10 @@ export function AgentsContainer() {
     if (agent.isDefault) return;
     try {
       await setDefaultMutation.mutateAsync(agent.id);
-      success('DEFAULT MODEL UPDATED', `${agent.name} is now the system-wide default intelligence agent.`);
+      success(
+        'DEFAULT MODEL UPDATED',
+        `${agent.name} is now the system-wide default intelligence agent.`
+      );
     } catch (err: any) {
       error('UPDATE FAILED', err.message || 'Unable to update default agent.');
     }
@@ -35,14 +38,20 @@ export function AgentsContainer() {
   const handleDeleteConfirm = async () => {
     if (!selectedAgentForDelete) return;
     if (selectedAgentForDelete.isDefault) {
-      error('ACTION BLOCKED', 'Cannot delete the system default agent. Set another agent as default first.');
+      error(
+        'ACTION BLOCKED',
+        'Cannot delete the system default agent. Set another agent as default first.'
+      );
       setSelectedAgentForDelete(null);
       return;
     }
 
     try {
       await deleteMutation.mutateAsync(selectedAgentForDelete.id);
-      success('AGENT PURGED', `AI Model ${selectedAgentForDelete.name} was successfully removed from the fleet.`);
+      success(
+        'AGENT PURGED',
+        `AI Model ${selectedAgentForDelete.name} was successfully removed from the fleet.`
+      );
       setSelectedAgentForDelete(null);
     } catch (err: any) {
       error('PURGE FAILED', err.message || 'Unable to delete AI agent.');

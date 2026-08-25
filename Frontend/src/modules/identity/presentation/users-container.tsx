@@ -2,7 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Users, Search, Filter, UserPlus, RefreshCw } from 'lucide-react';
-import { useUsersQuery, useDeleteUserMutation } from '@/modules/identity/application/queries/use-users';
+import {
+  useUsersQuery,
+  useDeleteUserMutation
+} from '@/modules/identity/application/queries/use-users';
 import { UserTable } from './user-table';
 import { CreateUserDialog } from './create-user-dialog';
 import { UpdateUserDialog } from './update-user-dialog';
@@ -124,7 +127,10 @@ export function UsersContainer() {
           {/* Tier Filter */}
           <select
             value={tierFilter}
-            onChange={(e) => { setTierFilter(e.target.value as any); setPage(1); }}
+            onChange={(e) => {
+              setTierFilter(e.target.value as any);
+              setPage(1);
+            }}
             className="bg-surface border border-border px-2 py-1 text-xs text-foreground focus:outline-none focus:border-accent"
           >
             <option value="all">ALL TIERS</option>
@@ -137,7 +143,9 @@ export function UsersContainer() {
         </div>
 
         <div className="text-xs text-muted-foreground whitespace-nowrap">
-          TOTAL: <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong> TRADERS
+          TOTAL:{' '}
+          <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong>{' '}
+          TRADERS
         </div>
       </div>
 
@@ -157,7 +165,10 @@ export function UsersContainer() {
         totalPages={totalPages}
         onPageChange={setPage}
         limit={limit}
-        onLimitChange={(l) => { setLimit(l); setPage(1); }}
+        onLimitChange={(l) => {
+          setLimit(l);
+          setPage(1);
+        }}
         limitOptions={[10, 25, 50, 100]}
         isLoading={isLoading}
       />
@@ -165,7 +176,10 @@ export function UsersContainer() {
       {/* Create User Dialog */}
       <CreateUserDialog
         isOpen={isCreateOpen}
-        onClose={() => { setIsCreateOpen(false); refetch(); }}
+        onClose={() => {
+          setIsCreateOpen(false);
+          refetch();
+        }}
       />
 
       {/* Update User Dialog */}
@@ -173,7 +187,10 @@ export function UsersContainer() {
         <UpdateUserDialog
           user={selectedUserForEdit as any}
           isOpen={Boolean(selectedUserForEdit)}
-          onClose={() => { setSelectedUserForEdit(null); refetch(); }}
+          onClose={() => {
+            setSelectedUserForEdit(null);
+            refetch();
+          }}
         />
       )}
 

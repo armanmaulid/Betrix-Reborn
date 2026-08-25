@@ -35,7 +35,8 @@ export function MarketCatalogContainer() {
 
   // Modal states for Symbol Management
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [selectedSymbolForEdit, setSelectedSymbolForEdit] = useState<Partial<SymbolFormData> | null>(null);
+  const [selectedSymbolForEdit, setSelectedSymbolForEdit] =
+    useState<Partial<SymbolFormData> | null>(null);
   const [symbolToDelete, setSymbolToDelete] = useState<string | null>(null);
 
   const {
@@ -85,7 +86,8 @@ export function MarketCatalogContainer() {
 
   const filteredSymbols = useMemo(() => {
     return dbSymbols.filter((item) => {
-      const matchesCategory = category === 'all' || item.category.toLowerCase() === category.toLowerCase();
+      const matchesCategory =
+        category === 'all' || item.category.toLowerCase() === category.toLowerCase();
       const matchesSearch =
         item.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -185,7 +187,9 @@ export function MarketCatalogContainer() {
         </div>
 
         <div className="text-xs text-muted-foreground whitespace-nowrap">
-          TOTAL: <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong> INSTRUMENTS
+          TOTAL:{' '}
+          <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong>{' '}
+          INSTRUMENTS
         </div>
       </div>
 
@@ -253,4 +257,3 @@ export function MarketCatalogContainer() {
     </div>
   );
 }
-

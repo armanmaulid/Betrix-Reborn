@@ -1,4 +1,9 @@
-import { IStreamSymbolRepository, StreamSymbol, IAdminActionRepository, AdminAction } from '@betrix/domain';
+import {
+  IStreamSymbolRepository,
+  StreamSymbol,
+  IAdminActionRepository,
+  AdminAction
+} from '@betrix/domain';
 
 export class SaveStreamSymbolUseCase {
   constructor(

@@ -16,9 +16,18 @@ import {
   Cpu
 } from 'lucide-react';
 import { z } from 'zod';
-import { SystemCleanupSchema, type SystemCleanupInput } from '@/modules/operations/application/schemas/admin.schema';
-import { useCleanupMutation, type CleanupResult } from '@/modules/operations/application/queries/use-maintenance';
-import { useWorkersQuery, useControlWorkerMutation } from '@/modules/operations/application/queries/use-workers';
+import {
+  SystemCleanupSchema,
+  type SystemCleanupInput
+} from '@/modules/operations/application/schemas/admin.schema';
+import {
+  useCleanupMutation,
+  type CleanupResult
+} from '@/modules/operations/application/queries/use-maintenance';
+import {
+  useWorkersQuery,
+  useControlWorkerMutation
+} from '@/modules/operations/application/queries/use-workers';
 import { WorkerDaemonCard } from './worker-daemon-card';
 import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-confirm-dialog';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
@@ -73,7 +82,10 @@ export function MaintenanceContainer() {
   const handleControlWorker = async (workerId: string, action: WorkerAction) => {
     try {
       await controlWorkerMutation.mutateAsync({ id: workerId, action });
-      success('DAEMON ACTION SENT', `Worker ${workerId} command "${action.toUpperCase()}" acknowledged.`);
+      success(
+        'DAEMON ACTION SENT',
+        `Worker ${workerId} command "${action.toUpperCase()}" acknowledged.`
+      );
     } catch (err: any) {
       error('CONTROL ERROR', err.message || `Failed to ${action} worker daemon.`);
     }
@@ -163,7 +175,9 @@ export function MaintenanceContainer() {
                   <KeyRound className="w-3 h-3 text-accent" />
                   <span>EXPIRED SESSIONS</span>
                 </div>
-                <div className="text-xs text-muted-foreground">Purges invalidated session tokens</div>
+                <div className="text-xs text-muted-foreground">
+                  Purges invalidated session tokens
+                </div>
               </div>
 
               <div className="border border-border/80 bg-black/60 p-3 space-y-1">
@@ -171,7 +185,9 @@ export function MaintenanceContainer() {
                   <Database className="w-3 h-3 text-accent" />
                   <span>DATABASE PURGE</span>
                 </div>
-                <div className="text-xs text-muted-foreground">Reclaims unindexed table storage</div>
+                <div className="text-xs text-muted-foreground">
+                  Reclaims unindexed table storage
+                </div>
               </div>
 
               <div className="border border-border/80 bg-black/60 p-3 space-y-1">

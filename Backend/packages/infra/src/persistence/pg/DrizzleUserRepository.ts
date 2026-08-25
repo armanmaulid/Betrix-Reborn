@@ -35,7 +35,11 @@ export class DrizzleUserRepository implements IUserRepository {
   }
 
   async findByEmail(email: string): Promise<Nullable<User>> {
-    const result = await this.db.select().from(users).where(eq(users.email, email.toLowerCase().trim())).limit(1);
+    const result = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.email, email.toLowerCase().trim()))
+      .limit(1);
     return result[0] ? this.mapToDomain(result[0]) : null;
   }
 
@@ -121,15 +125,15 @@ export class DrizzleUserRepository implements IUserRepository {
   }
 
   async updateStatus(id: string, status: 'active' | 'suspended' | 'banned'): Promise<boolean> {
-    const updated = await this.db
-      .update(users)
-      .set({ status })
-      .where(eq(users.id, id))
-      .returning();
+    const updated = await this.db.update(users).set({ status }).where(eq(users.id, id)).returning();
     return updated.length > 0;
   }
 
-  async findAll(pagination: PaginationParams, search?: string, tier?: string): Promise<PaginatedResult<User>> {
+  async findAll(
+    pagination: PaginationParams,
+    search?: string,
+    tier?: string
+  ): Promise<PaginatedResult<User>> {
     const offset = (pagination.page - 1) * pagination.limit;
     // Escape LIKE wildcards so user input can't force unbounded full scans
     const escaped = search?.replace(/[%_\\]/g, '\\$&');

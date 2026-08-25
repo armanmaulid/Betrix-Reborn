@@ -13,9 +13,7 @@ export const HostEnvItem = React.memo(function HostEnvItem() {
     >
       <Cpu className="w-2.5 h-2.5 text-foreground" />
       <span className="text-muted-foreground">ENV:</span>
-      <span className="text-foreground font-bold">
-        {isProd ? 'PROD' : 'DEV'}
-      </span>
+      <span className="text-foreground font-bold">{isProd ? 'PROD' : 'DEV'}</span>
     </div>
   );
 });

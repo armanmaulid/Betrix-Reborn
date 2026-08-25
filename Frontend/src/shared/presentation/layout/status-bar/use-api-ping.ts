@@ -54,7 +54,7 @@ export function useApiPing(intervalMs: number = 30000) {
     // Initial ping on mount
     pingApi();
 
-    let timer: ReturnType<typeof setInterval> | null = setInterval(() => {
+    const timer: ReturnType<typeof setInterval> | null = setInterval(() => {
       // Only ping if tab is active/visible
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         pingApi();

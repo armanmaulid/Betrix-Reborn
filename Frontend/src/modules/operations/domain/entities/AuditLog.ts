@@ -42,6 +42,7 @@ export class AuditLog {
     this.details = props.details ?? null;
     this.ipAddress = props.ipAddress ?? null;
     this.userAgent = props.userAgent ?? null;
-    this.createdAt = typeof props.createdAt === 'string' ? new Date(props.createdAt) : props.createdAt;
+    this.createdAt =
+      typeof props.createdAt === 'string' ? new Date(props.createdAt) : props.createdAt;
   }
 }

@@ -494,11 +494,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       const limit = request.query.limit || 20;
       const action = request.query.actionType || request.query.action;
       const userId = request.query.userId;
-      const paginated = await useCases.getAuditLogsUseCase.execute(
-        { page, limit },
-        action,
-        userId
-      );
+      const paginated = await useCases.getAuditLogsUseCase.execute({ page, limit }, action, userId);
       return reply.send({
         success: true,
         data: paginated.data,
@@ -520,7 +516,9 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
         tags: ['Admin'],
         summary: 'Export audit logs as CSV or JSON',
         querystring: Type.Object({
-          format: Type.Optional(Type.Union([Type.Literal('csv'), Type.Literal('json')], { default: 'csv' })),
+          format: Type.Optional(
+            Type.Union([Type.Literal('csv'), Type.Literal('json')], { default: 'csv' })
+          ),
           action: Type.Optional(Type.String()),
           actionType: Type.Optional(Type.String())
         }),
@@ -531,7 +529,10 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       const format = (request.query.format as 'csv' | 'json') || 'csv';
       const action = request.query.actionType || request.query.action;
       const result = await useCases.exportAuditLogsUseCase.execute(format, action);
-      reply.header('Content-Type', format === 'json' ? 'application/json' : 'text/csv; charset=utf-8');
+      reply.header(
+        'Content-Type',
+        format === 'json' ? 'application/json' : 'text/csv; charset=utf-8'
+      );
       reply.header('Content-Disposition', `attachment; filename="${result.filename}"`);
       return reply.send(result.content);
     }
@@ -616,7 +617,10 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const agent = await useCases.createAgentUseCase.execute(request.body, request.user.userId, { ip: request.ip, userAgent: request.headers['user-agent'] });
+      const agent = await useCases.createAgentUseCase.execute(request.body, request.user.userId, {
+        ip: request.ip,
+        userAgent: request.headers['user-agent']
+      });
       return reply.status(201).send({
         success: true,
         data: agent.toJSON()
@@ -657,7 +661,12 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const updated = await useCases.updateAgentUseCase.execute(request.user.userId, request.params.id, request.body, { ip: request.ip, userAgent: request.headers['user-agent'] });
+      const updated = await useCases.updateAgentUseCase.execute(
+        request.user.userId,
+        request.params.id,
+        request.body,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
       return reply.send({
         success: true,
         data: updated.toJSON()
@@ -677,7 +686,11 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const deleted = await useCases.deleteAgentUseCase.execute(request.user.userId, request.params.id, { ip: request.ip, userAgent: request.headers['user-agent'] });
+      const deleted = await useCases.deleteAgentUseCase.execute(
+        request.user.userId,
+        request.params.id,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
       return reply.send({
         success: true,
         data: { deleted }
@@ -697,7 +710,11 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const success = await useCases.setDefaultAgentUseCase.execute(request.user.userId, request.params.id, { ip: request.ip, userAgent: request.headers['user-agent'] });
+      const success = await useCases.setDefaultAgentUseCase.execute(
+        request.user.userId,
+        request.params.id,
+        { ip: request.ip, userAgent: request.headers['user-agent'] }
+      );
       return reply.send({
         success: true,
         data: { isDefault: success }
@@ -718,10 +735,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.testAgentUseCase.execute(
-        request.params.id,
-        request.body
-      );
+      const result = await useCases.testAgentUseCase.execute(request.params.id, request.body);
       return reply.send({
         success: true,
         data: result
@@ -873,11 +887,10 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const saved = await useCases.saveSymbolUseCase.execute(
-        request.user.userId,
-        request.body,
-        { ip: request.ip, userAgent: request.headers['user-agent'] }
-      );
+      const saved = await useCases.saveSymbolUseCase.execute(request.user.userId, request.body, {
+        ip: request.ip,
+        userAgent: request.headers['user-agent']
+      });
       return reply.send({
         success: true,
         data: saved.toJSON()

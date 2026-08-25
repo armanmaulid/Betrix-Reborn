@@ -22,4 +22,3 @@ export const BatchDeleteNewsBodySchema = Type.Object({
   ids: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 })
 });
 export type BatchDeleteNewsBodyDTO = Static<typeof BatchDeleteNewsBodySchema>;
-

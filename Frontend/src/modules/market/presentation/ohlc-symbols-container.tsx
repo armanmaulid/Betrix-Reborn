@@ -2,7 +2,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart3, Search, Plus, RefreshCw } from 'lucide-react';
-import { useOhlcSymbolsQuery, useSaveOhlcSymbolMutation, useDeleteOhlcSymbolMutation } from '@/modules/market/application/queries/use-market-data';
+import {
+  useOhlcSymbolsQuery,
+  useSaveOhlcSymbolMutation,
+  useDeleteOhlcSymbolMutation
+} from '@/modules/market/application/queries/use-market-data';
 import { OhlcSymbolTable } from './ohlc-symbol-table';
 import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-confirm-dialog';
 import { SymbolModal, type SymbolFormData } from './symbol-modal';
@@ -30,7 +34,8 @@ export function OhlcSymbolsContainer() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [selectedSymbolForEdit, setSelectedSymbolForEdit] = useState<Partial<SymbolFormData> | null>(null);
+  const [selectedSymbolForEdit, setSelectedSymbolForEdit] =
+    useState<Partial<SymbolFormData> | null>(null);
   const [symbolToDelete, setSymbolToDelete] = useState<string | null>(null);
 
   const {
@@ -46,7 +51,8 @@ export function OhlcSymbolsContainer() {
 
   const filteredSymbols = useMemo(() => {
     return ohlcSymbols.filter((item) => {
-      const matchesCategory = category === 'all' || item.category.toLowerCase() === category.toLowerCase();
+      const matchesCategory =
+        category === 'all' || item.category.toLowerCase() === category.toLowerCase();
       const matchesSearch =
         item.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.dukascopySymbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -176,7 +182,9 @@ export function OhlcSymbolsContainer() {
         </div>
 
         <div className="text-xs text-muted-foreground whitespace-nowrap">
-          TOTAL: <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong> SYMBOLS
+          TOTAL:{' '}
+          <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong>{' '}
+          SYMBOLS
         </div>
       </div>
 

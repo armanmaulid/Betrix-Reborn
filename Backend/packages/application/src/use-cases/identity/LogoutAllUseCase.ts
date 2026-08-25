@@ -12,7 +12,13 @@ export class LogoutAllUseCase {
   ): Promise<{ success: boolean; revokedCount: number }> {
     const count = await this.sessionRepo.deleteByUserId(userId);
 
-    await this.activityLogRepo?.log(userId, 'LOGOUT_ALL', { revokedCount: count }, context?.ip, context?.userAgent);
+    await this.activityLogRepo?.log(
+      userId,
+      'LOGOUT_ALL',
+      { revokedCount: count },
+      context?.ip,
+      context?.userAgent
+    );
 
     return {
       success: true,

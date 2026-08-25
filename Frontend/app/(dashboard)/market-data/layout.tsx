@@ -4,10 +4,6 @@ export const metadata: Metadata = {
   title: 'MARKET CATALOG'
 };
 
-export default function MarketDataSegmentLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+export default function MarketDataSegmentLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

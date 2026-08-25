@@ -18,11 +18,7 @@ export const RedisStoreCard = React.memo(function RedisStoreCard() {
         </span>
         <span
           className={`font-bold ${
-            isHealthy
-              ? 'text-positive'
-              : isError
-              ? 'text-negative'
-              : 'text-accent'
+            isHealthy ? 'text-positive' : isError ? 'text-negative' : 'text-accent'
           }`}
         >
           {isHealthy ? 'ACTIVE' : isError ? 'OFFLINE' : 'SYNCING...'}
@@ -36,8 +32,8 @@ export const RedisStoreCard = React.memo(function RedisStoreCard() {
         {isHealthy
           ? `HEALTHY (${metrics?.redisLatencyMs ?? 0}ms)`
           : isError
-          ? 'OFFLINE'
-          : 'CONNECTING...'}
+            ? 'OFFLINE'
+            : 'CONNECTING...'}
       </div>
       <div className="text-[10px] text-muted-foreground space-y-0.5 pt-1 border-t border-border/50">
         <div className="flex justify-between">

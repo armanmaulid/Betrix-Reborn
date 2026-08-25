@@ -234,14 +234,18 @@ describe('Phase 2 HUD & Component Tests', () => {
       const closeBtn = screen.getByTitle(/Close Telemetry Drawer/i);
       fireEvent.click(closeBtn);
 
-      expect(screen.queryByText(/CENTRALIZED INFRASTRUCTURE & TELEMETRY HUB/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/CENTRALIZED INFRASTRUCTURE & TELEMETRY HUB/i)
+      ).not.toBeInTheDocument();
 
       // Open drawer again and test Escape key closes it
       fireEvent.click(toggleBtn);
       expect(screen.getByText(/CENTRALIZED INFRASTRUCTURE & TELEMETRY HUB/i)).toBeInTheDocument();
 
       fireEvent.keyDown(window, { key: 'Escape' });
-      expect(screen.queryByText(/CENTRALIZED INFRASTRUCTURE & TELEMETRY HUB/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/CENTRALIZED INFRASTRUCTURE & TELEMETRY HUB/i)
+      ).not.toBeInTheDocument();
     });
   });
 });

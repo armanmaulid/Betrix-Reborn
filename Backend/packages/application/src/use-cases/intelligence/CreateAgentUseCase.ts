@@ -1,4 +1,10 @@
-import { IAiAgentRepository, AiAgent, ConflictError, IAdminActionRepository, AdminAction } from '@betrix/domain';
+import {
+  IAiAgentRepository,
+  AiAgent,
+  ConflictError,
+  IAdminActionRepository,
+  AdminAction
+} from '@betrix/domain';
 import { CreateAgentDto } from '../../schemas/agent.schema.js';
 
 export class CreateAgentUseCase {

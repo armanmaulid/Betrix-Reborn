@@ -82,7 +82,7 @@ export class DrizzleSymbolRepository implements ISymbolRepository {
 
   async saveMany(symbolsList: Symbol[]): Promise<number> {
     if (symbolsList.length === 0) return 0;
-    
+
     const chunkSize = 100;
     let totalSaved = 0;
 

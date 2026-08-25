@@ -1,4 +1,9 @@
-import { IAiAgentRepository, NotFoundError, IAdminActionRepository, AdminAction } from '@betrix/domain';
+import {
+  IAiAgentRepository,
+  NotFoundError,
+  IAdminActionRepository,
+  AdminAction
+} from '@betrix/domain';
 
 export class SetDefaultAgentUseCase {
   constructor(

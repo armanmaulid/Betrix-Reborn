@@ -13,7 +13,7 @@ export function useUtcClock() {
     };
 
     updateTime();
-    let interval: ReturnType<typeof setInterval> | null = setInterval(() => {
+    const interval: ReturnType<typeof setInterval> | null = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         updateTime();
       }
@@ -44,7 +44,10 @@ export const UtcClockDisplay = React.memo(function UtcClockDisplay() {
   const utcTime = useUtcClock();
 
   return (
-    <div className="flex items-center space-x-1.5 shrink-0 text-muted-foreground" title="Global Precision UTC Clock">
+    <div
+      className="flex items-center space-x-1.5 shrink-0 text-muted-foreground"
+      title="Global Precision UTC Clock"
+    >
       <Clock className="w-2.5 h-2.5 text-info" />
       <span className="text-foreground tabular-nums">{utcTime || 'UTC'}</span>
     </div>

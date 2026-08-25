@@ -8,11 +8,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load root .env file
-dotenv.config({ path: path.resolve(__dirname, '../../../../../.env') });
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../../../../.env'), quiet: true });
+dotenv.config({ quiet: true });
 
 export async function runMigrations(connectionString?: string) {
-  const conn = connectionString || process.env.DATABASE_URL || 'postgresql://betrix:betrixpass@localhost:5432/betrix_reborn';
+  const conn =
+    connectionString ||
+    process.env.DATABASE_URL ||
+    'postgresql://betrix:betrixpass@localhost:5432/betrix_reborn';
   console.log(`Connecting to: ${conn.replace(/:[^:@]+@/, ':****@')}`);
   const pool = createPgPool(conn, 1);
   const db = createDrizzleClient(pool);

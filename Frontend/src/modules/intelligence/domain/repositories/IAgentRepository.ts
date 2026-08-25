@@ -19,7 +19,7 @@ export interface CreateAgentInput {
   description?: string | null;
 }
 
-export interface UpdateAgentInput extends Partial<CreateAgentInput> {}
+export type UpdateAgentInput = Partial<CreateAgentInput>;
 
 export interface AgentTestPayload {
   message: string;
@@ -53,5 +53,9 @@ export interface IAgentRepository {
   updateAgent(id: string, input: UpdateAgentInput): Promise<AiAgent>;
   setDefaultAgent(id: string): Promise<void>;
   deleteAgent(id: string): Promise<void>;
-  testAgent(id: string, payload: AgentTestPayload, options?: TestAgentOptions): Promise<AgentTestResult>;
+  testAgent(
+    id: string,
+    payload: AgentTestPayload,
+    options?: TestAgentOptions
+  ): Promise<AgentTestResult>;
 }

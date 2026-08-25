@@ -20,7 +20,11 @@ export class ExportChatUseCase {
     if (format === 'json') {
       return {
         format: 'json',
-        content: JSON.stringify(messages.map((m) => m.toJSON()), null, 2),
+        content: JSON.stringify(
+          messages.map((m) => m.toJSON()),
+          null,
+          2
+        ),
         filename
       };
     }

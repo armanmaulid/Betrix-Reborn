@@ -81,7 +81,9 @@ export function AuditTable({ logs, isLoading, isError, onInspect }: AuditTablePr
                       </span>
                     </Link>
                   ) : (
-                    <span className="text-muted-foreground/60 italic text-[11px]">SYSTEM ANONYMOUS</span>
+                    <span className="text-muted-foreground/60 italic text-[11px]">
+                      SYSTEM ANONYMOUS
+                    </span>
                   )}
                 </td>
 

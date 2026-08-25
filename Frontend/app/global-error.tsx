@@ -26,7 +26,8 @@ export default function GlobalError({
             {/* Error Details */}
             <div className="space-y-3 text-xs leading-relaxed">
               <p className="text-foreground">
-                A critical error occurred while booting the terminal. The issue has been logged for operators.
+                A critical error occurred while booting the terminal. The issue has been logged for
+                operators.
               </p>
               <div className="border border-border bg-black p-3 text-[11px] text-muted-foreground font-mono break-all">
                 An unexpected error has occurred. Please retry the operation.

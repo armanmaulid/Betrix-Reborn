@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { NotFoundError, ForbiddenError } from '@betrix/core';
-import { IUserRepository, IAdminActionRepository, ISessionRepository, INotifier, AdminAction, User } from '@betrix/domain';
+import {
+  IUserRepository,
+  IAdminActionRepository,
+  ISessionRepository,
+  INotifier,
+  AdminAction,
+  User
+} from '@betrix/domain';
 import { UpdateAdminUserDTO } from '../../schemas/admin.schema.js';
 
 export class UpdateAdminUserUseCase {
@@ -65,7 +72,9 @@ export class UpdateAdminUserUseCase {
       // so the user is signed out in real time instead of only on their next
       // API call. Session/DB access is already revoked above regardless of
       // whether this delivers — it's a UX nicety, not the security boundary.
-      this.notifier?.broadcastToUser(targetUserId, 'logout', { reason: dto.status ?? 'admin_demoted' });
+      this.notifier?.broadcastToUser(targetUserId, 'logout', {
+        reason: dto.status ?? 'admin_demoted'
+      });
     }
 
     // Record audit action

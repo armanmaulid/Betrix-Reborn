@@ -13,13 +13,21 @@ export class DukascopySymbolCatalog {
     // 1. Indices
     if (
       idLower.includes('idx') ||
-      (desc.includes('index') && !name.includes('.') && !idLower.startsWith('2828') && !idLower.startsWith('3188'))
+      (desc.includes('index') &&
+        !name.includes('.') &&
+        !idLower.startsWith('2828') &&
+        !idLower.startsWith('3188'))
     ) {
       return 'indices';
     }
 
     // 2. Government Bonds
-    if (idLower.includes('bond') || idLower.includes('gilt') || idLower.includes('bund') || desc.includes('treasury')) {
+    if (
+      idLower.includes('bond') ||
+      idLower.includes('gilt') ||
+      idLower.includes('bund') ||
+      desc.includes('treasury')
+    ) {
       return 'bonds';
     }
 
@@ -64,7 +72,12 @@ export class DukascopySymbolCatalog {
       desc.includes('oil') ||
       desc.includes('crude')
     ) {
-      if (!name.includes('.') || idLower.includes('cmd') || idLower.startsWith('xau') || idLower.startsWith('xag')) {
+      if (
+        !name.includes('.') ||
+        idLower.includes('cmd') ||
+        idLower.startsWith('xau') ||
+        idLower.startsWith('xag')
+      ) {
         return 'commodity';
       }
     }
@@ -129,9 +142,11 @@ export class DukascopySymbolCatalog {
    * Synchronizes all broker symbols with PostgreSQL database.
    * Inserts missing symbols and updates catalog dynamically.
    */
-  public static async syncCatalogWithDatabase(
-    symbolRepo: ISymbolRepository
-  ): Promise<{ totalBrokerSymbols: number; newSymbolsInserted: number; existingSymbolsCount: number }> {
+  public static async syncCatalogWithDatabase(symbolRepo: ISymbolRepository): Promise<{
+    totalBrokerSymbols: number;
+    newSymbolsInserted: number;
+    existingSymbolsCount: number;
+  }> {
     const brokerSymbols = this.parseAllBrokerSymbols();
     const existingInDb = await symbolRepo.findAll(false);
     const existingMap = new Set(existingInDb.map((s) => s.symbol.toUpperCase()));

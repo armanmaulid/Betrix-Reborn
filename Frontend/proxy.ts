@@ -14,8 +14,7 @@ export function proxy(request: NextRequest) {
   // Only true framework-owned/static assets bypass the auth check. A blanket
   // "pathname contains a dot" exemption would let anonymous visitors reach
   // any dot-containing route (e.g. /dashboard.html) and leak the rich 404 page.
-  const isStaticFile =
-    pathname.startsWith('/_next') || pathname === '/favicon.ico';
+  const isStaticFile = pathname.startsWith('/_next') || pathname === '/favicon.ico';
 
   if (isStaticFile || isApiAuthRoute) {
     return NextResponse.next();
@@ -43,10 +42,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico).*)'
-  ]
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)']
 };
 
 export default proxy;
-

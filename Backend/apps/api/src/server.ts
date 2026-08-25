@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { LogController } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { env } from '@betrix/config';
 import {
@@ -16,6 +16,7 @@ export async function createServer() {
   const isDev = env.NODE_ENV === 'development' || env.NODE_ENV === 'test';
 
   const app = Fastify({
+    logController: new LogController({ disableRequestLogging: true }),
     logger: {
       level: env.LOG_LEVEL || 'info',
       transport: isDev
@@ -42,6 +43,14 @@ export async function createServer() {
 
   // 2. Register API Routes
   await app.register(v1Routes, { prefix: '/api/v1' });
+
+  // Compact per-request log line (replaces Fastify's verbose 8-line default)
+  app.addHook('onResponse', (request, reply) => {
+    request.log.info(
+      { status: reply.statusCode, ms: reply.elapsedTime },
+      `${request.method} ${request.url}`
+    );
+  });
 
   // 3. Root Health Check Endpoint
   app.get('/health', async (request, reply) => {

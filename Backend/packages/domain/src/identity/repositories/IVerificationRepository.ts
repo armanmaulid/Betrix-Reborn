@@ -10,7 +10,12 @@ export interface VerificationRecord {
 }
 
 export interface IVerificationRepository {
-  create(userId: string, token: string, type: string, ttlMinutes?: number): Promise<VerificationRecord>;
+  create(
+    userId: string,
+    token: string,
+    type: string,
+    ttlMinutes?: number
+  ): Promise<VerificationRecord>;
   verify(token: string, type: string): Promise<Nullable<VerificationRecord>>;
   invalidateUserTokens(userId: string, type: string): Promise<number>;
   cleanupExpired(): Promise<number>;

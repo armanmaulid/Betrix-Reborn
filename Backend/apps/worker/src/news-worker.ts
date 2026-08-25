@@ -1,7 +1,16 @@
 import pino from 'pino';
 import { env } from '@betrix/config';
-import { createPgPool, createDrizzleClient, DrizzleNewsRepository } from '@betrix/infra';
+import {
+  createPgPool,
+  createDrizzleClient,
+  createRedisClient,
+  DrizzleNewsRepository,
+  DrizzleWorkerStateRepository,
+  RedisWorkerCommandBus
+} from '@betrix/infra';
 import { NewsArticle, NewsTagging } from '@betrix/domain';
+import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
+import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -16,15 +25,44 @@ export function detectSmartCategory(tags: string[]): string {
   if (tags.includes('metal')) return 'metal';
   if (tags.includes('oil')) return 'energy';
   if (tags.includes('indices')) return 'indices';
-  if (tags.includes('usd') || tags.includes('eur') || tags.includes('gbp') || tags.includes('jpy')) return 'forex';
+  if (tags.includes('usd') || tags.includes('eur') || tags.includes('gbp') || tags.includes('jpy'))
+    return 'forex';
   return 'general';
 }
 
-export function detectSentiment(headline: string, summary: string): 'positive' | 'negative' | 'neutral' {
+export function detectSentiment(
+  headline: string,
+  summary: string
+): 'positive' | 'negative' | 'neutral' {
   const text = `${headline} ${summary}`.toLowerCase();
 
-  const positiveWords = ['rally', 'surge', 'jump', 'gain', 'rise', 'bull', 'record high', 'boom', 'boost', 'profit', 'outperform'];
-  const negativeWords = ['plunge', 'slump', 'crash', 'drop', 'fall', 'bear', 'record low', 'loss', 'sink', 'decline', 'fear', 'crisis'];
+  const positiveWords = [
+    'rally',
+    'surge',
+    'jump',
+    'gain',
+    'rise',
+    'bull',
+    'record high',
+    'boom',
+    'boost',
+    'profit',
+    'outperform'
+  ];
+  const negativeWords = [
+    'plunge',
+    'slump',
+    'crash',
+    'drop',
+    'fall',
+    'bear',
+    'record low',
+    'loss',
+    'sink',
+    'decline',
+    'fear',
+    'crisis'
+  ];
 
   let score = 0;
   for (const w of positiveWords) {
@@ -39,18 +77,32 @@ export function detectSentiment(headline: string, summary: string): 'positive' |
   return 'neutral';
 }
 
-export class NewsWorker {
+export class NewsWorker extends ManagedWorkerBase implements IManagedWorker {
   private timer: NodeJS.Timeout | null = null;
   private isRunning = false;
   private isShuttingDown = false;
-  private pool = createPgPool(env.DATABASE_URL, 5);
+  private isPaused = false;
+  private pool: ReturnType<typeof createPgPool>;
   private newsRepo: DrizzleNewsRepository;
+  private processedCount = 0;
+  private errorCount = 0;
+  private lastError: string | null = null;
 
   constructor(
     private readonly apiKey: string = env.FINNHUB_API_KEY,
     private readonly pollIntervalMs: number = 10000 // 10 seconds interval
   ) {
-    const db = createDrizzleClient(this.pool);
+    const redis = createRedisClient();
+    const pool = createPgPool(env.DATABASE_URL, 5);
+    const db = createDrizzleClient(pool);
+    super(
+      'finnhub-news-poller',
+      new RedisWorkerCommandBus(redis),
+      new DrizzleWorkerStateRepository(db),
+      logger
+    );
+
+    this.pool = pool;
     this.newsRepo = new DrizzleNewsRepository(db);
   }
 
@@ -59,18 +111,31 @@ export class NewsWorker {
       logger.error('FINNHUB_API_KEY is not configured in .env. Exiting News Worker...');
       process.exit(1);
     }
+    if (await this.wasDeliberatelyHalted()) {
+      logger.info('News Worker was previously paused/stopped by an admin — not auto-starting.');
+      return;
+    }
+    await this.doStart();
+  }
 
-    logger.info(`Starting Smart News Ingestion Worker (Poll interval: ${this.pollIntervalMs / 1000}s)...`);
+  protected async doStart(): Promise<void> {
+    logger.info(
+      `Starting Smart News Ingestion Worker (Poll interval: ${this.pollIntervalMs / 1000}s)...`
+    );
+    this.isPaused = false;
 
     // Initial immediate fetch
     await this.pollNews();
 
     // Schedule regular 10s intervals
     this.timer = setInterval(() => {
+      if (this.isPaused) return;
       this.pollNews().catch((err) => {
         logger.error({ err: err.message }, 'Unexpected error during news polling loop');
       });
     }, this.pollIntervalMs);
+
+    this.attachCommandListener();
   }
 
   public async pollNews(): Promise<void> {
@@ -128,30 +193,71 @@ export class NewsWorker {
 
       if (articlesToSave.length > 0) {
         const savedCount = await this.newsRepo.saveMany(articlesToSave);
+        this.processedCount += savedCount;
         if (savedCount > 0) {
-          logger.info(`[NEWS INGESTION] Successfully ingested ${savedCount} new unique market news articles.`);
+          logger.info(
+            `[NEWS INGESTION] Successfully ingested ${savedCount} new unique market news articles.`
+          );
         }
       }
     } catch (err: any) {
+      this.errorCount += 1;
+      this.lastError = err.message;
       logger.error({ err: err.message }, 'Failed to fetch or ingest news from Finnhub');
     } finally {
       this.isRunning = false;
     }
   }
 
-  public async stop(): Promise<void> {
-    this.isShuttingDown = true;
+  /** No persistent connection here — pause() skips the interval tick until resumed. */
+  protected async doPause(): Promise<void> {
+    this.isPaused = true;
+    logger.info('News Worker paused — polling ticks will be skipped until resumed.');
+  }
+
+  protected async doStop(): Promise<void> {
+    this.isPaused = false;
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
     }
+    this.detachCommandListener();
+    logger.info('News Worker polling stopped.');
+  }
+
+  protected async doRestart(): Promise<void> {
+    await this.doStop();
+    await this.doStart();
+  }
+
+  public getHealth(): WorkerHealthSnapshot {
+    return {
+      status: this.isPaused ? 'paused' : this.timer ? 'running' : 'stopped',
+      processedCount: this.processedCount,
+      errorCount: this.errorCount,
+      lastError: this.lastError
+    };
+  }
+
+  public async stop(): Promise<void> {
+    this.isShuttingDown = true;
+    await this.doStop();
     await this.pool.end();
     logger.info('News Worker stopped cleanly.');
+  }
+
+  public async restart(): Promise<void> {
+    await this.doRestart();
+  }
+
+  public async pause(): Promise<void> {
+    await this.doPause();
   }
 }
 
 // Direct CLI entrypoint execution
-const isDirectExecution = process.argv[1]?.endsWith('news-worker.ts') || process.argv[1]?.endsWith('news-worker.js');
+const isDirectExecution =
+  process.argv[1]?.endsWith('news-worker.ts') || process.argv[1]?.endsWith('news-worker.js');
 if (isDirectExecution) {
   const worker = new NewsWorker();
 

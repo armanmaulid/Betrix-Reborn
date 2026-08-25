@@ -56,10 +56,7 @@ export function NewAgentContainer() {
       </div>
 
       {/* Deployment Form */}
-      <AgentForm
-        onSubmit={handleSubmit}
-        isPending={createMutation.isPending}
-      />
+      <AgentForm onSubmit={handleSubmit} isPending={createMutation.isPending} />
     </div>
   );
 }

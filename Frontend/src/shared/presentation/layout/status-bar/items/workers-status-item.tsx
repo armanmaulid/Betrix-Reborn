@@ -23,17 +23,13 @@ export const WorkersStatusItem = React.memo(function WorkersStatusItem() {
           isError
             ? 'text-negative'
             : isLoading
-            ? 'text-muted-foreground'
-            : running === total
-            ? 'text-positive'
-            : 'text-accent'
+              ? 'text-muted-foreground'
+              : running === total
+                ? 'text-positive'
+                : 'text-accent'
         }`}
       >
-        {isLoading
-          ? '...'
-          : isError
-          ? 'OFFLINE'
-          : `${running}/${total} ACTIVE`}
+        {isLoading ? '...' : isError ? 'OFFLINE' : `${running}/${total} ACTIVE`}
       </span>
     </Link>
   );

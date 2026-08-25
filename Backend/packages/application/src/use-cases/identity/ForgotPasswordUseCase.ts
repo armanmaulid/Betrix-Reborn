@@ -36,7 +36,10 @@ export class ForgotPasswordUseCase {
     if (this.emailService) {
       const resetLink = `https://betrix.io/reset-password?token=${resetToken}`;
       await this.emailService.sendPasswordResetEmail(email, resetLink).catch((err) => {
-        console.warn(`[ForgotPasswordUseCase] Failed to send password reset email to ${email}:`, err.message);
+        console.warn(
+          `[ForgotPasswordUseCase] Failed to send password reset email to ${email}:`,
+          err.message
+        );
       });
     }
 

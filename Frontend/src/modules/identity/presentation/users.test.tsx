@@ -37,14 +37,9 @@ describe('Phase 4 User Management Component Tests', () => {
   describe('UpdateUserDialog (Test Gate 4.2)', () => {
     it('should populate form with user data and handle updates', async () => {
       const onCloseMock = vi.fn();
-      render(
-        <UpdateUserDialog
-          user={mockUser}
-          isOpen={true}
-          onClose={onCloseMock}
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<UpdateUserDialog user={mockUser} isOpen={true} onClose={onCloseMock} />, {
+        wrapper: createWrapper()
+      });
 
       expect(screen.getByDisplayValue('Alex Trader')).toBeInTheDocument();
       expect(screen.getByDisplayValue('50000')).toBeInTheDocument();
@@ -60,14 +55,9 @@ describe('Phase 4 User Management Component Tests', () => {
   describe('ResetPasswordDialog (Test Gate 4.4)', () => {
     it('should validate minimum password length requirement', async () => {
       const onCloseMock = vi.fn();
-      render(
-        <ResetPasswordDialog
-          user={mockUser}
-          isOpen={true}
-          onClose={onCloseMock}
-        />,
-        { wrapper: createWrapper() }
-      );
+      render(<ResetPasswordDialog user={mockUser} isOpen={true} onClose={onCloseMock} />, {
+        wrapper: createWrapper()
+      });
 
       const passwordInput = screen.getByPlaceholderText('••••••••••••');
       const submitBtn = screen.getByRole('button', { name: /FORCE RESET/i });
@@ -110,10 +100,9 @@ describe('Phase 4 User Management Component Tests', () => {
         })
       } as any);
 
-      render(
-        <UserChatHistory userId="usr-123" userEmail="trader@betrix.io" />,
-        { wrapper: createWrapper() }
-      );
+      render(<UserChatHistory userId="usr-123" userEmail="trader@betrix.io" />, {
+        wrapper: createWrapper()
+      });
 
       expect(screen.getByText(/USER CHAT AUDIT TRAIL/i)).toBeInTheDocument();
       expect(screen.getByText('trader@betrix.io')).toBeInTheDocument();
@@ -145,10 +134,9 @@ describe('Phase 4 User Management Component Tests', () => {
         })
       } as any);
 
-      render(
-        <UserChatHistory userId="usr-123" userEmail="trader@betrix.io" />,
-        { wrapper: createWrapper() }
-      );
+      render(<UserChatHistory userId="usr-123" userEmail="trader@betrix.io" />, {
+        wrapper: createWrapper()
+      });
 
       const filterInput = screen.getByPlaceholderText(/FILTER BY SESSION ID/i);
       fireEvent.change(filterInput, { target: { value: 'sess-abc-123' } });
@@ -181,4 +169,3 @@ describe('Phase 4 User Management Component Tests', () => {
     });
   });
 });
-

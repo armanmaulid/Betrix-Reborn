@@ -1,17 +1,39 @@
 import { z } from 'zod';
 
 export const CreateAgentSchema = z.object({
-  id: z.string().min(2, 'ID must be at least 2 characters').max(100, 'ID cannot exceed 100 characters'),
-  name: z.string().min(2, 'Name must be at least 2 characters').max(255, 'Name cannot exceed 255 characters'),
-  modelName: z.string().min(2, 'Model name must be at least 2 characters').max(255, 'Model name cannot exceed 255 characters'),
-  baseUrl: z.string().max(500, 'Base URL cannot exceed 500 characters').optional().or(z.literal('')),
+  id: z
+    .string()
+    .min(2, 'ID must be at least 2 characters')
+    .max(100, 'ID cannot exceed 100 characters'),
+  name: z
+    .string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(255, 'Name cannot exceed 255 characters'),
+  modelName: z
+    .string()
+    .min(2, 'Model name must be at least 2 characters')
+    .max(255, 'Model name cannot exceed 255 characters'),
+  baseUrl: z
+    .string()
+    .max(500, 'Base URL cannot exceed 500 characters')
+    .optional()
+    .or(z.literal('')),
   apiKey: z.string().optional().or(z.literal('')),
   taskType: z.string().default('trade_reasoning'),
   systemPrompt: z.string().optional().or(z.literal('')),
   tier: z.enum(['cheap', 'balanced', 'deep']).default('deep'),
   creditsPer1kTokens: z.coerce.number().int().min(1, 'Must be at least 1 credit').default(1),
-  maxTokens: z.coerce.number().int().min(256, 'Minimum 256 tokens').max(65536, 'Maximum 65536 tokens').default(8192),
-  temperature: z.coerce.number().min(0, 'Min temperature is 0').max(2, 'Max temperature is 2').default(0.7),
+  maxTokens: z.coerce
+    .number()
+    .int()
+    .min(256, 'Minimum 256 tokens')
+    .max(65536, 'Maximum 65536 tokens')
+    .default(8192),
+  temperature: z.coerce
+    .number()
+    .min(0, 'Min temperature is 0')
+    .max(2, 'Max temperature is 2')
+    .default(0.7),
   supportsThinking: z.boolean().default(true),
   isDefault: z.boolean().default(false),
   isActive: z.boolean().default(true),

@@ -45,7 +45,8 @@ export class NewsArticle {
     this.category = props.category || 'general';
     this.tags = (props.tags || []).map((t) => t.replace(/^#/, '').toLowerCase());
     this.image = props.image ?? null;
-    this.createdAt = typeof props.createdAt === 'string' ? new Date(props.createdAt) : props.createdAt;
+    this.createdAt =
+      typeof props.createdAt === 'string' ? new Date(props.createdAt) : props.createdAt;
   }
 
   public matchesSymbol(symbol: string): boolean {

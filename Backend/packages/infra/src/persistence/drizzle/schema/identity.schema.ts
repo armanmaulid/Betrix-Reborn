@@ -1,4 +1,13 @@
-import { pgTable, uuid, varchar, text, boolean, integer, timestamp, index } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  boolean,
+  integer,
+  timestamp,
+  index
+} from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -24,7 +33,9 @@ export const users = pgTable('users', {
 
 export const sessions = pgTable('sessions', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
   token: varchar('token', { length: 512 }).notNull().unique(),
   deviceFingerprint: varchar('device_fingerprint', { length: 255 }).notNull(),
   ip: varchar('ip', { length: 100 }),
@@ -35,24 +46,30 @@ export const sessions = pgTable('sessions', {
 
 export const devices = pgTable('devices', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
   fingerprint: varchar('fingerprint', { length: 255 }).notNull().unique(),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
 
-export const failedLoginAttempts = pgTable('failed_login_attempts', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  email: varchar('email', { length: 255 }).notNull(),
-  ip: varchar('ip', { length: 100 }),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
-}, (t) => [
-  index('failed_login_email_created_idx').on(t.email, t.createdAt)
-]);
+export const failedLoginAttempts = pgTable(
+  'failed_login_attempts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    email: varchar('email', { length: 255 }).notNull(),
+    ip: varchar('ip', { length: 100 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  (t) => [index('failed_login_email_created_idx').on(t.email, t.createdAt)]
+);
 
 export const verificationTokens = pgTable('verification_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
   token: varchar('token', { length: 255 }).notNull().unique(),
   type: varchar('type', { length: 50 }).notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
@@ -60,7 +77,9 @@ export const verificationTokens = pgTable('verification_tokens', {
 });
 
 export const notificationPreferences = pgTable('notification_preferences', {
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).primaryKey(),
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .primaryKey(),
   emailNotifications: boolean('email_notifications').default(true).notNull(),
   pushNotifications: boolean('push_notifications').default(true).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

@@ -339,7 +339,9 @@ export function NewsContainer() {
           </div>
 
           <div className="text-xs text-muted-foreground whitespace-nowrap">
-            TOTAL: <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong> ARTICLES
+            TOTAL:{' '}
+            <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong>{' '}
+            ARTICLES
           </div>
         </div>
       </div>
@@ -398,36 +400,35 @@ export function NewsContainer() {
           sortOrder={sortOrder}
           onToggleSort={handleToggleSort}
         />
+      ) : /* Grid View */
+      isNewsLoading ? (
+        <div className="p-12 text-center text-xs text-muted-foreground animate-pulse border border-border bg-surface">
+          DOWNLOADING LIVE NEWS WIRE TELEMETRY...
+        </div>
+      ) : isNewsError ? (
+        <div className="p-8 text-center text-xs text-negative border border-negative bg-surface">
+          ERROR QUERYING FINANCIAL NEWS WIRE.
+        </div>
+      ) : articles.length === 0 ? (
+        <div className="p-12 text-center text-xs text-muted-foreground border border-dashed border-border/80">
+          NO NEWS ARTICLES MATCHING YOUR CURRENT FILTERS. CLICK "FORCE NEWS SYNC" TO RETRIEVE FRESH
+          ARTICLES.
+        </div>
       ) : (
-        /* Grid View */
-        isNewsLoading ? (
-          <div className="p-12 text-center text-xs text-muted-foreground animate-pulse border border-border bg-surface">
-            DOWNLOADING LIVE NEWS WIRE TELEMETRY...
-          </div>
-        ) : isNewsError ? (
-          <div className="p-8 text-center text-xs text-negative border border-negative bg-surface">
-            ERROR QUERYING FINANCIAL NEWS WIRE.
-          </div>
-        ) : articles.length === 0 ? (
-          <div className="p-12 text-center text-xs text-muted-foreground border border-dashed border-border/80">
-            NO NEWS ARTICLES MATCHING YOUR CURRENT FILTERS. CLICK "FORCE NEWS SYNC" TO RETRIEVE FRESH ARTICLES.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {articles.map((article) => (
-              <NewsCard
-                key={article.id}
-                article={article}
-                selectedTag={selectedTag}
-                onSelectTag={handleTagClick}
-                onSelectArticle={(art) => setSelectedArticle(art)}
-                isSelected={selectedIds.has(article.id)}
-                onToggleSelect={handleToggleSelect}
-                onDelete={(art) => setArticleToDelete(art)}
-              />
-            ))}
-          </div>
-        )
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {articles.map((article) => (
+            <NewsCard
+              key={article.id}
+              article={article}
+              selectedTag={selectedTag}
+              onSelectTag={handleTagClick}
+              onSelectArticle={(art) => setSelectedArticle(art)}
+              isSelected={selectedIds.has(article.id)}
+              onToggleSelect={handleToggleSelect}
+              onDelete={(art) => setArticleToDelete(art)}
+            />
+          ))}
+        </div>
       )}
 
       {/* Pagination Bar */}
@@ -517,7 +518,9 @@ export function NewsContainer() {
             {/* Tags */}
             {selectedArticle.tags && selectedArticle.tags.length > 0 && (
               <div className="space-y-1.5 pt-2">
-                <div className="text-[10px] text-muted-foreground font-bold uppercase">TOPIC TAGS:</div>
+                <div className="text-[10px] text-muted-foreground font-bold uppercase">
+                  TOPIC TAGS:
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedArticle.tags.map((t) => (
                     <span
@@ -558,4 +561,3 @@ export function NewsContainer() {
     </div>
   );
 }
-

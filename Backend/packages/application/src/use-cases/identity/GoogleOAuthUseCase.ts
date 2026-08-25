@@ -49,7 +49,7 @@ export class GoogleOAuthUseCase {
 
     if (!payload.email_verified) {
       throw new ForbiddenError(
-        'This Google account\'s email is not verified. Please verify your email with Google and try again.'
+        "This Google account's email is not verified. Please verify your email with Google and try again."
       );
     }
 

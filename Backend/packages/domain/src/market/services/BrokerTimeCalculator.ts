@@ -11,7 +11,7 @@ export class BrokerTimeCalculator {
    */
   public static getBrokerRolloverUtcHour(offsetHours: number = 3): number {
     const normOffset = Math.floor(offsetHours);
-    return ((24 - (normOffset % 24)) % 24 + 24) % 24;
+    return (((24 - (normOffset % 24)) % 24) + 24) % 24;
   }
 
   /**
@@ -58,7 +58,10 @@ export class BrokerTimeCalculator {
    * Checks whether the current broker time falls in weekend market closure
    * (Saturday 00:00 Broker Time to Sunday 23:59 Broker Time).
    */
-  public static isBrokerMarketWeekend(utcDate: Date = new Date(), offsetHours: number = 3): boolean {
+  public static isBrokerMarketWeekend(
+    utcDate: Date = new Date(),
+    offsetHours: number = 3
+  ): boolean {
     const brokerDate = this.getBrokerDate(utcDate, offsetHours);
     const day = brokerDate.getUTCDay(); // 0 = Sunday, 6 = Saturday in broker perspective
     return day === 0 || day === 6;

@@ -14,7 +14,7 @@ export class ControlWorkerUseCase {
     dto: ControlWorkerDTO,
     context?: { ip?: string; userAgent?: string }
   ): Promise<BackgroundWorkerInfo> {
-    const updatedWorker = await this.workerManager.controlWorker(workerId, dto.action);
+    const updatedWorker = await this.workerManager.controlWorker(workerId, dto.action, adminId);
 
     if (this.adminActionRepo && adminId) {
       await this.adminActionRepo.save(

@@ -38,7 +38,9 @@ export function AnalyticsSummary({
     return (
       <div className="border border-negative/40 bg-negative/5 p-6 text-center font-mono">
         <p className="text-xs text-negative font-bold">ANALYTICS GATEWAY UNREACHABLE</p>
-        <p className="text-[10px] text-muted-foreground mt-1">Unable to retrieve user analytics data. Check backend connectivity.</p>
+        <p className="text-[10px] text-muted-foreground mt-1">
+          Unable to retrieve user analytics data. Check backend connectivity.
+        </p>
       </div>
     );
   }
@@ -54,7 +56,9 @@ export function AnalyticsSummary({
             className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground border border-border bg-surface px-2 py-0.5 transition-colors disabled:opacity-50"
             title="Refresh Analytics Dataset"
           >
-            <RefreshCw className={`w-2.5 h-2.5 ${isRefetching ? 'animate-spin text-accent' : ''}`} />
+            <RefreshCw
+              className={`w-2.5 h-2.5 ${isRefetching ? 'animate-spin text-accent' : ''}`}
+            />
             <span>SYNC</span>
           </button>
         )}
@@ -146,7 +150,9 @@ export function AnalyticsSummary({
                     ? `${Math.min(100, Math.round((data.activeUsersMonthly / Math.max(1, data.activeUsersMonthly + data.newUsersThisMonth)) * 100))}%`
                     : '—'}
                 </div>
-                <div className="text-[9px] text-muted-foreground mt-0.5">30-DAY ACTIVE RETENTION INDEX</div>
+                <div className="text-[9px] text-muted-foreground mt-0.5">
+                  30-DAY ACTIVE RETENTION INDEX
+                </div>
               </div>
               <Users className="w-6 h-6 text-accent/30" />
             </div>

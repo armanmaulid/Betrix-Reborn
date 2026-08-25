@@ -4,10 +4,6 @@ export const metadata: Metadata = {
   title: 'SYSTEM BROADCAST'
 };
 
-export default function BroadcastSegmentLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+export default function BroadcastSegmentLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

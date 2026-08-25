@@ -26,7 +26,9 @@ export const BackendRuntimeCard = React.memo(function BackendRuntimeCard() {
       <div className="text-[10px] text-muted-foreground space-y-0.5 pt-1 border-t border-border/50">
         <div className="flex justify-between">
           <span>HOST ENV:</span>
-          <span className="text-foreground font-bold">{process.env.NODE_ENV === 'production' ? 'PROD' : 'DEV'}</span>
+          <span className="text-foreground font-bold">
+            {process.env.NODE_ENV === 'production' ? 'PROD' : 'DEV'}
+          </span>
         </div>
         <div className="flex justify-between">
           <span>SECURITY:</span>

@@ -21,7 +21,9 @@ export type AdminUsersQueryDTO = Static<typeof AdminUsersQuerySchema>;
 export const UpdateAdminUserSchema = Type.Object({
   name: Type.Optional(Type.String({ minLength: 2, maxLength: 100 })),
   isAdmin: Type.Optional(Type.Boolean()),
-  status: Type.Optional(Type.Union([Type.Literal('active'), Type.Literal('suspended'), Type.Literal('banned')])),
+  status: Type.Optional(
+    Type.Union([Type.Literal('active'), Type.Literal('suspended'), Type.Literal('banned')])
+  ),
   tier: Type.Optional(UserTierSchema),
   credits: Type.Optional(Type.Integer({ minimum: 0 }))
 });
@@ -57,8 +59,14 @@ export const ListVouchersQuerySchema = Type.Object({
   page: Type.Optional(Type.Integer({ minimum: 1, default: 1 })),
   limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100, default: 20 })),
   isRedeemed: Type.Optional(Type.Boolean()),
-  sortBy: Type.Optional(Type.Union([Type.Literal('createdAt'), Type.Literal('amount'), Type.Literal('redeemedAt')], { default: 'createdAt' })),
-  sortOrder: Type.Optional(Type.Union([Type.Literal('asc'), Type.Literal('desc')], { default: 'desc' }))
+  sortBy: Type.Optional(
+    Type.Union([Type.Literal('createdAt'), Type.Literal('amount'), Type.Literal('redeemedAt')], {
+      default: 'createdAt'
+    })
+  ),
+  sortOrder: Type.Optional(
+    Type.Union([Type.Literal('asc'), Type.Literal('desc')], { default: 'desc' })
+  )
 });
 export type ListVouchersQueryDTO = Static<typeof ListVouchersQuerySchema>;
 
@@ -102,13 +110,18 @@ export type AdminUserChatHistoryQueryDTO = Static<typeof AdminUserChatHistoryQue
 
 // Analytics Query Schema
 export const AnalyticsQuerySchema = Type.Object({
-  period: Type.Optional(Type.Union([
-    Type.Literal('daily'),
-    Type.Literal('weekly'),
-    Type.Literal('monthly'),
-    Type.Literal('custom'),
-    Type.Literal('all')
-  ], { default: 'daily' })),
+  period: Type.Optional(
+    Type.Union(
+      [
+        Type.Literal('daily'),
+        Type.Literal('weekly'),
+        Type.Literal('monthly'),
+        Type.Literal('custom'),
+        Type.Literal('all')
+      ],
+      { default: 'daily' }
+    )
+  ),
   startDate: Type.Optional(Type.String()),
   endDate: Type.Optional(Type.String())
 });
@@ -154,8 +167,3 @@ export const SaveOhlcSymbolSchema = Type.Object({
   isActive: Type.Optional(Type.Boolean({ default: true }))
 });
 export type SaveOhlcSymbolDTO = Static<typeof SaveOhlcSymbolSchema>;
-
-
-
-
-

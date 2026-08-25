@@ -7,4 +7,3 @@ export class ListAgentsUseCase {
     return this.agentRepo.findAll(filter);
   }
 }
-

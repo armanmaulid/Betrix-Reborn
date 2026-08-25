@@ -12,4 +12,3 @@ export interface INewsRepository {
   deleteNews(id: string): Promise<boolean>;
   batchDeleteNews(ids: string[]): Promise<number>;
 }
-

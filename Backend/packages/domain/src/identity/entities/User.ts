@@ -94,7 +94,9 @@ export class User {
     });
   }
 
-  public withUpdatedProfile(props: Partial<Pick<UserProps, 'name' | 'phone' | 'address' | 'birthdate' | 'gender' | 'bio'>>): User {
+  public withUpdatedProfile(
+    props: Partial<Pick<UserProps, 'name' | 'phone' | 'address' | 'birthdate' | 'gender' | 'bio'>>
+  ): User {
     return new User({
       ...this,
       ...props

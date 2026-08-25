@@ -19,7 +19,12 @@ export class SseManager implements INotifier {
     this.startHeartbeat();
   }
 
-  public registerClient(id: string, userId: string, channel: 'market' | 'news', res: ServerResponse): boolean {
+  public registerClient(
+    id: string,
+    userId: string,
+    channel: 'market' | 'news',
+    res: ServerResponse
+  ): boolean {
     const currentCount = this.userClientCounts.get(userId) || 0;
     if (currentCount >= this.maxConnectionsPerUser) {
       this.evictOldestForUser(userId);
@@ -44,7 +49,9 @@ export class SseManager implements INotifier {
       'X-Accel-Buffering': 'no'
     });
 
-    res.write(`event: connected\ndata: ${JSON.stringify({ clientId: id, channel, timestamp: Date.now() })}\n\n`);
+    res.write(
+      `event: connected\ndata: ${JSON.stringify({ clientId: id, channel, timestamp: Date.now() })}\n\n`
+    );
 
     res.on('close', () => {
       this.removeClient(id);
@@ -92,7 +99,12 @@ export class SseManager implements INotifier {
     }
   }
 
-  public getStats(): { totalClients: number; marketClients: number; newsClients: number; uniqueUsers: number } {
+  public getStats(): {
+    totalClients: number;
+    marketClients: number;
+    newsClients: number;
+    uniqueUsers: number;
+  } {
     let marketClients = 0;
     let newsClients = 0;
     for (const client of this.clients.values()) {
@@ -120,7 +132,9 @@ export class SseManager implements INotifier {
 
     if (oldest) {
       try {
-        oldest.res.write(`event: error\ndata: ${JSON.stringify({ error: 'CONCURRENCY_LIMIT_EXCEEDED' })}\n\n`);
+        oldest.res.write(
+          `event: error\ndata: ${JSON.stringify({ error: 'CONCURRENCY_LIMIT_EXCEEDED' })}\n\n`
+        );
         oldest.res.end();
       } catch {
         // ignore

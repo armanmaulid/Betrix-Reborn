@@ -30,8 +30,8 @@ export function toDomainPaginated<TDto, TDomain>(
   const rawItems: TDto[] = Array.isArray(paginatedDto?.data)
     ? paginatedDto.data
     : Array.isArray(paginatedDto)
-    ? paginatedDto
-    : [];
+      ? paginatedDto
+      : [];
   const meta: PaginationMeta = paginatedDto?.meta || {
     page: 1,
     limit: rawItems.length,

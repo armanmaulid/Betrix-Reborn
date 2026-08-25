@@ -119,7 +119,9 @@ export function VoucherTable({
 
                 {/* Status: Encapsulated in Domain Entity */}
                 <td className="p-3">
-                  <span className={`px-2 py-0.5 text-[9px] font-bold border uppercase ${v.getStatusBadgeClass()}`}>
+                  <span
+                    className={`px-2 py-0.5 text-[9px] font-bold border uppercase ${v.getStatusBadgeClass()}`}
+                  >
                     {v.getStatus().toUpperCase()}
                   </span>
                 </td>
@@ -131,7 +133,9 @@ export function VoucherTable({
                       href={`/users/${v.redeemedById}`}
                       className="text-foreground hover:text-accent flex items-center gap-1 group"
                     >
-                      <span className="text-[11px] select-all truncate max-w-[120px]">{v.redeemedById}</span>
+                      <span className="text-[11px] select-all truncate max-w-[120px]">
+                        {v.redeemedById}
+                      </span>
                       <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-accent transition-colors shrink-0" />
                     </Link>
                   ) : (
@@ -142,7 +146,11 @@ export function VoucherTable({
                 {/* Expires At: Encapsulated isExpired() check */}
                 <td className="p-3 text-[11px] tabular-nums">
                   {v.expiresAt ? (
-                    <span className={v.isExpired() ? 'text-negative font-bold' : 'text-muted-foreground'}>
+                    <span
+                      className={
+                        v.isExpired() ? 'text-negative font-bold' : 'text-muted-foreground'
+                      }
+                    >
                       {formatDateTime(v.expiresAt)}
                     </span>
                   ) : (

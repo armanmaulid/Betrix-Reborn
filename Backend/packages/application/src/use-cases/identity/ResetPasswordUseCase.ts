@@ -1,10 +1,5 @@
 import { ValidationError, NotFoundError } from '@betrix/core';
-import {
-  IUserRepository,
-  IVerificationRepository,
-  ISessionRepository,
-  User
-} from '@betrix/domain';
+import { IUserRepository, IVerificationRepository, ISessionRepository, User } from '@betrix/domain';
 import { AuthService } from '../../services/AuthService.js';
 import { ResetPasswordDTO } from '../../schemas/auth.schema.js';
 

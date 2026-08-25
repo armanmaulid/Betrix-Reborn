@@ -4,6 +4,10 @@ import {
   IActivityLogRepository,
   IAnalyticsRepository,
   IUsageRepository,
+  IWorkerStateRepository,
+  WorkerStateRecord,
+  WorkerStatus,
+  WorkerAction,
   AdminAction,
   SystemMetrics,
   UserAnalytics,
@@ -12,7 +16,14 @@ import {
   PaginationParams
 } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
-import { adminActions, activityLogs, users, chatMessages, sessions } from '../drizzle/schema.js';
+import {
+  adminActions,
+  activityLogs,
+  users,
+  chatMessages,
+  sessions,
+  workerStates
+} from '../drizzle/schema.js';
 
 export class DrizzleAdminActionRepository implements IAdminActionRepository {
   constructor(private readonly db: DrizzleDb) {}
@@ -50,11 +61,16 @@ export class DrizzleAdminActionRepository implements IAdminActionRepository {
     return this.mapToDomain(inserted[0]!);
   }
 
-  async findAll(pagination: PaginationParams, actionType?: string, userId?: string): Promise<PaginatedResult<AdminAction>> {
+  async findAll(
+    pagination: PaginationParams,
+    actionType?: string,
+    userId?: string
+  ): Promise<PaginatedResult<AdminAction>> {
     const offset = (pagination.page - 1) * pagination.limit;
     const conditions = [];
     if (actionType) conditions.push(eq(adminActions.action, actionType));
-    if (userId) conditions.push(or(eq(adminActions.adminId, userId), eq(adminActions.targetId, userId)));
+    if (userId)
+      conditions.push(or(eq(adminActions.adminId, userId), eq(adminActions.targetId, userId)));
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const [countResult, rows] = await Promise.all([
@@ -84,7 +100,8 @@ export class DrizzleAdminActionRepository implements IAdminActionRepository {
   async exportAll(actionType?: string, userId?: string): Promise<AdminAction[]> {
     const conditions = [];
     if (actionType) conditions.push(eq(adminActions.action, actionType));
-    if (userId) conditions.push(or(eq(adminActions.adminId, userId), eq(adminActions.targetId, userId)));
+    if (userId)
+      conditions.push(or(eq(adminActions.adminId, userId), eq(adminActions.targetId, userId)));
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
     const query = whereClause
       ? this.db.select().from(adminActions).where(whereClause).orderBy(desc(adminActions.createdAt))
@@ -97,7 +114,13 @@ export class DrizzleAdminActionRepository implements IAdminActionRepository {
 export class DrizzleActivityLogRepository implements IActivityLogRepository {
   constructor(private readonly db: DrizzleDb) {}
 
-  async log(userId: string, action: string, details?: unknown, ip?: string, userAgent?: string): Promise<void> {
+  async log(
+    userId: string,
+    action: string,
+    details?: unknown,
+    ip?: string,
+    userAgent?: string
+  ): Promise<void> {
     await this.db.insert(activityLogs).values({
       userId,
       action,
@@ -108,7 +131,10 @@ export class DrizzleActivityLogRepository implements IActivityLogRepository {
     });
   }
 
-  async findByUserId(userId: string, pagination: PaginationParams): Promise<PaginatedResult<unknown>> {
+  async findByUserId(
+    userId: string,
+    pagination: PaginationParams
+  ): Promise<PaginatedResult<unknown>> {
     const offset = (pagination.page - 1) * pagination.limit;
 
     const [countResult, rows] = await Promise.all([
@@ -326,7 +352,9 @@ export class DrizzleAnalyticsRepository implements IAnalyticsRepository {
 export class DrizzleUsageRepository implements IUsageRepository {
   constructor(private readonly db: DrizzleDb) {}
 
-  async getSummary(userId: string): Promise<{ totalInputTokens: number; totalOutputTokens: number; totalCreditsSpent: number }> {
+  async getSummary(
+    userId: string
+  ): Promise<{ totalInputTokens: number; totalOutputTokens: number; totalCreditsSpent: number }> {
     const result = await this.db
       .select({
         input: sql<number>`cast(coalesce(sum(${chatMessages.inputTokens}), 0) as integer)`,
@@ -345,7 +373,10 @@ export class DrizzleUsageRepository implements IUsageRepository {
     };
   }
 
-  async getDailyUsage(userId: string, days: number = 30): Promise<{ date: string; tokens: number; credits: number }[]> {
+  async getDailyUsage(
+    userId: string,
+    days: number = 30
+  ): Promise<{ date: string; tokens: number; credits: number }[]> {
     const rows = await this.db
       .select({
         date: sql<string>`to_char(${chatMessages.createdAt}, 'YYYY-MM-DD')`,
@@ -362,5 +393,111 @@ export class DrizzleUsageRepository implements IUsageRepository {
       tokens: r.tokens,
       credits: Math.ceil(r.tokens / 1000)
     }));
+  }
+}
+
+/**
+ * SSOT persistence for background worker lifecycle status (see IWorkerStateRepository
+ * doc comment in @betrix/domain). `recordCommand` is called by `apps/api` when an admin
+ * issues start/pause/stop/restart; `recordReport` is called by `apps/worker` whenever the
+ * worker process itself reports live telemetry. Both upsert the same row — Postgres, not
+ * the Redis pub/sub transport in between, is what `apps/worker/main.ts` reads on boot to
+ * decide whether a worker should auto-start.
+ */
+export class DrizzleWorkerStateRepository implements IWorkerStateRepository {
+  constructor(private readonly db: DrizzleDb) {}
+
+  private mapToDomain(row: typeof workerStates.$inferSelect): WorkerStateRecord {
+    return {
+      workerId: row.workerId,
+      status: row.status as WorkerStatus,
+      lastCommand: (row.lastCommand as WorkerAction | null) ?? null,
+      lastCommandAt: row.lastCommandAt,
+      lastCommandBy: row.lastCommandBy,
+      lastReportAt: row.lastReportAt,
+      processedCount: row.processedCount,
+      errorCount: row.errorCount,
+      lastError: row.lastError,
+      updatedAt: row.updatedAt
+    };
+  }
+
+  async findAll(): Promise<WorkerStateRecord[]> {
+    const rows = await this.db.select().from(workerStates);
+    return rows.map((r) => this.mapToDomain(r));
+  }
+
+  async findByWorkerId(workerId: string): Promise<WorkerStateRecord | null> {
+    const rows = await this.db
+      .select()
+      .from(workerStates)
+      .where(eq(workerStates.workerId, workerId))
+      .limit(1);
+    return rows[0] ? this.mapToDomain(rows[0]) : null;
+  }
+
+  async recordCommand(
+    workerId: string,
+    status: WorkerStatus,
+    action: WorkerAction,
+    adminId: string | null
+  ): Promise<WorkerStateRecord> {
+    const now = new Date();
+    const rows = await this.db
+      .insert(workerStates)
+      .values({
+        workerId,
+        status,
+        lastCommand: action,
+        lastCommandAt: now,
+        lastCommandBy: adminId,
+        updatedAt: now
+      })
+      .onConflictDoUpdate({
+        target: workerStates.workerId,
+        set: {
+          status,
+          lastCommand: action,
+          lastCommandAt: now,
+          lastCommandBy: adminId,
+          updatedAt: now
+        }
+      })
+      .returning();
+    return this.mapToDomain(rows[0]!);
+  }
+
+  async recordReport(
+    workerId: string,
+    status: WorkerStatus,
+    processedCount: number,
+    errorCount: number,
+    lastError: string | null
+  ): Promise<WorkerStateRecord> {
+    const now = new Date();
+    const rows = await this.db
+      .insert(workerStates)
+      .values({
+        workerId,
+        status,
+        lastReportAt: now,
+        processedCount,
+        errorCount,
+        lastError,
+        updatedAt: now
+      })
+      .onConflictDoUpdate({
+        target: workerStates.workerId,
+        set: {
+          status,
+          lastReportAt: now,
+          processedCount,
+          errorCount,
+          lastError,
+          updatedAt: now
+        }
+      })
+      .returning();
+    return this.mapToDomain(rows[0]!);
   }
 }

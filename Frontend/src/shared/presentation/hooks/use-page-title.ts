@@ -7,9 +7,7 @@ export const BASE_TITLE = 'BETRIX // ADMIN TERMINAL';
 export function formatPageTitle(subTitle?: string): string {
   if (!subTitle || !subTitle.trim()) return BASE_TITLE;
   const trimmed = subTitle.trim();
-  return trimmed.startsWith('BETRIX //')
-    ? trimmed
-    : `BETRIX // ${trimmed.toUpperCase()}`;
+  return trimmed.startsWith('BETRIX //') ? trimmed : `BETRIX // ${trimmed.toUpperCase()}`;
 }
 
 export function usePageTitle(subTitle?: string) {

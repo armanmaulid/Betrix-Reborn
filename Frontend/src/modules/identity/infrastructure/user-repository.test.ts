@@ -37,7 +37,15 @@ describe('Identity Infrastructure: UserMapper & HttpUserRepository', () => {
   it('should fetch and map paginated users list via HttpUserRepository', async () => {
     const mockApiResponse = {
       data: [
-        { id: 'usr-1', email: 'u1@betrix.io', status: 'active', credits: 100, isAdmin: false, emailVerified: true, createdAt: '2026-01-01T00:00:00Z' }
+        {
+          id: 'usr-1',
+          email: 'u1@betrix.io',
+          status: 'active',
+          credits: 100,
+          isAdmin: false,
+          emailVerified: true,
+          createdAt: '2026-01-01T00:00:00Z'
+        }
       ],
       meta: { page: 1, limit: 20, total: 1, totalPages: 1 }
     };
@@ -55,7 +63,16 @@ describe('Identity Infrastructure: UserMapper & HttpUserRepository', () => {
     const backendEnvelope = {
       success: true,
       data: {
-        user: { id: 'usr-new', email: 'new@betrix.io', name: 'New User', status: 'active', tier: 'free', isAdmin: false, credits: 100, createdAt: '2026-08-24T00:00:00Z' },
+        user: {
+          id: 'usr-new',
+          email: 'new@betrix.io',
+          name: 'New User',
+          status: 'active',
+          tier: 'free',
+          isAdmin: false,
+          credits: 100,
+          createdAt: '2026-08-24T00:00:00Z'
+        },
         generatedPassword: 'a1b2c3d4e5f6'
       }
     };
@@ -64,7 +81,10 @@ describe('Identity Infrastructure: UserMapper & HttpUserRepository', () => {
 
     const result = await userRepo.createUser({ email: 'new@betrix.io', credits: 100 });
 
-    expect(postSpy).toHaveBeenCalledWith('/api/admin/users', { email: 'new@betrix.io', credits: 100 });
+    expect(postSpy).toHaveBeenCalledWith('/api/admin/users', {
+      email: 'new@betrix.io',
+      credits: 100
+    });
     expect(result.user.id).toBe('usr-new');
     expect(result.user.email).toBe('new@betrix.io');
     expect(result.generatedPassword).toBe('a1b2c3d4e5f6');

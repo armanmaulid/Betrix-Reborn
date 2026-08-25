@@ -1,4 +1,13 @@
-import { pgTable, uuid, varchar, text, boolean, integer, timestamp, index } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  boolean,
+  integer,
+  timestamp,
+  index
+} from 'drizzle-orm/pg-core';
 import { users } from './identity.schema.js';
 
 export const aiAgents = pgTable('ai_agents', {
@@ -22,19 +31,25 @@ export const aiAgents = pgTable('ai_agents', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 });
 
-export const chatMessages = pgTable('chat_messages', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  sessionId: varchar('session_id', { length: 255 }).notNull(),
-  taskType: varchar('task_type', { length: 100 }).notNull(),
-  modelUsed: varchar('model_used', { length: 100 }).notNull(),
-  message: text('message').notNull(),
-  reply: text('reply').notNull(),
-  latencyMs: integer('latency_ms').default(0).notNull(),
-  inputTokens: integer('input_tokens').default(0).notNull(),
-  outputTokens: integer('output_tokens').default(0).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
-}, (t) => [
-  index('chat_messages_user_created_idx').on(t.userId, t.createdAt),
-  index('chat_messages_session_user_idx').on(t.sessionId, t.userId)
-]);
+export const chatMessages = pgTable(
+  'chat_messages',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    sessionId: varchar('session_id', { length: 255 }).notNull(),
+    taskType: varchar('task_type', { length: 100 }).notNull(),
+    modelUsed: varchar('model_used', { length: 100 }).notNull(),
+    message: text('message').notNull(),
+    reply: text('reply').notNull(),
+    latencyMs: integer('latency_ms').default(0).notNull(),
+    inputTokens: integer('input_tokens').default(0).notNull(),
+    outputTokens: integer('output_tokens').default(0).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  (t) => [
+    index('chat_messages_user_created_idx').on(t.userId, t.createdAt),
+    index('chat_messages_session_user_idx').on(t.sessionId, t.userId)
+  ]
+);

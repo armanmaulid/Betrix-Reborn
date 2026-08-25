@@ -39,6 +39,12 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   reactCompiler: true,
   poweredByHeader: false,
+  experimental: {
+    // `typescript` resolves to the TS6 API package (@typescript/typescript6) for the
+    // linter; Next's API-mode typecheck uses it. The native `tsc` bin stays TS7 via
+    // the @typescript/native alias. See eslint.config.mjs / package.json.
+    useTypeScriptCli: false
+  },
   async headers() {
     return [
       {
@@ -52,7 +58,8 @@ const nextConfig: NextConfig = {
     fetches: {
       // Never log full fetch URLs in production — they may contain query secrets.
       // Only enabled in development via NEXT_PUBLIC_DEBUG_LOGS=true.
-      fullUrl: process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_DEBUG_LOGS === 'true'
+      fullUrl:
+        process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_DEBUG_LOGS === 'true'
     }
   }
 };

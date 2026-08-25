@@ -17,7 +17,8 @@ const swaggerPluginCallback: FastifyPluginAsync = async (fastify) => {
       openapi: '3.0.3',
       info: {
         title: 'Betrix-Reborn Market Intelligence API',
-        description: 'Institutional-grade AI-powered market intelligence, real-time technical analysis, and event streaming backend.',
+        description:
+          'Institutional-grade AI-powered market intelligence, real-time technical analysis, and event streaming backend.',
         version: '1.0.0'
       },
       servers: [
@@ -32,7 +33,8 @@ const swaggerPluginCallback: FastifyPluginAsync = async (fastify) => {
             type: 'http',
             scheme: 'bearer',
             bearerFormat: 'JWT',
-            description: 'Enter your JWT token obtained from /api/v1/auth/login or /api/v1/auth/register'
+            description:
+              'Enter your JWT token obtained from /api/v1/auth/login or /api/v1/auth/register'
           }
         }
       },
@@ -44,10 +46,16 @@ const swaggerPluginCallback: FastifyPluginAsync = async (fastify) => {
       tags: [
         { name: 'Auth', description: 'Authentication, registration, sessions, and verification' },
         { name: 'Chat', description: 'AI market intelligence chat, reasoning stream, and models' },
-        { name: 'Market', description: 'Real-time symbols, live tick prices, and historical OHLC data' },
+        {
+          name: 'Market',
+          description: 'Real-time symbols, live tick prices, and historical OHLC data'
+        },
         { name: 'News', description: 'Market news feed with auto-tagging and sentiment analysis' },
         { name: 'Me', description: 'User profile, credit voucher redemption, and messaging' },
-        { name: 'Admin', description: 'User management, metrics, analytics, vouchers, and audit logs' },
+        {
+          name: 'Admin',
+          description: 'User management, metrics, analytics, vouchers, and audit logs'
+        },
         { name: 'Streams', description: 'Real-time Server-Sent Events (SSE) data feeds' }
       ]
     }

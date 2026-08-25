@@ -4,10 +4,6 @@ export const metadata: Metadata = {
   title: 'SECURITY AUDIT LOGS'
 };
 
-export default function AuditLogsSegmentLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+export default function AuditLogsSegmentLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

@@ -53,7 +53,12 @@ const errorHandlerPluginCallback: FastifyPluginAsync = async (fastify) => {
     }
 
     // Fastify Standard HTTP Errors (401, 403, 404, etc.)
-    if ('statusCode' in error && typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode < 500) {
+    if (
+      'statusCode' in error &&
+      typeof error.statusCode === 'number' &&
+      error.statusCode >= 400 &&
+      error.statusCode < 500
+    ) {
       return reply.status(error.statusCode).send({
         success: false,
         error: {

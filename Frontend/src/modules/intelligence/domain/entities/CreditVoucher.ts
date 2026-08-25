@@ -42,7 +42,8 @@ export class CreditVoucher {
         : props.expiresAt
       : null;
     this.createdById = props.createdById;
-    this.createdAt = typeof props.createdAt === 'string' ? new Date(props.createdAt) : props.createdAt;
+    this.createdAt =
+      typeof props.createdAt === 'string' ? new Date(props.createdAt) : props.createdAt;
     this.updatedAt = props.updatedAt
       ? typeof props.updatedAt === 'string'
         ? new Date(props.updatedAt)

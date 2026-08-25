@@ -1,9 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import {
-  AlertTriangle,
-  LayoutDashboard
-} from 'lucide-react';
+import { AlertTriangle, LayoutDashboard } from 'lucide-react';
 
 export default function NotFound() {
   return (
@@ -25,7 +22,7 @@ export default function NotFound() {
         {/* ASCII Error Glitch Banner */}
         <div className="border border-border/60 bg-black p-4 text-center overflow-x-auto">
           <pre className="text-negative text-[9px] sm:text-[11px] leading-tight font-bold tracking-tight inline-block text-left">
-{` ███████╗██████╗ ██████╗  ██████╗ ██████╗     ██╗  ██╗ ██████╗ ██╗  ██╗
+            {` ███████╗██████╗ ██████╗  ██████╗ ██████╗     ██╗  ██╗ ██████╗ ██╗  ██╗
  ██╔════╝██╔══██╗██╔══██╗██╔═══██╗██╔══██╗    ██║  ██║██╔═████╗██║  ██║
  █████╗  ██████╔╝██████╔╝██║   ██║██████╔╝    ███████║██║██╔██║███████║
  ██╔══╝  ██╔══██╗██╔══██╗██║   ██║██╔══██╗    ╚════██║████╔╝██║╚════██║
@@ -41,7 +38,8 @@ export default function NotFound() {
             <div>
               <strong className="uppercase">UNRECOGNIZED ROUTING PATH:</strong>
               <p className="text-muted-foreground mt-0.5 text-[11px]">
-                The requested URL path does not match any authenticated administrative console or trading telemetry directory.
+                The requested URL path does not match any authenticated administrative console or
+                trading telemetry directory.
               </p>
             </div>
           </div>

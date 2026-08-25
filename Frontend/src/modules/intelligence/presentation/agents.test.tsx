@@ -2,7 +2,10 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { CreateAgentSchema, TestAgentSchema } from '@/modules/intelligence/application/schemas/agent.schema';
+import {
+  CreateAgentSchema,
+  TestAgentSchema
+} from '@/modules/intelligence/application/schemas/agent.schema';
 import { AgentTestConsole } from './agent-test-console';
 import { ToastProvider } from '@/shared/presentation/ui/terminal-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -134,7 +137,9 @@ describe('Phase 6 AI Agent Fleet Management Tests', () => {
       const presetBtn = screen.getByRole('button', { name: /\[EURUSD CONFLUENCE\]/i });
       fireEvent.click(presetBtn);
 
-      const textarea = screen.getByPlaceholderText(/Enter trading question or instruction to test this model/i) as HTMLTextAreaElement;
+      const textarea = screen.getByPlaceholderText(
+        /Enter trading question or instruction to test this model/i
+      ) as HTMLTextAreaElement;
       expect(textarea.value).toContain('Analyze current EURUSD market structure');
     });
   });

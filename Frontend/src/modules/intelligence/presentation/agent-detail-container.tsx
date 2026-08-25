@@ -59,7 +59,9 @@ export function AgentDetailContainer({ agentId }: AgentDetailContainerProps) {
         <div className="border border-negative bg-surface p-8 text-center space-y-3">
           <div className="text-sm font-bold text-negative uppercase">AI AGENT NOT DISCOVERED</div>
           <p className="text-xs text-muted-foreground">
-            {agentError instanceof Error ? agentError.message : `No model identified by slug "${agentId}".`}
+            {agentError instanceof Error
+              ? agentError.message
+              : `No model identified by slug "${agentId}".`}
           </p>
         </div>
       </div>
@@ -171,11 +173,7 @@ export function AgentDetailContainer({ agentId }: AgentDetailContainerProps) {
         <AgentTestConsole agent={agent} />
       ) : (
         /* Tab 1: Edit Form */
-        <AgentForm
-          initialData={agent}
-          onSubmit={onSubmit}
-          isPending={updateMutation.isPending}
-        />
+        <AgentForm initialData={agent} onSubmit={onSubmit} isPending={updateMutation.isPending} />
       )}
     </div>
   );

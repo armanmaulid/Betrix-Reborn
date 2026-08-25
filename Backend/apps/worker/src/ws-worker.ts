@@ -6,9 +6,13 @@ import {
   createDrizzleClient,
   DrizzleStreamSymbolRepository,
   createRedisClient,
-  RedisMarketCacheStore
+  RedisMarketCacheStore,
+  DrizzleWorkerStateRepository,
+  RedisWorkerCommandBus
 } from '@betrix/infra';
 import { PriceTick } from '@betrix/domain';
+import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
+import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -21,22 +25,35 @@ const logger = pino({
 const RELOAD_INTERVAL_MS = 60_000;
 const MAX_CONCURRENT_SUBSCRIPTIONS = 45; // Finnhub free limit is 50
 
-export class FinnhubWsWorker {
+export class FinnhubWsWorker extends ManagedWorkerBase implements IManagedWorker {
   private ws: WebSocket | null = null;
   private isShuttingDown = false;
+  private isPaused = false;
   private tickCount = 0;
+  private errorCount = 0;
+  private lastError: string | null = null;
   private subscribedSymbols = new Set<string>();
   private reloadTimer: NodeJS.Timeout | null = null;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private reconnectAttempt = 0;
-  private pool = createPgPool(env.DATABASE_URL, 5);
+  private pool: ReturnType<typeof createPgPool>;
   private symbolRepo: DrizzleStreamSymbolRepository;
   private redis = createRedisClient(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN);
   private marketCache: RedisMarketCacheStore;
   private reverseMap: Record<string, string> = {}; // e.g. 'OANDA:EUR_USD' -> 'EURUSD'
 
   constructor(private readonly apiKey: string = env.FINNHUB_API_KEY) {
-    const db = createDrizzleClient(this.pool);
+    const commandRedis = createRedisClient();
+    const pool = createPgPool(env.DATABASE_URL, 5);
+    const db = createDrizzleClient(pool);
+    super(
+      'finnhub-realtime-ws',
+      new RedisWorkerCommandBus(commandRedis),
+      new DrizzleWorkerStateRepository(db),
+      logger
+    );
+
+    this.pool = pool;
     this.symbolRepo = new DrizzleStreamSymbolRepository(db);
     this.marketCache = new RedisMarketCacheStore(this.redis);
   }
@@ -60,26 +77,44 @@ export class FinnhubWsWorker {
   }
 
   public async start(): Promise<void> {
+    if (await this.wasDeliberatelyHalted()) {
+      logger.info(
+        'Finnhub WS Worker was previously paused/stopped by an admin — not auto-starting.'
+      );
+      return;
+    }
+    await this.doStart();
+  }
+
+  protected async doStart(): Promise<void> {
     if (!this.apiKey) {
       logger.error('FINNHUB_API_KEY is not configured in .env. Worker idling...');
       return;
     }
 
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+    if (
+      this.ws &&
+      (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
+    ) {
       return;
     }
 
+    this.isPaused = false;
     const url = `wss://ws.finnhub.io?token=${this.apiKey}`;
     this.ws = new WebSocket(url);
 
     this.ws.on('open', () => {
-      logger.info(' Connected to Finnhub Live WebSocket Stream.');
+      logger.info('Connected to Finnhub Live WebSocket Stream.');
       this.reconnectAttempt = 0;
       this.subscribedSymbols.clear();
       this.subscribeFromDb();
     });
 
     this.ws.on('message', async (rawData: WebSocket.RawData) => {
+      // pause() keeps the socket open but stops processing incoming ticks,
+      // so resume() is instant with no reconnect cost — see doPause() below.
+      if (this.isPaused) return;
+
       try {
         const message = JSON.parse(rawData.toString());
 
@@ -94,7 +129,11 @@ export class FinnhubWsWorker {
             this.tickCount++;
             const internalSymbol =
               this.reverseMap[trade.s] ||
-              trade.s.replace('OANDA:', '').replace('_', '').replace('BINANCE:', '').replace('USDT', 'USD');
+              trade.s
+                .replace('OANDA:', '')
+                .replace('_', '')
+                .replace('BINANCE:', '')
+                .replace('USDT', 'USD');
             const price = Number(trade.p);
             const volume = Number(trade.v ?? 0);
             const timestamp = Number(trade.t ?? Date.now());
@@ -110,6 +149,8 @@ export class FinnhubWsWorker {
 
             // Cache price tick in Redis market cache store
             await this.marketCache.cachePrice(tick).catch((err) => {
+              this.errorCount += 1;
+              this.lastError = err.message;
               logger.error({ err: err.message }, 'Failed to cache price tick to Redis');
             });
 
@@ -125,6 +166,8 @@ export class FinnhubWsWorker {
           }
         }
       } catch (err: any) {
+        this.errorCount += 1;
+        this.lastError = err.message;
         logger.error({ err: err.message }, 'Failed to parse incoming WebSocket message');
       }
     });
@@ -135,11 +178,15 @@ export class FinnhubWsWorker {
         return;
       }
 
-      logger.warn(`Finnhub WebSocket closed (code: ${code}, reason: ${reason?.toString() || 'none'}). Scheduling reconnection...`);
+      logger.warn(
+        `Finnhub WebSocket closed (code: ${code}, reason: ${reason?.toString() || 'none'}). Scheduling reconnection...`
+      );
       this.scheduleReconnect();
     });
 
     this.ws.on('error', (err: Error) => {
+      this.errorCount += 1;
+      this.lastError = err.message;
       logger.error({ err: err.message }, 'Finnhub WebSocket encountered an error');
     });
 
@@ -151,17 +198,21 @@ export class FinnhubWsWorker {
         });
       }, RELOAD_INTERVAL_MS);
     }
+
+    this.attachCommandListener();
   }
 
   private scheduleReconnect(): void {
     if (this.isShuttingDown || this.reconnectTimer) return;
     this.reconnectAttempt++;
     const delay = Math.min(3000 * this.reconnectAttempt, 20000);
-    logger.info(`Scheduling Finnhub WebSocket reconnect in ${Math.round(delay / 1000)}s (attempt ${this.reconnectAttempt})...`);
+    logger.info(
+      `Scheduling Finnhub WebSocket reconnect in ${Math.round(delay / 1000)}s (attempt ${this.reconnectAttempt})...`
+    );
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       if (!this.isShuttingDown) {
-        this.start().catch((err) => {
+        this.doStart().catch((err) => {
           logger.error({ err: err.message }, 'Failed during scheduled reconnect');
           this.scheduleReconnect();
         });
@@ -218,8 +269,23 @@ export class FinnhubWsWorker {
     });
   }
 
-  public async stop(): Promise<void> {
+  /**
+   * Keeps the WebSocket connection OPEN — unlike stop(), which fully closes
+   * it — and merely stops processing incoming ticks (see the `isPaused` guard
+   * in the 'message' handler above). This means resume() is instant with no
+   * reconnect cost, at the price of continuing to receive (and discard)
+   * frames from Finnhub while paused.
+   */
+  protected async doPause(): Promise<void> {
+    this.isPaused = true;
+    logger.info(
+      'Finnhub WS Worker paused — connection stays open, incoming ticks are discarded until resumed.'
+    );
+  }
+
+  protected async doStop(): Promise<void> {
     this.isShuttingDown = true;
+    this.isPaused = false;
     if (this.reloadTimer) {
       clearInterval(this.reloadTimer);
       this.reloadTimer = null;
@@ -242,12 +308,46 @@ export class FinnhubWsWorker {
       } catch {}
       this.ws = null;
     }
+    this.detachCommandListener();
+  }
+
+  protected async doRestart(): Promise<void> {
+    this.isShuttingDown = false;
+    await this.doStop();
+    this.isShuttingDown = false;
+    await this.doStart();
+  }
+
+  public getHealth(): WorkerHealthSnapshot {
+    return {
+      status: this.isPaused
+        ? 'paused'
+        : this.ws?.readyState === WebSocket.OPEN
+          ? 'running'
+          : 'stopped',
+      processedCount: this.tickCount,
+      errorCount: this.errorCount,
+      lastError: this.lastError
+    };
+  }
+
+  public async stop(): Promise<void> {
+    await this.doStop();
     await this.pool.end();
+  }
+
+  public async restart(): Promise<void> {
+    await this.doRestart();
+  }
+
+  public async pause(): Promise<void> {
+    await this.doPause();
   }
 }
 
 // Direct CLI entrypoint execution
-const isDirectExecution = process.argv[1]?.endsWith('ws-worker.ts') || process.argv[1]?.endsWith('ws-worker.js');
+const isDirectExecution =
+  process.argv[1]?.endsWith('ws-worker.ts') || process.argv[1]?.endsWith('ws-worker.js');
 if (isDirectExecution) {
   const worker = new FinnhubWsWorker();
 

@@ -3,7 +3,9 @@ import { users } from './identity.schema.js';
 
 export const creditTransactions = pgTable('credit_transactions', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
   amount: integer('amount').notNull(),
   action: varchar('action', { length: 100 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()

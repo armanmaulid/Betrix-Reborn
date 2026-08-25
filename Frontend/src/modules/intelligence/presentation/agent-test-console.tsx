@@ -31,15 +31,18 @@ interface AgentTestConsoleProps {
 const PRESET_PROMPTS = [
   {
     label: 'EURUSD CONFLUENCE',
-    prompt: 'Analyze current EURUSD market structure on H1 timeframe. Identify key liquidity levels, trend alignment, and high-probability trade zones.'
+    prompt:
+      'Analyze current EURUSD market structure on H1 timeframe. Identify key liquidity levels, trend alignment, and high-probability trade zones.'
   },
   {
     label: 'RISK MANAGEMENT',
-    prompt: 'Calculate 1% risk position size for a $50,000 institutional account trading XAUUSD (Gold) with an entry at 2650.00 and stop loss at 2642.50.'
+    prompt:
+      'Calculate 1% risk position size for a $50,000 institutional account trading XAUUSD (Gold) with an entry at 2650.00 and stop loss at 2642.50.'
   },
   {
     label: 'LATENCY & HEALTH PING',
-    prompt: 'Confirm model connectivity, inference latency, and persona directives in one crisp sentence.'
+    prompt:
+      'Confirm model connectivity, inference latency, and persona directives in one crisp sentence.'
   }
 ];
 
@@ -101,7 +104,10 @@ export function AgentTestConsole({ agent }: AgentTestConsoleProps) {
         });
         if (!isMountedRef.current) return;
         setTestResult(result);
-        success('INFERENCE COMPLETE', `Model responded in ${result.usage.latencyMs}ms (${result.usage.totalTokens} tokens).`);
+        success(
+          'INFERENCE COMPLETE',
+          `Model responded in ${result.usage.latencyMs}ms (${result.usage.totalTokens} tokens).`
+        );
       } finally {
         clearTimeout(timeoutId);
         if (abortRef.current === controller) abortRef.current = null;
@@ -154,16 +160,20 @@ export function AgentTestConsole({ agent }: AgentTestConsoleProps) {
             <h2 className="text-xs font-bold text-accent tracking-wider uppercase">
               QA INFERENCE TERMINAL // [{agent.name}]
             </h2>
-            <span className={`px-2 py-0.5 text-[9px] font-bold border uppercase tracking-wider ${
-              agent.visibility === 'private'
-                ? 'border-accent/40 bg-accent/10 text-accent'
-                : 'border-info/40 bg-info/10 text-info'
-            }`}>
+            <span
+              className={`px-2 py-0.5 text-[9px] font-bold border uppercase tracking-wider ${
+                agent.visibility === 'private'
+                  ? 'border-accent/40 bg-accent/10 text-accent'
+                  : 'border-info/40 bg-info/10 text-info'
+              }`}
+            >
               {agent.visibility === 'private' ? 'PRIVATE QA MODEL' : 'PUBLIC FLEET MODEL'}
             </span>
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Execute 1-shot completions directly against <span className="text-foreground font-bold">{agent.modelName}</span>. Zero credit cost, ephemeral testing.
+            Execute 1-shot completions directly against{' '}
+            <span className="text-foreground font-bold">{agent.modelName}</span>. Zero credit cost,
+            ephemeral testing.
           </p>
         </div>
 
@@ -198,7 +208,10 @@ export function AgentTestConsole({ agent }: AgentTestConsoleProps) {
           <div className="p-4 border-t border-border space-y-4 bg-black/40 text-xs">
             {/* System Prompt Override */}
             <div className="space-y-1">
-              <label htmlFor="override-prompt" className="text-[10px] uppercase text-muted-foreground tracking-wider block font-bold">
+              <label
+                htmlFor="override-prompt"
+                className="text-[10px] uppercase text-muted-foreground tracking-wider block font-bold"
+              >
                 SYSTEM PROMPT INSTRUCTION OVERRIDE
               </label>
               <textarea
@@ -215,7 +228,10 @@ export function AgentTestConsole({ agent }: AgentTestConsoleProps) {
               {/* Temperature Slider */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="override-temp" className="text-[10px] uppercase text-muted-foreground tracking-wider block font-bold">
+                  <label
+                    htmlFor="override-temp"
+                    className="text-[10px] uppercase text-muted-foreground tracking-wider block font-bold"
+                  >
                     TEMPERATURE ({temperatureOverride.toFixed(2)})
                   </label>
                 </div>
@@ -233,7 +249,10 @@ export function AgentTestConsole({ agent }: AgentTestConsoleProps) {
 
               {/* Max Tokens */}
               <div className="space-y-1.5">
-                <label htmlFor="override-tokens" className="text-[10px] uppercase text-muted-foreground tracking-wider block font-bold">
+                <label
+                  htmlFor="override-tokens"
+                  className="text-[10px] uppercase text-muted-foreground tracking-wider block font-bold"
+                >
                   MAX OUTPUT TOKENS
                 </label>
                 <input
@@ -273,11 +292,18 @@ export function AgentTestConsole({ agent }: AgentTestConsoleProps) {
       {/* Input Prompt Box */}
       <div className="border border-border bg-surface p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <label htmlFor="test-prompt-input" className="text-[10px] uppercase text-muted-foreground tracking-wider font-bold block">
+          <label
+            htmlFor="test-prompt-input"
+            className="text-[10px] uppercase text-muted-foreground tracking-wider font-bold block"
+          >
             TEST USER PROMPT *
           </label>
           <span className="text-[10px] text-muted-foreground">
-            Press <kbd className="bg-black border border-border px-1 py-0.5 text-foreground">Ctrl+Enter</kbd> to run
+            Press{' '}
+            <kbd className="bg-black border border-border px-1 py-0.5 text-foreground">
+              Ctrl+Enter
+            </kbd>{' '}
+            to run
           </span>
         </div>
 

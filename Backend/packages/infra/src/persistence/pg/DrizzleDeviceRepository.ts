@@ -17,7 +17,11 @@ export class DrizzleDeviceRepository implements IDeviceRepository {
   }
 
   async findByFingerprint(fingerprint: string): Promise<Nullable<Device>> {
-    const result = await this.db.select().from(devices).where(eq(devices.fingerprint, fingerprint)).limit(1);
+    const result = await this.db
+      .select()
+      .from(devices)
+      .where(eq(devices.fingerprint, fingerprint))
+      .limit(1);
     return result[0] ? this.mapToDomain(result[0]) : null;
   }
 
@@ -64,7 +68,10 @@ export class DrizzleDeviceRepository implements IDeviceRepository {
   }
 
   async deleteByFingerprint(fingerprint: string): Promise<boolean> {
-    const deleted = await this.db.delete(devices).where(eq(devices.fingerprint, fingerprint)).returning();
+    const deleted = await this.db
+      .delete(devices)
+      .where(eq(devices.fingerprint, fingerprint))
+      .returning();
     return deleted.length > 0;
   }
 

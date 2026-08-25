@@ -42,7 +42,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toast = useCallback(
-    ({ type = 'info', title, description }: { type?: ToastType; title: string; description?: string }) => {
+    ({
+      type = 'info',
+      title,
+      description
+    }: {
+      type?: ToastType;
+      title: string;
+      description?: string;
+    }) => {
       const id = 'toast-' + Math.random().toString(36).substring(2, 9);
       const timestamp = new Date().toISOString().substring(11, 19);
       const newToast: ToastMessage = { id, type, title, description, timestamp };
@@ -58,10 +66,22 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [dismiss]
   );
 
-  const success = useCallback((title: string, description?: string) => toast({ type: 'success', title, description }), [toast]);
-  const error = useCallback((title: string, description?: string) => toast({ type: 'error', title, description }), [toast]);
-  const info = useCallback((title: string, description?: string) => toast({ type: 'info', title, description }), [toast]);
-  const warning = useCallback((title: string, description?: string) => toast({ type: 'warning', title, description }), [toast]);
+  const success = useCallback(
+    (title: string, description?: string) => toast({ type: 'success', title, description }),
+    [toast]
+  );
+  const error = useCallback(
+    (title: string, description?: string) => toast({ type: 'error', title, description }),
+    [toast]
+  );
+  const info = useCallback(
+    (title: string, description?: string) => toast({ type: 'info', title, description }),
+    [toast]
+  );
+  const warning = useCallback(
+    (title: string, description?: string) => toast({ type: 'warning', title, description }),
+    [toast]
+  );
 
   return (
     <ToastContext.Provider value={{ toast, success, error, info, warning, dismiss }}>
@@ -77,19 +97,19 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             item.type === 'success'
               ? 'border-positive'
               : item.type === 'error'
-              ? 'border-negative'
-              : item.type === 'warning'
-              ? 'border-accent'
-              : 'border-info';
+                ? 'border-negative'
+                : item.type === 'warning'
+                  ? 'border-accent'
+                  : 'border-info';
 
           const textColor =
             item.type === 'success'
               ? 'text-positive'
               : item.type === 'error'
-              ? 'text-negative'
-              : item.type === 'warning'
-              ? 'text-accent'
-              : 'text-info';
+                ? 'text-negative'
+                : item.type === 'warning'
+                  ? 'text-accent'
+                  : 'text-info';
 
           return (
             <div
@@ -99,11 +119,19 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  {item.type === 'success' && <CheckCircle2 className="w-3.5 h-3.5 text-positive shrink-0" />}
-                  {item.type === 'error' && <XCircle className="w-3.5 h-3.5 text-negative shrink-0" />}
-                  {item.type === 'warning' && <AlertTriangle className="w-3.5 h-3.5 text-accent shrink-0" />}
+                  {item.type === 'success' && (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-positive shrink-0" />
+                  )}
+                  {item.type === 'error' && (
+                    <XCircle className="w-3.5 h-3.5 text-negative shrink-0" />
+                  )}
+                  {item.type === 'warning' && (
+                    <AlertTriangle className="w-3.5 h-3.5 text-accent shrink-0" />
+                  )}
                   {item.type === 'info' && <Info className="w-3.5 h-3.5 text-info shrink-0" />}
-                  <span className={`font-mono text-xs font-bold uppercase tracking-wider ${textColor}`}>
+                  <span
+                    className={`font-mono text-xs font-bold uppercase tracking-wider ${textColor}`}
+                  >
                     {item.title}
                   </span>
                 </div>

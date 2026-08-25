@@ -175,9 +175,7 @@ export function TerminalModal({
         </div>
 
         {/* Body content */}
-        <div className="overflow-y-auto flex-1">
-          {children}
-        </div>
+        <div className="overflow-y-auto flex-1">{children}</div>
 
         {/* Optional Footer */}
         {footer && (

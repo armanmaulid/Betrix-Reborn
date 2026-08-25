@@ -15,5 +15,10 @@ export interface ICreditRepository {
    * Settle a reservation: charge actualCost (may exceed reservation — clamped at available),
    * clear the reservation, record the transaction. Returns new balance.
    */
-  settleReservation(userId: string, reservedAmount: number, actualCost: number, action: string): Promise<number>;
+  settleReservation(
+    userId: string,
+    reservedAmount: number,
+    actualCost: number,
+    action: string
+  ): Promise<number>;
 }

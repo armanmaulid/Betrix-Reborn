@@ -47,7 +47,8 @@ describe('Phase 8 Theme & Token Compliance Audit', () => {
 
   it('should verify ZERO off-palette default Tailwind color classes', () => {
     const tsxFiles = [...getAllFiles(appDir), ...getAllFiles(srcDir)];
-    const offPalettePattern = /\b(bg|text|border|ring|fill|stroke)-(red|green|blue|yellow|emerald|slate|zinc|gray|neutral|indigo|purple|pink|rose|amber|cyan|teal|orange|violet)-[0-9]{2,3}\b/g;
+    const offPalettePattern =
+      /\b(bg|text|border|ring|fill|stroke)-(red|green|blue|yellow|emerald|slate|zinc|gray|neutral|indigo|purple|pink|rose|amber|cyan|teal|orange|violet)-[0-9]{2,3}\b/g;
 
     const violations: { file: string; match: string }[] = [];
 

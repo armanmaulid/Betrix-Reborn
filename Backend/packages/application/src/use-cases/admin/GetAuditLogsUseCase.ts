@@ -26,7 +26,13 @@ export class GetAuditLogsUseCase {
     pagination: { page: number; limit: number },
     actionType?: string,
     userId?: string
-  ): Promise<{ data: EnrichedAdminAction[]; page: number; limit: number; total: number; totalPages: number }> {
+  ): Promise<{
+    data: EnrichedAdminAction[];
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  }> {
     const paginated = await this.adminActionRepo.findAll(pagination, actionType, userId);
 
     if (!this.userRepo || paginated.data.length === 0) {
@@ -61,7 +67,10 @@ export class GetAuditLogsUseCase {
     };
   }
 
-  private enrich(a: AdminAction, userById: Map<string, { email: string; name: string | null }>): EnrichedAdminAction {
+  private enrich(
+    a: AdminAction,
+    userById: Map<string, { email: string; name: string | null }>
+  ): EnrichedAdminAction {
     const admin = userById.get(a.adminId);
     // targetId isn't always a user (e.g. targetType 'symbol', 'voucher') — only
     // resolve a target name/email when the target actually looks up as a user.

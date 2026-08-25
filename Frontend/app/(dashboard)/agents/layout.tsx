@@ -4,10 +4,6 @@ export const metadata: Metadata = {
   title: 'AI FLEET'
 };
 
-export default function AgentsSegmentLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+export default function AgentsSegmentLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

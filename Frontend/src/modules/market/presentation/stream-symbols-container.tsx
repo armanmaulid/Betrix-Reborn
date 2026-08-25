@@ -35,7 +35,8 @@ export function StreamSymbolsContainer() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [selectedSymbolForEdit, setSelectedSymbolForEdit] = useState<Partial<SymbolFormData> | null>(null);
+  const [selectedSymbolForEdit, setSelectedSymbolForEdit] =
+    useState<Partial<SymbolFormData> | null>(null);
   const [symbolToDelete, setSymbolToDelete] = useState<string | null>(null);
 
   const {
@@ -53,7 +54,8 @@ export function StreamSymbolsContainer() {
 
   const filteredSymbols = useMemo(() => {
     return streamSymbols.filter((item) => {
-      const matchesCategory = category === 'all' || item.category.toLowerCase() === category.toLowerCase();
+      const matchesCategory =
+        category === 'all' || item.category.toLowerCase() === category.toLowerCase();
       const matchesSearch =
         item.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.finnhubSymbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -114,7 +116,9 @@ export function StreamSymbolsContainer() {
       <div className="border border-border bg-surface p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <Radio className={`w-4 h-4 ${isConnected ? 'text-positive' : 'text-negative animate-pulse'}`} />
+            <Radio
+              className={`w-4 h-4 ${isConnected ? 'text-positive' : 'text-negative animate-pulse'}`}
+            />
             <h1 className="text-sm font-bold tracking-wider text-accent uppercase">
               FINNHUB REAL-TIME STREAM SYMBOLS
             </h1>
@@ -185,7 +189,9 @@ export function StreamSymbolsContainer() {
         </div>
 
         <div className="text-xs text-muted-foreground whitespace-nowrap">
-          TOTAL: <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong> SYMBOLS
+          TOTAL:{' '}
+          <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong>{' '}
+          SYMBOLS
         </div>
       </div>
 

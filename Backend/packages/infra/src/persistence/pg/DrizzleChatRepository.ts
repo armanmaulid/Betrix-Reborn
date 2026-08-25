@@ -43,7 +43,10 @@ export class DrizzleChatRepository implements IChatRepository {
     return this.mapToDomain(inserted[0]!);
   }
 
-  async findByUserId(userId: string, pagination: PaginationParams): Promise<PaginatedResult<ChatMessage>> {
+  async findByUserId(
+    userId: string,
+    pagination: PaginationParams
+  ): Promise<PaginatedResult<ChatMessage>> {
     const offset = (pagination.page - 1) * pagination.limit;
     const [countResult, rows] = await Promise.all([
       this.db
@@ -79,7 +82,11 @@ export class DrizzleChatRepository implements IChatRepository {
     return rows.map((r) => this.mapToDomain(r));
   }
 
-  async findRecentBySessionId(sessionId: string, userId: string, limit: number): Promise<ChatMessage[]> {
+  async findRecentBySessionId(
+    sessionId: string,
+    userId: string,
+    limit: number
+  ): Promise<ChatMessage[]> {
     // Latest N by createdAt, re-reversed to chronological — avoids loading full
     // session (long sessions carry full LLM replies as text) on every send.
     const rows = await this.db

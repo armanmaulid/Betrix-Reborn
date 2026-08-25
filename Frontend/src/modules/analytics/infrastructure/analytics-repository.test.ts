@@ -35,7 +35,15 @@ describe('Analytics Infrastructure: AnalyticsMapper & HttpAnalyticsRepository', 
 
   it('should fetch system metrics via HttpAnalyticsRepository', async () => {
     vi.spyOn(mockHttpClient, 'get').mockResolvedValue({
-      data: { totalUsers: 50, activeSessions: 5, totalChats: 100, totalTokensUsed: 50000, dbPoolActive: 1, dbPoolIdle: 9, uptimeSeconds: 100 }
+      data: {
+        totalUsers: 50,
+        activeSessions: 5,
+        totalChats: 100,
+        totalTokensUsed: 50000,
+        dbPoolActive: 1,
+        dbPoolIdle: 9,
+        uptimeSeconds: 100
+      }
     });
 
     const res = await analyticsRepo.getSystemMetrics();

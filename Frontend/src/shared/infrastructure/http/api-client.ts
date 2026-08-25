@@ -17,10 +17,7 @@ export interface HttpRequestOptions extends RequestInit {
   queryParams?: Record<string, string | number | boolean | undefined | null>;
 }
 
-export async function apiFetch<T = any>(
-  path: string,
-  init?: HttpRequestOptions
-): Promise<T> {
+export async function apiFetch<T = any>(path: string, init?: HttpRequestOptions): Promise<T> {
   const headers = new Headers(init?.headers);
 
   if (init?.body && !headers.has('Content-Type') && !(init.body instanceof FormData)) {
@@ -104,10 +101,7 @@ export function unwrapListData<T>(res: any): T[] {
  */
 export function sanitizeBackendResponse(data: any, status: number): any {
   if (status >= 200 && status < 300) return data;
-  const message =
-    data?.error?.message ||
-    data?.message ||
-    'Request failed';
+  const message = data?.error?.message || data?.message || 'Request failed';
   return { success: false, error: { message } };
 }
 
@@ -136,4 +130,3 @@ export class HttpClient {
     return apiFetch<T>(path, { ...options, method: 'DELETE' });
   }
 }
-

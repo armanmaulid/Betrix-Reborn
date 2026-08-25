@@ -63,7 +63,10 @@ export class DrizzleSessionRepository implements ISessionRepository {
   }
 
   async deleteExpired(): Promise<number> {
-    const deleted = await this.db.delete(sessions).where(lt(sessions.expiresAt, new Date())).returning();
+    const deleted = await this.db
+      .delete(sessions)
+      .where(lt(sessions.expiresAt, new Date()))
+      .returning();
     return deleted.length;
   }
 }

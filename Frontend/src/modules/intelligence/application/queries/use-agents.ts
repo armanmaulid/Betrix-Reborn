@@ -5,7 +5,12 @@ import { agentRepository } from '@intelligence/infrastructure/repositories/HttpA
 import { intelligenceKeys } from '@intelligence/application/intelligence.keys';
 import { useAdminMutation } from '@shared/application/useAdminMutation';
 import type { AiAgent } from '@intelligence/domain/entities/AiAgent';
-import type { CreateAgentInput, UpdateAgentInput, AgentTestPayload, AgentTestResult } from '@intelligence/domain/repositories/IAgentRepository';
+import type {
+  CreateAgentInput,
+  UpdateAgentInput,
+  AgentTestPayload,
+  AgentTestResult
+} from '@intelligence/domain/repositories/IAgentRepository';
 
 export function useAgentsQuery() {
   return useQuery<AiAgent[]>({
@@ -56,7 +61,10 @@ export function useTestAgentMutation() {
       id,
       payload,
       signal
-    }: { id: string; payload: AgentTestPayload; signal?: AbortSignal }) =>
-      agentRepository.testAgent(id, payload, { signal })
+    }: {
+      id: string;
+      payload: AgentTestPayload;
+      signal?: AbortSignal;
+    }) => agentRepository.testAgent(id, payload, { signal })
   });
 }

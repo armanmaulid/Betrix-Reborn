@@ -14,4 +14,3 @@ export interface IAiAgentRepository {
   setDefault(id: string): Promise<boolean>;
   delete(id: string): Promise<boolean>;
 }
-

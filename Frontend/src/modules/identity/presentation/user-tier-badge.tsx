@@ -18,11 +18,7 @@ const TIER_ICONS: Record<string, React.ElementType> = {
   vip: Crown
 };
 
-export function UserTierBadge({
-  tier = 'free',
-  size = 'sm',
-  showIcon = true
-}: UserTierBadgeProps) {
+export function UserTierBadge({ tier = 'free', size = 'sm', showIcon = true }: UserTierBadgeProps) {
   const normalizedTier = (tier || 'free').toLowerCase() as UserTierLevel;
   const config = UserTier.CONFIG[normalizedTier] || UserTier.CONFIG.free;
   const Icon = TIER_ICONS[normalizedTier] || Shield;

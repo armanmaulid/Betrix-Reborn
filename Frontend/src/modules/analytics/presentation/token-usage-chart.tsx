@@ -148,7 +148,9 @@ export function TokenUsageChart({
           <div className="h-full flex flex-col items-center justify-center text-xs text-muted-foreground border border-dashed border-border p-4 text-center">
             <TrendingUp className="w-6 h-6 text-muted-foreground/40 mb-2" />
             <span className="font-bold text-foreground">NO TOKEN CONSUMPTION IN INTERVAL</span>
-            <span className="text-[10px] text-muted-foreground mt-1">Token telemetry will plot automatically once inference cycles execute</span>
+            <span className="text-[10px] text-muted-foreground mt-1">
+              Token telemetry will plot automatically once inference cycles execute
+            </span>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">

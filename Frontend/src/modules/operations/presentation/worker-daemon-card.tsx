@@ -17,7 +17,9 @@ export function WorkerDaemonCard({ worker, onControl, isControlling }: WorkerDae
       <div>
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <div className="text-xs font-bold text-foreground select-all">{worker.name}</div>
-          <span className={`px-2 py-0.5 text-[9px] font-bold border uppercase ${worker.getStatusBadgeClass()}`}>
+          <span
+            className={`px-2 py-0.5 text-[9px] font-bold border uppercase ${worker.getStatusBadgeClass()}`}
+          >
             {worker.status}
           </span>
         </div>
@@ -32,7 +34,10 @@ export function WorkerDaemonCard({ worker, onControl, isControlling }: WorkerDae
           INTERVAL: <strong className="text-foreground">{worker.interval}</strong>
         </div>
         <div>
-          PROCESSED: <strong className="text-foreground">{formatFinancialNumber(worker.processedCount)}</strong>
+          PROCESSED:{' '}
+          <strong className="text-foreground">
+            {formatFinancialNumber(worker.processedCount)}
+          </strong>
         </div>
         <div>
           ERRORS:{' '}

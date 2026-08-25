@@ -4,10 +4,6 @@ export const metadata: Metadata = {
   title: 'STREAM SYMBOLS'
 };
 
-export default function StreamSymbolsSegmentLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+export default function StreamSymbolsSegmentLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

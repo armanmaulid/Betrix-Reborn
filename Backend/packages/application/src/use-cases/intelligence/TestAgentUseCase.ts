@@ -30,12 +30,11 @@ export class TestAgentUseCase {
     const systemPrompt =
       dto.systemPromptOverride !== undefined && dto.systemPromptOverride !== null
         ? dto.systemPromptOverride
-        : agent.systemPrompt || 'You are an institutional financial AI specialized in risk management.';
+        : agent.systemPrompt ||
+          'You are an institutional financial AI specialized in risk management.';
 
     const temperature =
-      dto.temperatureOverride !== undefined
-        ? dto.temperatureOverride
-        : agent.temperature / 100;
+      dto.temperatureOverride !== undefined ? dto.temperatureOverride : agent.temperature / 100;
 
     const maxTokens = dto.maxTokensOverride ?? agent.maxTokens;
 

@@ -1,11 +1,11 @@
 import { PaginatedResult, PaginationParams } from '@betrix/core';
 import { AdminAction } from '../entities/AdminAction.js';
-import type { WorkerStatus } from '../entities/BackgroundWorker.js';
+import type { WorkerStatus, WorkerCategory, WorkerAction } from '../entities/BackgroundWorker.js';
 
 export interface BackgroundWorkerInfo {
   id: string;
   name: string;
-  category: 'market' | 'news' | 'maintenance' | 'intelligence';
+  category: WorkerCategory;
   description: string;
   status: WorkerStatus;
   interval: string;
@@ -48,12 +48,22 @@ export interface AnalyticsQueryOptions {
 
 export interface IAdminActionRepository {
   save(action: AdminAction): Promise<AdminAction>;
-  findAll(pagination: PaginationParams, actionType?: string, userId?: string): Promise<PaginatedResult<AdminAction>>;
+  findAll(
+    pagination: PaginationParams,
+    actionType?: string,
+    userId?: string
+  ): Promise<PaginatedResult<AdminAction>>;
   exportAll(actionType?: string, userId?: string): Promise<AdminAction[]>;
 }
 
 export interface IActivityLogRepository {
-  log(userId: string, action: string, details?: unknown, ip?: string, userAgent?: string): Promise<void>;
+  log(
+    userId: string,
+    action: string,
+    details?: unknown,
+    ip?: string,
+    userAgent?: string
+  ): Promise<void>;
   findByUserId(userId: string, pagination: PaginationParams): Promise<PaginatedResult<unknown>>;
 }
 
@@ -63,6 +73,51 @@ export interface IAnalyticsRepository {
 }
 
 export interface IUsageRepository {
-  getSummary(userId: string): Promise<{ totalInputTokens: number; totalOutputTokens: number; totalCreditsSpent: number }>;
-  getDailyUsage(userId: string, days?: number): Promise<{ date: string; tokens: number; credits: number }[]>;
+  getSummary(
+    userId: string
+  ): Promise<{ totalInputTokens: number; totalOutputTokens: number; totalCreditsSpent: number }>;
+  getDailyUsage(
+    userId: string,
+    days?: number
+  ): Promise<{ date: string; tokens: number; credits: number }[]>;
+}
+
+/**
+ * Persisted worker state record — the SSOT row read by `apps/worker` on boot
+ * to decide whether a worker should auto-start, and written by `apps/api`
+ * whenever an admin issues a control command. Redis pub/sub is only the
+ * real-time transport between the two processes; this table is what
+ * `WorkerManagerService` treats as the source of truth for status.
+ */
+export interface WorkerStateRecord {
+  workerId: string;
+  status: WorkerStatus;
+  lastCommand: WorkerAction | null;
+  lastCommandAt: Date | null;
+  lastCommandBy: string | null;
+  lastReportAt: Date | null;
+  processedCount: number;
+  errorCount: number;
+  lastError: string | null;
+  updatedAt: Date;
+}
+
+export interface IWorkerStateRepository {
+  findAll(): Promise<WorkerStateRecord[]>;
+  findByWorkerId(workerId: string): Promise<WorkerStateRecord | null>;
+  /** Upserts the record after an admin issues a command (start/pause/stop/restart). */
+  recordCommand(
+    workerId: string,
+    status: WorkerStatus,
+    action: WorkerAction,
+    adminId: string | null
+  ): Promise<WorkerStateRecord>;
+  /** Upserts the record after the worker process reports its live health/telemetry. */
+  recordReport(
+    workerId: string,
+    status: WorkerStatus,
+    processedCount: number,
+    errorCount: number,
+    lastError: string | null
+  ): Promise<WorkerStateRecord>;
 }

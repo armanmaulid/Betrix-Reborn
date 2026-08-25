@@ -4,10 +4,6 @@ export const metadata: Metadata = {
   title: 'USER DIRECTORY'
 };
 
-export default function UsersSegmentLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+export default function UsersSegmentLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

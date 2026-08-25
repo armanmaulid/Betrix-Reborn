@@ -66,12 +66,12 @@ export function SymbolModal({
         ? `EDIT STREAM SYMBOL // ${symbol}`
         : 'ADD NEW FINNHUB STREAM SYMBOL'
       : mode === 'ohlc'
-      ? isEdit
-        ? `EDIT OHLC SYMBOL // ${symbol}`
-        : 'ADD NEW DUKASCOPY OHLC SYMBOL'
-      : isEdit
-      ? `EDIT INSTRUMENT // ${symbol}`
-      : 'ADD NEW MARKET INSTRUMENT';
+        ? isEdit
+          ? `EDIT OHLC SYMBOL // ${symbol}`
+          : 'ADD NEW DUKASCOPY OHLC SYMBOL'
+        : isEdit
+          ? `EDIT INSTRUMENT // ${symbol}`
+          : 'ADD NEW MARKET INSTRUMENT';
 
   const icon = mode === 'stream' ? Activity : mode === 'ohlc' ? Activity : Database;
   const variant = mode === 'stream' ? 'positive' : mode === 'ohlc' ? 'info' : 'accent';
@@ -79,8 +79,8 @@ export function SymbolModal({
     mode === 'stream'
       ? 'bg-positive text-black hover:bg-positive/80'
       : mode === 'ohlc'
-      ? 'bg-info text-black hover:opacity-80'
-      : 'bg-accent text-black hover:bg-accent/80';
+        ? 'bg-info text-black hover:opacity-80'
+        : 'bg-accent text-black hover:bg-accent/80';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,8 +215,8 @@ export function SymbolModal({
             {mode === 'stream'
               ? 'ENABLE LIVE WEBSOCKET TICK SUBSCRIPTION'
               : mode === 'ohlc'
-              ? 'ENABLE DUKASCOPY HISTORICAL DATA SYNC'
-              : 'ACTIVE IN MARKET CATALOG'}
+                ? 'ENABLE DUKASCOPY HISTORICAL DATA SYNC'
+                : 'ACTIVE IN MARKET CATALOG'}
           </label>
         </div>
 
@@ -237,10 +237,10 @@ export function SymbolModal({
             {isPending
               ? 'SAVING...'
               : mode === 'stream'
-              ? 'SAVE STREAM SYMBOL'
-              : mode === 'ohlc'
-              ? 'SAVE OHLC SYMBOL'
-              : 'SAVE INSTRUMENT'}
+                ? 'SAVE STREAM SYMBOL'
+                : mode === 'ohlc'
+                  ? 'SAVE OHLC SYMBOL'
+                  : 'SAVE INSTRUMENT'}
           </button>
         </div>
       </form>

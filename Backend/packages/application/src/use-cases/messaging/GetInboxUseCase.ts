@@ -4,7 +4,10 @@ import { IMessageRepository, Message } from '@betrix/domain';
 export class GetInboxUseCase {
   constructor(private readonly messageRepo: IMessageRepository) {}
 
-  public async execute(userId: string, pagination: PaginationParams): Promise<PaginatedResult<Message>> {
+  public async execute(
+    userId: string,
+    pagination: PaginationParams
+  ): Promise<PaginatedResult<Message>> {
     return this.messageRepo.findInbox(userId, pagination);
   }
 }

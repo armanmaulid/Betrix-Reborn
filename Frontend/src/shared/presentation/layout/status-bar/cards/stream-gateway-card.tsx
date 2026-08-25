@@ -32,7 +32,9 @@ export const StreamGatewayCard = React.memo(function StreamGatewayCard({
           [SYMBOLS]
         </Link>
       </div>
-      <div className={`text-base font-bold tabular-nums ${isUnknown ? 'text-muted-foreground' : 'text-info'}`}>
+      <div
+        className={`text-base font-bold tabular-nums ${isUnknown ? 'text-muted-foreground' : 'text-info'}`}
+      >
         {isUnknown ? 'STATUS UNKNOWN' : isWsLive ? 'LIVE SSE HUB' : 'OFFLINE'}
       </div>
       <div className="text-[10px] text-muted-foreground space-y-0.5 pt-1 border-t border-border/50">

@@ -18,8 +18,8 @@ export function AgentCard({ agent, onSetDefault, onDelete }: AgentCardProps) {
     tierBadgeVariant === 'positive'
       ? 'border-positive/40 bg-positive/10 text-positive'
       : tierBadgeVariant === 'info'
-      ? 'border-info/40 bg-info/10 text-info'
-      : 'border-accent/40 bg-accent/10 text-accent font-bold';
+        ? 'border-info/40 bg-info/10 text-info'
+        : 'border-accent/40 bg-accent/10 text-accent font-bold';
 
   return (
     <div
@@ -39,7 +39,9 @@ export function AgentCard({ agent, onSetDefault, onDelete }: AgentCardProps) {
                 SYSTEM DEFAULT
               </span>
             )}
-            <span className={`px-2 py-0.5 text-[9px] font-bold border uppercase tracking-wider ${tierBadgeClass}`}>
+            <span
+              className={`px-2 py-0.5 text-[9px] font-bold border uppercase tracking-wider ${tierBadgeClass}`}
+            >
               {agent.tier.toUpperCase()} TIER
             </span>
             <span
@@ -72,7 +74,9 @@ export function AgentCard({ agent, onSetDefault, onDelete }: AgentCardProps) {
             <span>{agent.name}</span>
             <span className="text-[10px] text-muted-foreground font-normal">{agent.taskType}</span>
           </h2>
-          <div className="text-[10px] text-muted-foreground/60 select-all font-mono">{agent.id}</div>
+          <div className="text-[10px] text-muted-foreground/60 select-all font-mono">
+            {agent.id}
+          </div>
         </div>
 
         {/* Model Engine */}
@@ -90,7 +94,9 @@ export function AgentCard({ agent, onSetDefault, onDelete }: AgentCardProps) {
 
         {/* Description / System Prompt Excerpt */}
         <p className="text-xs text-muted-foreground/90 line-clamp-2 mb-4">
-          {agent.description || agent.systemPrompt || 'No prompt or description configured for this agent.'}
+          {agent.description ||
+            agent.systemPrompt ||
+            'No prompt or description configured for this agent.'}
         </p>
 
         {/* Specs Grid */}
@@ -109,7 +115,9 @@ export function AgentCard({ agent, onSetDefault, onDelete }: AgentCardProps) {
           </div>
           <div>
             <span className="text-muted-foreground text-[10px] uppercase">TEMPERATURE:</span>
-            <div className="font-bold text-foreground tabular-nums">{agent.temperature.toFixed(2)}</div>
+            <div className="font-bold text-foreground tabular-nums">
+              {agent.temperature.toFixed(2)}
+            </div>
           </div>
           <div>
             <span className="text-muted-foreground text-[10px] uppercase">THINKING:</span>
@@ -138,7 +146,9 @@ export function AgentCard({ agent, onSetDefault, onDelete }: AgentCardProps) {
               <span>SET AS DEFAULT</span>
             </button>
           ) : (
-            <span className="text-[10px] text-accent font-bold tracking-wider">★ PRIMARY AGENT</span>
+            <span className="text-[10px] text-accent font-bold tracking-wider">
+              ★ PRIMARY AGENT
+            </span>
           )}
         </div>
 
@@ -156,7 +166,9 @@ export function AgentCard({ agent, onSetDefault, onDelete }: AgentCardProps) {
           <button
             onClick={() => onDelete(agent)}
             disabled={agent.isDefault}
-            title={agent.isDefault ? 'Cannot delete the system default agent' : 'Delete Agent from Fleet'}
+            title={
+              agent.isDefault ? 'Cannot delete the system default agent' : 'Delete Agent from Fleet'
+            }
             className="p-1 border border-border bg-black hover:border-negative hover:text-negative text-muted-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />

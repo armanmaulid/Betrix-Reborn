@@ -4,10 +4,6 @@ export const metadata: Metadata = {
   title: 'SYSTEM OVERVIEW'
 };
 
-export default function DashboardSegmentLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardSegmentLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

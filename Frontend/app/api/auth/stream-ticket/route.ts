@@ -23,7 +23,9 @@ export async function POST(request: NextRequest) {
     });
 
     const data = await backendRes.json();
-    return NextResponse.json(sanitizeBackendResponse(data, backendRes.status), { status: backendRes.status });
+    return NextResponse.json(sanitizeBackendResponse(data, backendRes.status), {
+      status: backendRes.status
+    });
   } catch {
     return NextResponse.json(
       { success: false, error: { message: 'Failed to acquire stream ticket.' } },

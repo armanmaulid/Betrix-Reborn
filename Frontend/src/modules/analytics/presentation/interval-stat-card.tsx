@@ -32,8 +32,7 @@ export function IntervalStatCard<T extends string = string>({
   prefix = '',
   className = ''
 }: IntervalStatCardProps<T>) {
-  const selectedOption =
-    options.find((opt) => opt.key === selectedInterval) || options[0];
+  const selectedOption = options.find((opt) => opt.key === selectedInterval) || options[0];
 
   const colorStyles = {
     positive: {

@@ -37,7 +37,8 @@ export function AgentsFleetGrid({
             </h1>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Configure inference parameters, system prompts, token pricing tiers, and system default models
+            Configure inference parameters, system prompts, token pricing tiers, and system default
+            models
           </p>
         </div>
 

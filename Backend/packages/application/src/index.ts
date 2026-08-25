@@ -22,6 +22,9 @@ export * from './use-cases/news/index.js';
 // Use Cases - Messaging
 export * from './use-cases/messaging/index.js';
 
+// Use Cases - Calendar
+export * from './use-cases/calendar/index.js';
+
 // Use Cases - Admin
 export * from './use-cases/admin/index.js';
 

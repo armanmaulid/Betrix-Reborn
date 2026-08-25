@@ -41,7 +41,10 @@ export class CachedMarketDataProvider implements IHistoricalProvider {
     // If timeframe is D1 and we got results, cache them (fire-and-forget)
     if (tfLower === 'd1' && bars.length > 0) {
       await this.cacheStore.cacheOHLC(symbol, 'd1', bars).catch((err) => {
-        console.warn(`[CachedMarketDataProvider] Failed to cache D1 OHLC for ${symbol}:`, err.message);
+        console.warn(
+          `[CachedMarketDataProvider] Failed to cache D1 OHLC for ${symbol}:`,
+          err.message
+        );
       });
     }
 

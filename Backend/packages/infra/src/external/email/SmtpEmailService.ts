@@ -20,7 +20,10 @@ export class SmtpEmailService {
     from?: string;
   }) {
     if (!options.user || !options.pass) {
-      throw new AppError('SMTP credentials (SMTP_USER and SMTP_PASS) are required for SmtpEmailService.', 500);
+      throw new AppError(
+        'SMTP credentials (SMTP_USER and SMTP_PASS) are required for SmtpEmailService.',
+        500
+      );
     }
 
     this.from = options.from || 'Betrix <no-reply@betrix.io>';
@@ -57,7 +60,11 @@ export class SmtpEmailService {
     }
   }
 
-  async sendVerificationEmail(to: string, verificationLink: string, name?: string): Promise<boolean> {
+  async sendVerificationEmail(
+    to: string,
+    verificationLink: string,
+    name?: string
+  ): Promise<boolean> {
     const subject = 'Verify your Betrix Account';
     const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">

@@ -10,6 +10,7 @@ import {
   Radio,
   ShieldAlert,
   Wrench,
+  CalendarDays,
   type LucideIcon
 } from 'lucide-react';
 
@@ -85,10 +86,19 @@ export const ADMIN_ROUTES: RouteDefinition[] = [
     name: 'OHLC SYMBOLS',
     href: '/ohlc-symbols',
     icon: BarChart3,
+    shortcutKey: 'o',
     description: 'Dukascopy Historical OHLC Data Symbols'
   },
   {
     num: '09',
+    name: 'ECONOMIC CALENDAR',
+    href: '/calendar',
+    icon: CalendarDays,
+    shortcutKey: 'c',
+    description: 'FXMacroData Before/Forecast/Actual Releases'
+  },
+  {
+    num: '10',
     name: 'BROADCAST MSG',
     href: '/broadcast',
     icon: Radio,
@@ -96,7 +106,7 @@ export const ADMIN_ROUTES: RouteDefinition[] = [
     description: 'Global Message Broadcast'
   },
   {
-    num: '10',
+    num: '11',
     name: 'AUDIT LOGS',
     href: '/audit-logs',
     icon: ShieldAlert,
@@ -104,7 +114,7 @@ export const ADMIN_ROUTES: RouteDefinition[] = [
     description: 'Security & Activity Audit Logs'
   },
   {
-    num: '11',
+    num: '12',
     name: 'MAINTENANCE',
     href: '/maintenance',
     icon: Wrench,
@@ -114,7 +124,7 @@ export const ADMIN_ROUTES: RouteDefinition[] = [
 ];
 
 export const ROUTE_SHORTCUT_MAP: Record<string, string> = Object.fromEntries(
-  ADMIN_ROUTES
-    .filter((r): r is typeof r & { shortcutKey: string } => Boolean(r.shortcutKey))
-    .map((r) => [r.shortcutKey, r.href])
+  ADMIN_ROUTES.filter((r): r is typeof r & { shortcutKey: string } => Boolean(r.shortcutKey)).map(
+    (r) => [r.shortcutKey, r.href]
+  )
 );

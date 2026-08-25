@@ -4,11 +4,7 @@ import { redirect } from 'next/navigation';
 import { DashboardShell } from '@/shared/presentation/layout/dashboard-shell';
 import { verifySession } from '@/lib/server-auth';
 
-export default async function DashboardLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
   const token = cookieStore.get('betrix_admin_token')?.value ?? null;
 

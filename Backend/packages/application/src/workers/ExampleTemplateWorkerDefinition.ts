@@ -24,7 +24,8 @@ export const ExampleTemplateWorkerDefinition: IWorkerDefinition = {
   category: 'intelligence',
 
   /** Deskripsi lengkap yang menjelaskan tugas dan fungsi worker untuk admin audit */
-  description: 'Worker percontohan (template) untuk referensi pembuatan background worker baru. Menjalankan simulasi background task, observabilitas metrik, dan lifecycle management.',
+  description:
+    'Worker percontohan (template) untuk referensi pembuatan background worker baru. Menjalankan simulasi background task, observabilitas metrik, dan lifecycle management.',
 
   /** Informasi interval waktu eksekusi (e.g. '30s', '5m', 'Hourly (0 * * * *)', 'Real-time (<50ms)') */
   interval: '30s',

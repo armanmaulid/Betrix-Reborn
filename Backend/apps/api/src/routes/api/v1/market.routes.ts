@@ -83,10 +83,7 @@ export const marketRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const candles = await useCases.getOHLCUseCase.execute(
-        request.params,
-        request.query
-      );
+      const candles = await useCases.getOHLCUseCase.execute(request.params, request.query);
       return reply.send({
         success: true,
         data: candles.map((c) => c.toJSON())

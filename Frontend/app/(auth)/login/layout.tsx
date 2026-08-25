@@ -4,10 +4,6 @@ export const metadata: Metadata = {
   title: 'TERMINAL AUTH'
 };
 
-export default function LoginSegmentLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+export default function LoginSegmentLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

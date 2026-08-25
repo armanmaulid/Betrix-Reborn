@@ -2,7 +2,11 @@
 
 import React, { useState } from 'react';
 import { Ticket, PlusCircle, Trash2, Filter, ArrowUpDown, RefreshCw } from 'lucide-react';
-import { useVouchersQuery, useRevokeVoucherMutation, useBatchRevokeVouchersMutation } from '@/modules/billing/application/queries/use-vouchers';
+import {
+  useVouchersQuery,
+  useRevokeVoucherMutation,
+  useBatchRevokeVouchersMutation
+} from '@/modules/billing/application/queries/use-vouchers';
 import { VoucherTable } from './voucher-table';
 import { CreateVoucherDialog } from './create-voucher-dialog';
 import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-confirm-dialog';
@@ -27,7 +31,9 @@ export function VouchersContainer() {
 
   // Dialogs
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedVoucherForRevoke, setSelectedVoucherForRevoke] = useState<CreditVoucher | null>(null);
+  const [selectedVoucherForRevoke, setSelectedVoucherForRevoke] = useState<CreditVoucher | null>(
+    null
+  );
 
   const revokeMutation = useRevokeVoucherMutation();
   const batchRevokeMutation = useBatchRevokeVouchersMutation();
@@ -46,7 +52,8 @@ export function VouchersContainer() {
   const total = data?.meta?.total || 0;
   const totalPages = data?.meta?.totalPages || 1;
 
-  const allVisibleSelected = vouchers.length > 0 && vouchers.every((v: CreditVoucher) => selectedIds.has(v.id));
+  const allVisibleSelected =
+    vouchers.length > 0 && vouchers.every((v: CreditVoucher) => selectedIds.has(v.id));
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -190,7 +197,9 @@ export function VouchersContainer() {
         </div>
 
         <div className="text-xs text-muted-foreground">
-          TOTAL: <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong> VOUCHERS
+          TOTAL:{' '}
+          <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong>{' '}
+          VOUCHERS
         </div>
       </div>
 

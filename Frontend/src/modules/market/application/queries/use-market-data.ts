@@ -6,7 +6,11 @@ import { marketRepository } from '@market/infrastructure/repositories/HttpMarket
 import { marketKeys } from '@market/application/market.keys';
 import { MarketMapper } from '@market/infrastructure/mappers/MarketMapper';
 import { useAdminMutation } from '@shared/application/useAdminMutation';
-import type { MarketInstrument, StreamSymbolEntity, OhlcSymbolEntity } from '@market/domain/entities/MarketInstrument';
+import type {
+  MarketInstrument,
+  StreamSymbolEntity,
+  OhlcSymbolEntity
+} from '@market/domain/entities/MarketInstrument';
 import type { PriceTick } from '@market/domain/value-objects/PriceTick';
 import { apiFetch } from '@shared/infrastructure/http/api-client';
 

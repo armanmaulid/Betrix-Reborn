@@ -22,7 +22,7 @@ export class BroadcastMessageUseCase {
     dto: BroadcastMessageDTO,
     context?: { ip?: string; userAgent?: string }
   ): Promise<{ success: boolean; recipientsCount: number }> {
-    let targetIds: string[] = [];
+    let targetIds: string[];
 
     if (dto.targetUserIds && dto.targetUserIds.length > 0) {
       targetIds = dto.targetUserIds;

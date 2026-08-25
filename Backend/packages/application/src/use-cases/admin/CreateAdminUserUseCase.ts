@@ -51,7 +51,12 @@ export class CreateAdminUserUseCase {
       action: 'CREATE_USER',
       targetType: 'user',
       targetId: saved.id,
-      details: { email: saved.email, isAdmin: saved.isAdmin, credits: saved.credits, passwordGenerated: !dto.password },
+      details: {
+        email: saved.email,
+        isAdmin: saved.isAdmin,
+        credits: saved.credits,
+        passwordGenerated: !dto.password
+      },
       ip: context?.ip,
       userAgent: context?.userAgent,
       createdAt: new Date()

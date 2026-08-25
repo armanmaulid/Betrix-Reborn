@@ -9,7 +9,10 @@ export class ChangeEmailUseCase {
     private readonly authService: AuthService
   ) {}
 
-  public async execute(userId: string, dto: ChangeEmailDTO): Promise<{ success: boolean; message: string }> {
+  public async execute(
+    userId: string,
+    dto: ChangeEmailDTO
+  ): Promise<{ success: boolean; message: string }> {
     const user = await this.userRepo.findById(userId);
     if (!user) {
       throw new NotFoundError('User not found.');

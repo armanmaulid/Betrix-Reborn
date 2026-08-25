@@ -1,4 +1,10 @@
-import { IAiAgentRepository, AiAgent, NotFoundError, IAdminActionRepository, AdminAction } from '@betrix/domain';
+import {
+  IAiAgentRepository,
+  AiAgent,
+  NotFoundError,
+  IAdminActionRepository,
+  AdminAction
+} from '@betrix/domain';
 import { UpdateAgentDto } from '../../schemas/agent.schema.js';
 
 export class UpdateAgentUseCase {
@@ -29,8 +35,10 @@ export class UpdateAgentUseCase {
       tier: dto.tier ?? existing.tier,
       creditsPer1kTokens: dto.creditsPer1kTokens ?? existing.creditsPer1kTokens,
       maxTokens: dto.maxTokens ?? existing.maxTokens,
-      temperature: dto.temperature !== undefined ? Math.round(dto.temperature * 100) : existing.temperature,
-      supportsThinking: dto.supportsThinking !== undefined ? dto.supportsThinking : existing.supportsThinking,
+      temperature:
+        dto.temperature !== undefined ? Math.round(dto.temperature * 100) : existing.temperature,
+      supportsThinking:
+        dto.supportsThinking !== undefined ? dto.supportsThinking : existing.supportsThinking,
       isDefault: dto.isDefault !== undefined ? dto.isDefault : existing.isDefault,
       isActive: dto.isActive !== undefined ? dto.isActive : existing.isActive,
       visibility: dto.visibility !== undefined ? dto.visibility : existing.visibility,

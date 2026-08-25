@@ -17,16 +17,8 @@ export const UptimeItem = React.memo(function UptimeItem() {
     >
       <Timer className={`w-2.5 h-2.5 ${isError ? 'text-negative' : 'text-positive'}`} />
       <span>UP:</span>
-      <span
-        className={`tabular-nums font-bold ${
-          isError ? 'text-negative' : 'text-foreground'
-        }`}
-      >
-        {isLoading
-          ? '...'
-          : isError || !uptime
-          ? 'OFFLINE'
-          : formatUptime(uptime)}
+      <span className={`tabular-nums font-bold ${isError ? 'text-negative' : 'text-foreground'}`}>
+        {isLoading ? '...' : isError || !uptime ? 'OFFLINE' : formatUptime(uptime)}
       </span>
     </div>
   );

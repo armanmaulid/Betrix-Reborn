@@ -52,7 +52,9 @@ export class NewsArticle {
   /** Check if this article is relevant to a given symbol based on tags and category */
   public matchesSymbol(symbol: string): boolean {
     const upper = symbol.toUpperCase();
-    const symbolRoot = upper.replace(/(USD|EUR|GBP|JPY|BTC|ETH|XAU|XAG|US500|US30|NAS100|XTI|XBR)/g, '').trim() || upper;
+    const symbolRoot =
+      upper.replace(/(USD|EUR|GBP|JPY|BTC|ETH|XAU|XAG|US500|US30|NAS100|XTI|XBR)/g, '').trim() ||
+      upper;
     return (
       this.tags.some((tag) => tag.toUpperCase() === upper || tag.toUpperCase() === symbolRoot) ||
       this.headline.toUpperCase().includes(upper) ||

@@ -2,7 +2,10 @@
 
 import React, { useState } from 'react';
 import { ShieldAlert, Download, Filter, RefreshCw } from 'lucide-react';
-import { useAuditLogsQuery, downloadAuditLogsExport } from '@/modules/operations/application/queries/use-audit-logs';
+import {
+  useAuditLogsQuery,
+  downloadAuditLogsExport
+} from '@/modules/operations/application/queries/use-audit-logs';
 import { AuditTable } from './audit-table';
 import { JsonTreeViewer } from './json-tree-viewer';
 import { PaginationBar } from '@/shared/presentation/ui/pagination-bar';
@@ -121,7 +124,9 @@ export function AuditLogsContainer() {
         </div>
 
         <div className="text-xs text-muted-foreground">
-          TOTAL: <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong> LOGGED EVENTS
+          TOTAL:{' '}
+          <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong>{' '}
+          LOGGED EVENTS
         </div>
       </div>
 

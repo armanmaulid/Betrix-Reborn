@@ -10,10 +10,5 @@ export interface IRealtimeProvider {
 
 /** Port for fetching historical OHLC candle data (e.g., Dukascopy). */
 export interface IHistoricalProvider {
-  fetchHistory(
-    symbol: string,
-    timeframe: string,
-    fromDate: Date,
-    toDate: Date
-  ): Promise<OHLCBar[]>;
+  fetchHistory(symbol: string, timeframe: string, fromDate: Date, toDate: Date): Promise<OHLCBar[]>;
 }

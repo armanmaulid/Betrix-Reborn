@@ -71,6 +71,13 @@
       "when": 1787308600000,
       "tag": "0009_user_tier",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787540438516,
+      "tag": "0010_empty_giant_girl",
+      "breakpoints": true
     }
   ]
 }

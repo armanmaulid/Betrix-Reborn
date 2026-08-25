@@ -50,9 +50,12 @@ export class LoginUseCase {
     if (requiresCaptcha) {
       if (!dto.captchaId || !dto.captchaAnswer) {
         const challenge = await this.captchaService.generateChallenge();
-        throw new PreconditionRequiredError('CAPTCHA verification required due to recent failed login attempts.', {
-          captcha: challenge
-        });
+        throw new PreconditionRequiredError(
+          'CAPTCHA verification required due to recent failed login attempts.',
+          {
+            captcha: challenge
+          }
+        );
       }
 
       const isValidCaptcha = await this.captchaService.verify(dto.captchaId, dto.captchaAnswer);
@@ -84,7 +87,9 @@ export class LoginUseCase {
 
     // 4. Verify Password
     if (!user.passwordHash) {
-      throw new AuthenticationError('This account was created via Google OAuth. Please login with Google.');
+      throw new AuthenticationError(
+        'This account was created via Google OAuth. Please login with Google.'
+      );
     }
 
     const isMatch = await this.authService.verifyPassword(dto.password, user.passwordHash);
@@ -93,9 +98,12 @@ export class LoginUseCase {
       const newFailureCount = recentFailures + 1;
       if (LoginPolicy.requiresCaptcha(newFailureCount)) {
         const challenge = await this.captchaService.generateChallenge();
-        throw new PreconditionRequiredError('Invalid email or password. CAPTCHA verification now required.', {
-          captcha: challenge
-        });
+        throw new PreconditionRequiredError(
+          'Invalid email or password. CAPTCHA verification now required.',
+          {
+            captcha: challenge
+          }
+        );
       }
       throw new AuthenticationError('Invalid email or password.');
     }
@@ -121,7 +129,13 @@ export class LoginUseCase {
       context?.userAgent
     );
 
-    await this.activityLogRepo?.log(user.id, 'LOGIN', { method: 'password' }, context?.ip, context?.userAgent);
+    await this.activityLogRepo?.log(
+      user.id,
+      'LOGIN',
+      { method: 'password' },
+      context?.ip,
+      context?.userAgent
+    );
 
     return {
       user,

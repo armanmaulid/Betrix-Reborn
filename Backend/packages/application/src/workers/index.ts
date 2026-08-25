@@ -4,6 +4,7 @@ import { NewsWorkerDefinition } from './NewsWorkerDefinition.js';
 import { SyncWorkerDefinition } from './SyncWorkerDefinition.js';
 import { CleanupWorkerDefinition } from './CleanupWorkerDefinition.js';
 import { ExampleTemplateWorkerDefinition } from './ExampleTemplateWorkerDefinition.js';
+import { CalendarWorkerDefinition } from './CalendarWorkerDefinition.js';
 
 export * from './types.js';
 export * from './FinnhubWsWorkerDefinition.js';
@@ -11,6 +12,7 @@ export * from './NewsWorkerDefinition.js';
 export * from './SyncWorkerDefinition.js';
 export * from './CleanupWorkerDefinition.js';
 export * from './ExampleTemplateWorkerDefinition.js';
+export * from './CalendarWorkerDefinition.js';
 
 /**
  * Built-in registry of all background worker definitions.
@@ -22,5 +24,6 @@ export const BUILTIN_WORKERS: IWorkerDefinition[] = [
   FinnhubWsWorkerDefinition,
   SyncWorkerDefinition,
   CleanupWorkerDefinition,
-  ExampleTemplateWorkerDefinition
+  ExampleTemplateWorkerDefinition,
+  CalendarWorkerDefinition
 ];

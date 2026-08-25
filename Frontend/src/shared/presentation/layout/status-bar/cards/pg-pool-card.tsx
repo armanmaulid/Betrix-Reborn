@@ -7,7 +7,10 @@ import { getDbPoolStats } from '@/shared/utils';
 
 export const PgPoolCard = React.memo(function PgPoolCard() {
   const { metrics, isLoading, isError } = useSystemMetrics(15000);
-  const { active, idle, total, usagePct } = getDbPoolStats(metrics?.dbPoolActive, metrics?.dbPoolIdle);
+  const { active, idle, total, usagePct } = getDbPoolStats(
+    metrics?.dbPoolActive,
+    metrics?.dbPoolIdle
+  );
   const isUnreachable = isError || (!isLoading && !metrics);
 
   return (
@@ -21,12 +24,15 @@ export const PgPoolCard = React.memo(function PgPoolCard() {
           {isUnreachable ? 'UNREACHABLE' : `${usagePct}% LOAD`}
         </span>
       </div>
-      <div className={`text-base font-bold tabular-nums ${isUnreachable ? 'text-negative' : 'text-foreground'}`}>
+      <div
+        className={`text-base font-bold tabular-nums ${isUnreachable ? 'text-negative' : 'text-foreground'}`}
+      >
         {isUnreachable ? (
           <span className="text-xs">METRICS UNAVAILABLE</span>
         ) : (
           <>
-            {active} <span className="text-xs text-muted-foreground font-normal">/ {total} Conns</span>
+            {active}{' '}
+            <span className="text-xs text-muted-foreground font-normal">/ {total} Conns</span>
           </>
         )}
       </div>
@@ -39,7 +45,9 @@ export const PgPoolCard = React.memo(function PgPoolCard() {
       <div className="text-[10px] text-muted-foreground space-y-0.5 pt-1 border-t border-border/50">
         <div className="flex justify-between">
           <span>ACTIVE / IDLE:</span>
-          <span className="text-foreground">{active} / {idle}</span>
+          <span className="text-foreground">
+            {active} / {idle}
+          </span>
         </div>
         <div className="flex justify-between">
           <span>POOL LIMIT:</span>

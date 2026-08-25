@@ -1,5 +1,11 @@
 import { Redis } from '@upstash/redis';
-import { IMarketCacheStore, OHLCBar, PriceTick, Nullable, BrokerTimeCalculator } from '@betrix/domain';
+import {
+  IMarketCacheStore,
+  OHLCBar,
+  PriceTick,
+  Nullable,
+  BrokerTimeCalculator
+} from '@betrix/domain';
 import { safeJsonParse } from '@betrix/core';
 import { env } from '@betrix/config';
 
@@ -29,7 +35,10 @@ export class RedisMarketCacheStore implements IMarketCacheStore {
   }
 
   async getPrice(symbol: string): Promise<Nullable<PriceTick>> {
-    const raw = await this.redis.hget<string>(RedisMarketCacheStore.PRICES_HASH_KEY, symbol.toUpperCase());
+    const raw = await this.redis.hget<string>(
+      RedisMarketCacheStore.PRICES_HASH_KEY,
+      symbol.toUpperCase()
+    );
     if (!raw) return null;
 
     const parsed = typeof raw === 'string' ? safeJsonParse<any>(raw, null) : raw;
@@ -46,7 +55,9 @@ export class RedisMarketCacheStore implements IMarketCacheStore {
   }
 
   async getAllPrices(): Promise<PriceTick[]> {
-    const all = await this.redis.hgetall<Record<string, string | object>>(RedisMarketCacheStore.PRICES_HASH_KEY);
+    const all = await this.redis.hgetall<Record<string, string | object>>(
+      RedisMarketCacheStore.PRICES_HASH_KEY
+    );
     if (!all) return [];
 
     const ticks: PriceTick[] = [];
@@ -69,13 +80,19 @@ export class RedisMarketCacheStore implements IMarketCacheStore {
     return ticks;
   }
 
-  async cacheOHLC(symbol: string, timeframe: string, bars: OHLCBar[], ttlSeconds?: number): Promise<void> {
+  async cacheOHLC(
+    symbol: string,
+    timeframe: string,
+    bars: OHLCBar[],
+    ttlSeconds?: number
+  ): Promise<void> {
     const key = `${RedisMarketCacheStore.OHLC_KEY_PREFIX}${symbol.toUpperCase()}:${timeframe.toLowerCase()}`;
     // Cache D1 baseline dynamically aligned with broker midnight rollover (ADR-47)
     if (timeframe.toLowerCase() === 'd1') {
-      const ttl = ttlSeconds && ttlSeconds > 0
-        ? ttlSeconds
-        : BrokerTimeCalculator.calculateTtlToNextBrokerRollover(env.BROKER_UTC_OFFSET);
+      const ttl =
+        ttlSeconds && ttlSeconds > 0
+          ? ttlSeconds
+          : BrokerTimeCalculator.calculateTtlToNextBrokerRollover(env.BROKER_UTC_OFFSET);
       await this.redis.set(key, JSON.stringify(bars), { ex: ttl });
     }
   }

@@ -55,7 +55,12 @@ export class DrizzleLoginAttemptRepository implements ILoginAttemptRepository {
 export class DrizzleVerificationRepository implements IVerificationRepository {
   constructor(private readonly db: DrizzleDb) {}
 
-  async create(userId: string, token: string, type: string, ttlMinutes: number = 60): Promise<VerificationRecord> {
+  async create(
+    userId: string,
+    token: string,
+    type: string,
+    ttlMinutes: number = 60
+  ): Promise<VerificationRecord> {
     const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
 
     const inserted = await this.db

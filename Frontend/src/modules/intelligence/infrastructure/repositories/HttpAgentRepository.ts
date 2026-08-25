@@ -29,7 +29,10 @@ export class HttpAgentRepository implements IAgentRepository {
   }
 
   async updateAgent(id: string, input: UpdateAgentInput): Promise<AiAgent> {
-    const res = await this.client.patch<{ data: any }>(`/api/admin/agents/${encodeURIComponent(id)}`, input);
+    const res = await this.client.patch<{ data: any }>(
+      `/api/admin/agents/${encodeURIComponent(id)}`,
+      input
+    );
     return AgentMapper.toDomain(unwrapData(res));
   }
 
@@ -41,7 +44,11 @@ export class HttpAgentRepository implements IAgentRepository {
     await this.client.delete(`/api/admin/agents/${encodeURIComponent(id)}`);
   }
 
-  async testAgent(id: string, payload: AgentTestPayload, options?: TestAgentOptions): Promise<AgentTestResult> {
+  async testAgent(
+    id: string,
+    payload: AgentTestPayload,
+    options?: TestAgentOptions
+  ): Promise<AgentTestResult> {
     const res = await this.client.post<{ data: AgentTestResult }>(
       `/api/admin/agents/${encodeURIComponent(id)}/test`,
       payload,

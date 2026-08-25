@@ -56,6 +56,4 @@ describe('Intelligence Domain: AiAgent & CreditVoucher', () => {
     expect(expiredVoucher.isValid()).toBe(false);
     expect(expiredVoucher.getStatus()).toBe('expired');
   });
-
-
 });

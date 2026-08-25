@@ -86,7 +86,9 @@ export function DashboardContainer() {
             className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
             title="Sync all metrics"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isMetricsRefetching || isAnalyticsRefetching ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`w-3.5 h-3.5 ${isMetricsRefetching || isAnalyticsRefetching ? 'animate-spin' : ''}`}
+            />
             <span>SYNC ALL</span>
           </button>
         </div>
@@ -123,10 +125,7 @@ export function DashboardContainer() {
 
         {/* Top Models Distribution (1 Col) */}
         <div>
-          <TopModelsChart
-            data={analytics?.topModels || []}
-            isLoading={isAnalyticsLoading}
-          />
+          <TopModelsChart data={analytics?.topModels || []} isLoading={isAnalyticsLoading} />
         </div>
       </div>
     </div>

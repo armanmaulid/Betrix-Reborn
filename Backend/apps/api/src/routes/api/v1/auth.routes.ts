@@ -20,7 +20,8 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       schema: {
         tags: ['Auth'],
         summary: 'Generate Math CAPTCHA challenge',
-        description: 'Returns a dynamic math challenge ID and question for anti-bruteforce verification.'
+        description:
+          'Returns a dynamic math challenge ID and question for anti-bruteforce verification.'
       }
     },
     async (request, reply) => {
@@ -49,7 +50,11 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       });
 
       // Sign JWT token containing session ID
-      const jwtToken = services.authService.signJwt(result.user, result.session, fastify.jwt.sign.bind(fastify.jwt));
+      const jwtToken = services.authService.signJwt(
+        result.user,
+        result.session,
+        fastify.jwt.sign.bind(fastify.jwt)
+      );
 
       return reply.status(201).send({
         success: true,
@@ -79,7 +84,11 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
         userAgent: request.headers['user-agent']
       });
 
-      const jwtToken = services.authService.signJwt(result.user, result.session, fastify.jwt.sign.bind(fastify.jwt));
+      const jwtToken = services.authService.signJwt(
+        result.user,
+        result.session,
+        fastify.jwt.sign.bind(fastify.jwt)
+      );
 
       return reply.send({
         success: true,
@@ -108,7 +117,11 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
         userAgent: request.headers['user-agent']
       });
 
-      const jwtToken = services.authService.signJwt(result.user, result.session, fastify.jwt.sign.bind(fastify.jwt));
+      const jwtToken = services.authService.signJwt(
+        result.user,
+        result.session,
+        fastify.jwt.sign.bind(fastify.jwt)
+      );
 
       return reply.send({
         success: true,
@@ -206,7 +219,8 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       schema: {
         tags: ['Auth'],
         summary: 'Generate single-use SSE Stream Ticket',
-        description: 'Issues a one-time ticket (60s TTL) for authenticating browser EventSource SSE connections.',
+        description:
+          'Issues a one-time ticket (60s TTL) for authenticating browser EventSource SSE connections.',
         security: [{ bearerAuth: [] }]
       }
     },
