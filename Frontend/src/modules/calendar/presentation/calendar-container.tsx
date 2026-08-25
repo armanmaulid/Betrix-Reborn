@@ -5,16 +5,56 @@ import { CalendarDays, RefreshCw } from 'lucide-react';
 import { useCalendarQuery } from '@calendar/application/queries/use-calendar';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
 import { formatFinancialNumber } from '@/shared/utils';
+import { Badge, type BadgeTone } from '@/shared/presentation/ui/badge';
+import { PageHeader } from '@/shared/presentation/ui/page-header';
+import { FilterBar } from '@/shared/presentation/ui/filter-bar';
+import { TableShell, type TableColumn } from '@/shared/presentation/ui/table-shell';
 import type {
   CalendarEvent,
   CalendarEventImportance
 } from '@calendar/domain/entities/CalendarEvent';
 
-const IMPORTANCE_STYLES: Record<CalendarEventImportance, string> = {
-  high: 'border-negative bg-negative/10 text-negative',
-  medium: 'border-warning bg-warning/10 text-warning',
-  low: 'border-border bg-surface text-muted-foreground'
+const IMPORTANCE_TONE: Record<CalendarEventImportance, BadgeTone> = {
+  high: 'negative',
+  medium: 'warning',
+  low: 'neutral'
 };
+
+/**
+ * Currency → Country presentation map. Data-driven on purpose: adding a
+ * currency here instantly enables it in the filter select and the Country
+ * column everywhere, with no other code change. Unknown codes fall back to a
+ * globe glyph so a future backend currency never renders broken.
+ */
+const CURRENCY_META: Record<string, { flag: string; country: string }> = {
+  USD: { flag: '🇺🇸', country: 'USA' },
+  EUR: { flag: '🇪🇺', country: 'EURO AREA' },
+  GBP: { flag: '🇬🇧', country: 'UK' },
+  JPY: { flag: '🇯🇵', country: 'JAPAN' },
+  CHF: { flag: '🇨🇭', country: 'SWITZERLAND' },
+  AUD: { flag: '🇦🇺', country: 'AUSTRALIA' },
+  NZD: { flag: '🇳🇿', country: 'NEW ZEALAND' },
+  CAD: { flag: '🇨🇦', country: 'CANADA' },
+  CNY: { flag: '🇨🇳', country: 'CHINA' }
+};
+
+function countryLabel(currency: string): string {
+  const meta = CURRENCY_META[currency.toUpperCase()];
+  return meta ? `${meta.flag} ${meta.country}` : `🌐 ${currency.toUpperCase()}`;
+}
+
+/** Actual-vs-forecast surprise is folded into the ACTUAL cell colour. */
+function actualCellTone(event: CalendarEvent): string {
+  const surprise = event.surprise();
+  if (surprise === null || surprise === 0) return 'text-foreground';
+  return surprise > 0 ? 'text-positive' : 'text-negative';
+}
+
+function surpriseTitle(event: CalendarEvent): string | undefined {
+  const surprise = event.surprise();
+  if (surprise === null) return undefined;
+  return `Surprise vs forecast: ${surprise > 0 ? '+' : ''}${formatFinancialNumber(surprise)}`;
+}
 
 type PresetKey =
   | 'yesterday'
@@ -106,6 +146,21 @@ export function rangeForPreset(key: PresetKey, now = new Date()): { from: number
   }
 }
 
+// ── Table definition ────────────────────────────────────────────────────────
+
+const CALENDAR_COLUMNS: TableColumn[] = [
+  { key: 'time', label: 'Time' },
+  { key: 'importance', label: 'Importance' },
+  { key: 'country', label: 'Country' },
+  { key: 'event', label: 'Event' },
+  { key: 'actual', label: 'Actual', align: 'right' },
+  { key: 'previous', label: 'Previous', align: 'right' },
+  { key: 'forecast', label: 'Forecast', align: 'right' }
+];
+
+/** Every custom divider row spans exactly the table's column count. */
+const DAY_HEADER_COLUMNS = CALENDAR_COLUMNS.length;
+
 // ── Day grouping ────────────────────────────────────────────────────────────
 
 interface DayGroup {
@@ -135,42 +190,6 @@ function formatValue(value: number | null): string {
   return formatFinancialNumber(value);
 }
 
-/**
- * Currency → Country presentation map. Data-driven on purpose: adding a
- * currency here instantly enables it in the filter select and the Country
- * column everywhere, with no other code change. Unknown codes fall back to a
- * globe glyph so a future backend currency never renders broken.
- */
-const CURRENCY_META: Record<string, { flag: string; country: string }> = {
-  USD: { flag: '🇺🇸', country: 'USA' },
-  EUR: { flag: '🇪🇺', country: 'EURO AREA' },
-  GBP: { flag: '🇬🇧', country: 'UK' },
-  JPY: { flag: '🇯🇵', country: 'JAPAN' },
-  CHF: { flag: '🇨🇭', country: 'SWITZERLAND' },
-  AUD: { flag: '🇦🇺', country: 'AUSTRALIA' },
-  NZD: { flag: '🇳🇿', country: 'NEW ZEALAND' },
-  CAD: { flag: '🇨🇦', country: 'CANADA' },
-  CNY: { flag: '🇨🇳', country: 'CHINA' }
-};
-
-function countryLabel(currency: string): string {
-  const meta = CURRENCY_META[currency.toUpperCase()];
-  return meta ? `${meta.flag} ${meta.country}` : `🌐 ${currency.toUpperCase()}`;
-}
-
-/** Actual-vs-forecast surprise is folded into the ACTUAL cell colour. */
-function actualCellTone(event: CalendarEvent): string {
-  const surprise = event.surprise();
-  if (surprise === null || surprise === 0) return 'text-foreground';
-  return surprise > 0 ? 'text-positive' : 'text-negative';
-}
-
-function surpriseTitle(event: CalendarEvent): string | undefined {
-  const surprise = event.surprise();
-  if (surprise === null) return undefined;
-  return `Surprise vs forecast: ${surprise > 0 ? '+' : ''}${formatFinancialNumber(surprise)}`;
-}
-
 function EventTableRows({ events }: { events: CalendarEvent[] }) {
   return (
     <>
@@ -180,11 +199,7 @@ function EventTableRows({ events }: { events: CalendarEvent[] }) {
             {formatEventTime(event.announcementUnix)}
           </td>
           <td className="p-3">
-            <span
-              className={`inline-block px-1.5 py-0.5 border text-[9px] font-bold uppercase ${IMPORTANCE_STYLES[event.importance]}`}
-            >
-              {event.importance}
-            </span>
+            <Badge tone={IMPORTANCE_TONE[event.importance]}>{event.importance}</Badge>
           </td>
           <td className="p-3 whitespace-nowrap" title={event.currency}>
             {countryLabel(event.currency)}
@@ -219,8 +234,6 @@ function EventTableRows({ events }: { events: CalendarEvent[] }) {
     </>
   );
 }
-
-const DAY_HEADER_COLUMNS = 7;
 
 export function CalendarContainer() {
   usePageTitle('ECONOMIC CALENDAR');
@@ -307,33 +320,29 @@ export function CalendarContainer() {
 
   return (
     <div className="space-y-6 font-mono">
-      {/* Top Header Bar */}
-      <div className="border border-border bg-surface p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <CalendarDays className="w-4 h-4 text-accent" />
-            <h1 className="text-sm font-bold tracking-wider text-accent uppercase">
-              ECONOMIC CALENDAR
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
+      <PageHeader
+        title="ECONOMIC CALENDAR"
+        icon={CalendarDays}
+        subtitle={
+          <>
             Before / Forecast / Actual releases sourced from FXMacroData official statistics · times
             shown in your local timezone
-          </p>
-        </div>
-
-        <button
-          onClick={() => refetch()}
-          disabled={isLoading || isRefetching}
-          className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
-          <span>REFRESH</span>
-        </button>
-      </div>
+          </>
+        }
+        actions={
+          <button
+            onClick={() => refetch()}
+            disabled={isLoading || isRefetching}
+            className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
+            <span>REFRESH</span>
+          </button>
+        }
+      />
 
       {/* Filter Bar — quick-range presets */}
-      <div className="border border-border bg-black p-3 space-y-3">
+      <FilterBar className="space-y-3">
         <div className="flex flex-wrap items-center gap-1.5">
           {PRESETS.map(({ key, label }) => (
             <button
@@ -384,93 +393,60 @@ export function CalendarContainer() {
             EVENTS
           </div>
         </div>
-      </div>
+      </FilterBar>
 
       {/* Table — grouped by local day, auto-scrolled to Today */}
-      <div
-        ref={listRef}
-        className="border border-border bg-surface overflow-x-auto max-h-[72vh] overflow-y-auto relative"
+      <TableShell
+        columns={CALENDAR_COLUMNS}
+        isLoading={isLoading}
+        isError={isError}
+        isEmpty={!isLoading && !isError && groups.length === 0}
+        loadingMessage="LOADING ECONOMIC CALENDAR..."
+        errorMessage="ERROR QUERYING ECONOMIC CALENDAR."
+        emptyMessage="NO CALENDAR EVENTS FOUND FOR THE SELECTED RANGE."
+        stickyHeader
+        wrapperRef={listRef}
+        wrapperClassName="max-h-[72vh] overflow-y-auto relative"
       >
-        <table className="w-full text-left text-xs border-collapse">
-          <thead className="sticky top-0 z-10">
-            <tr className="border-b border-border bg-black/80 text-[10px] uppercase tracking-wider text-muted-foreground">
-              <th className="p-3">TIME</th>
-              <th className="p-3">IMPORTANCE</th>
-              <th className="p-3">COUNTRY</th>
-              <th className="p-3">EVENT</th>
-              <th className="p-3 text-right">ACTUAL</th>
-              <th className="p-3 text-right">PREVIOUS</th>
-              <th className="p-3 text-right">FORECAST</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/60">
-            {isLoading ? (
-              <tr>
-                <td
-                  colSpan={DAY_HEADER_COLUMNS}
-                  className="p-8 text-center text-muted-foreground animate-pulse"
-                >
-                  LOADING ECONOMIC CALENDAR...
+        {groups.map((group) => {
+          const isToday = group.relativeLabel === 'TODAY';
+          return (
+            <React.Fragment key={group.key}>
+              <tr
+                ref={(el) => {
+                  if (el) groupRefs.current.set(group.key, el);
+                  else groupRefs.current.delete(group.key);
+                }}
+                className={isToday ? 'bg-accent/15' : 'bg-black/50'}
+              >
+                <td colSpan={DAY_HEADER_COLUMNS} className="px-3 py-1.5">
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider">
+                    <span className={isToday ? 'text-accent' : 'text-foreground'}>
+                      {WEEKDAYS[group.date.getDay()]}{' '}
+                      {group.date.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: '2-digit'
+                      })}
+                    </span>
+                    {group.relativeLabel && (
+                      <Badge
+                        tone={isToday ? 'accent' : 'neutral'}
+                        className={isToday ? 'animate-pulse' : ''}
+                      >
+                        {group.relativeLabel}
+                      </Badge>
+                    )}
+                    <span className="ml-auto text-muted-foreground normal-case tracking-normal">
+                      {group.events.length} release{group.events.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
                 </td>
               </tr>
-            ) : isError ? (
-              <tr>
-                <td colSpan={DAY_HEADER_COLUMNS} className="p-8 text-center text-negative">
-                  ERROR QUERYING ECONOMIC CALENDAR.
-                </td>
-              </tr>
-            ) : groups.length === 0 ? (
-              <tr>
-                <td colSpan={DAY_HEADER_COLUMNS} className="p-8 text-center text-muted-foreground">
-                  NO CALENDAR EVENTS FOUND FOR THE SELECTED RANGE.
-                </td>
-              </tr>
-            ) : (
-              groups.map((group) => {
-                const isToday = group.relativeLabel === 'TODAY';
-                return (
-                  <React.Fragment key={group.key}>
-                    <tr
-                      ref={(el) => {
-                        if (el) groupRefs.current.set(group.key, el);
-                        else groupRefs.current.delete(group.key);
-                      }}
-                      className={isToday ? 'bg-accent/15' : 'bg-black/50'}
-                    >
-                      <td colSpan={DAY_HEADER_COLUMNS} className="px-3 py-1.5">
-                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider">
-                          <span className={isToday ? 'text-accent' : 'text-foreground'}>
-                            {WEEKDAYS[group.date.getDay()]}{' '}
-                            {group.date.toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: '2-digit'
-                            })}
-                          </span>
-                          {group.relativeLabel && (
-                            <span
-                              className={`px-1.5 py-0.5 border text-[9px] ${
-                                isToday
-                                  ? 'border-accent text-accent animate-pulse'
-                                  : 'border-border text-muted-foreground'
-                              }`}
-                            >
-                              {group.relativeLabel}
-                            </span>
-                          )}
-                          <span className="ml-auto text-muted-foreground normal-case tracking-normal">
-                            {group.events.length} release{group.events.length === 1 ? '' : 's'}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                    <EventTableRows events={group.events} />
-                  </React.Fragment>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+              <EventTableRows events={group.events} />
+            </React.Fragment>
+          );
+        })}
+      </TableShell>
     </div>
   );
 }
