@@ -7,6 +7,9 @@ export interface CalendarQueryParams {
   limit?: number;
   /** Upcoming mode only: include events released within the last N days (0–30). */
   pastDays?: number;
+  /** Unix seconds, inclusive pair — powers arbitrary presets (Yesterday, This Week, …). */
+  from?: number;
+  to?: number;
 }
 
 export interface ICalendarRepository {

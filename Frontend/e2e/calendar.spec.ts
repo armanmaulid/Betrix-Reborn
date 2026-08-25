@@ -46,8 +46,9 @@ test.describe('E2E Economic Calendar', () => {
     await page.goto('/calendar');
 
     await expect(page.locator('h1:has-text("ECONOMIC CALENDAR")')).toBeVisible();
-    await expect(page.locator('button:has-text("UPCOMING")')).toBeVisible();
-    await expect(page.locator('button:has-text("BY MONTH")')).toBeVisible();
+    await expect(page.locator('button:has-text("THIS WEEK")')).toBeVisible();
+    await expect(page.locator('button:has-text("YESTERDAY")')).toBeVisible();
+    await expect(page.locator('button:has-text("NEXT MONTH")')).toBeVisible();
     await expect(page.locator('th:has-text("Before")')).toBeVisible();
     await expect(page.locator('th:has-text("Forecast")')).toBeVisible();
     await expect(page.locator('th:has-text("Actual")')).toBeVisible();

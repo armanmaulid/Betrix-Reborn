@@ -17,6 +17,12 @@ const GetCalendarQuerySchema = Type.Object({
       minimum: 0,
       maximum: 30
     })
+  ),
+  from: Type.Optional(
+    Type.Number({ minimum: 0, description: 'Unix seconds — inclusive range start (with `to`)' })
+  ),
+  to: Type.Optional(
+    Type.Number({ minimum: 0, description: 'Unix seconds — inclusive range end (with `from`)' })
   )
 });
 
