@@ -6,7 +6,8 @@ import { usePathname } from 'next/navigation';
 import { ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { ADMIN_ROUTES, type RouteDefinition } from '@/shared/utils/routes';
 
-export const NAV_ITEMS: RouteDefinition[] = ADMIN_ROUTES;
+// Local alias — the canonical route list lives in shared/utils/routes.
+const NAV_ITEMS: RouteDefinition[] = ADMIN_ROUTES;
 
 export interface SidebarProps {
   isCollapsed?: boolean;

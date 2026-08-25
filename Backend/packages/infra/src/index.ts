@@ -39,5 +39,4 @@ export * from './external/dukascopy/DukascopySymbolCatalog.js';
 export * from './external/market/CachedMarketDataProvider.js';
 export * from './external/ai/AiGatewayClient.js';
 export * from './external/email/SmtpEmailService.js';
-export * from './external/sse/SseManager.js';
 export * from './external/fxmacrodata/FxMacroDataClient.js';

@@ -22,11 +22,11 @@ export interface IVoucherRepository {
   create(voucher: CreditVoucher): Promise<CreditVoucher>;
   findByCode(code: string): Promise<Nullable<CreditVoucher>>;
   findById(id: string): Promise<Nullable<CreditVoucher>>;
-  redeem(voucherId: string, userId: string): Promise<boolean>;
   /**
    * Atomically mark the voucher redeemed AND grant its credits + ledger entry
    * in a single transaction. Guarantees a voucher can never be burned without
-   * the credits being granted (and vice versa).
+   * the credits being granted (and vice versa). Supersedes the old two-step
+   * redeem() + addCredits() flow, which is intentionally gone.
    */
   redeemAtomically(
     voucherId: string,

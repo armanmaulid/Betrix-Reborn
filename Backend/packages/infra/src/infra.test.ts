@@ -9,8 +9,7 @@ import {
   RedisCaptchaStore,
   RedisStreamTicketStore,
   FinnhubRealtimeClient,
-  DukascopyHistoryClient,
-  SseManager
+  DukascopyHistoryClient
 } from './index.js';
 import { User, PriceTick, Symbol } from '@betrix/domain';
 
@@ -143,13 +142,6 @@ describe('Infrastructure - External Adapters', () => {
       EURUSD: 'eurusd'
     });
     expect(client).toBeDefined();
-  });
-
-  it('should manage SSE clients and stats', () => {
-    const sse = new SseManager();
-    const stats = sse.getStats();
-    expect(stats.totalClients).toBe(0);
-    sse.shutdown();
   });
 
   it('should implement CachedMarketDataProvider with D1 cache-aside pattern (ADR-27)', async () => {

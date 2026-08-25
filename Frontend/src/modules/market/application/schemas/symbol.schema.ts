@@ -10,8 +10,7 @@ export const SYMBOL_CATEGORIES = [
 
 const categoryValues = SYMBOL_CATEGORIES.map((c) => c.value) as [string, ...string[]];
 
-export const SymbolCategoryEnum = z.enum(categoryValues);
-export type SymbolCategory = z.infer<typeof SymbolCategoryEnum>;
+const SymbolCategoryEnum = z.enum(categoryValues);
 
 /**
  * The concrete form shape — derived from the schema so RHF's resolver and

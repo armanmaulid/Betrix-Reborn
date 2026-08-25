@@ -40,7 +40,7 @@ export class ResendVerificationUseCase {
         .sendVerificationEmail(email, link, user.name || undefined)
         .catch((err) => {
           console.warn(
-            `[ResendVerificationUseCase] Failed to send email to ${email}:`,
+            '[ResendVerificationUseCase] Failed to send email (recipient omitted):',
             err.message
           );
         });

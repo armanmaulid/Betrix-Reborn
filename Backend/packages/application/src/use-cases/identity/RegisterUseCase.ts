@@ -99,7 +99,7 @@ export class RegisterUseCase {
         .sendVerificationEmail(email, verificationLink, savedUser.name || undefined)
         .catch((err) => {
           console.warn(
-            `[RegisterUseCase] Failed to send verification email to ${email}:`,
+            '[RegisterUseCase] Failed to send verification email (recipient omitted):',
             err.message
           );
         });

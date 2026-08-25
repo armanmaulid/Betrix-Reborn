@@ -68,20 +68,6 @@ export class DrizzleVoucherRepository implements IVoucherRepository {
     return this.mapToDomain(rows[0]!);
   }
 
-  async redeem(voucherId: string, userId: string): Promise<boolean> {
-    const result = await this.db
-      .update(creditVouchers)
-      .set({
-        isRedeemed: true,
-        redeemedById: userId,
-        redeemedAt: new Date()
-      })
-      .where(and(eq(creditVouchers.id, voucherId), eq(creditVouchers.isRedeemed, false)))
-      .returning({ id: creditVouchers.id });
-
-    return result.length > 0;
-  }
-
   /**
    * Single-transaction redemption: conditional voucher burn + credit grant +
    * ledger entry commit together or not at all. Prevents the "voucher burned

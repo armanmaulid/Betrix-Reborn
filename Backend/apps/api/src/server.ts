@@ -102,7 +102,7 @@ export async function startServer() {
   } catch (err) {
     if ((err as { code?: string }).code === 'EADDRINUSE') {
       app.log.error(
-        `Port ${env.PORT} already in use. Kill the old process (taskkill //PID <pid> //T //F) then restart.`
+        `Port ${env.PORT} already in use. Stop the old process (kill <pid> / taskkill on Windows) then restart.`
       );
     } else {
       app.log.error(err);
