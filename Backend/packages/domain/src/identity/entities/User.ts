@@ -1,4 +1,4 @@
-import { Nullable, Optional } from '@betrix/core';
+import { Nullable } from '@betrix/core';
 
 export type UserTier = 'free' | 'starter' | 'pro' | 'premium' | 'vip';
 

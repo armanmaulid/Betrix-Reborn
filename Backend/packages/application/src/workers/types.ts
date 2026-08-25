@@ -1,4 +1,4 @@
-import { WorkerStatus, WorkerAction, WorkerCategory } from '@betrix/domain';
+import { WorkerStatus, WorkerCategory } from '@betrix/domain';
 
 export interface IWorkerDefinition {
   /** Unique immutable worker identifier (e.g. 'finnhub-news-poller') */

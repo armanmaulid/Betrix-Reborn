@@ -32,7 +32,6 @@ export function UpdateUserDialog({ user, isOpen, onClose }: UpdateUserDialogProp
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors }
   } = useForm<UpdateAdminUserInput>({
     resolver: zodResolver(UpdateAdminUserSchema),

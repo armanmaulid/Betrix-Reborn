@@ -1,4 +1,4 @@
-import { generateSecureToken, NotFoundError, ValidationError } from '@betrix/core';
+import { generateSecureToken, ValidationError } from '@betrix/core';
 import { IUserRepository, IVerificationRepository } from '@betrix/domain';
 import { ResendVerificationDTO } from '../../schemas/auth.schema.js';
 import { IEmailDispatcher } from './RegisterUseCase.js';

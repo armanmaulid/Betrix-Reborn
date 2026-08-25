@@ -33,7 +33,7 @@ import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-c
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { formatFinancialNumber } from '@/shared/utils';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
-import type { BackgroundWorker, WorkerAction } from '@operations/domain/entities/BackgroundWorker';
+import type { WorkerAction } from '@operations/domain/entities/BackgroundWorker';
 
 export function MaintenanceContainer() {
   usePageTitle('FLEET MAINTENANCE');

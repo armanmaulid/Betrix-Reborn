@@ -9,14 +9,10 @@ import {
   Shield,
   Smartphone,
   Key,
-  Zap,
-  CheckCircle2,
   XCircle,
   Edit2,
   KeyRound,
   Trash2,
-  Calendar,
-  Globe,
   HardDrive,
   MessageSquare
 } from 'lucide-react';
@@ -115,7 +111,7 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
     );
   }
 
-  const { user, devices = [], sessions = [], recentActivity = [], usageSummary } = detail;
+  const { user, devices = [], sessions = [] } = detail;
 
   const handleDeleteConfirm = async () => {
     try {

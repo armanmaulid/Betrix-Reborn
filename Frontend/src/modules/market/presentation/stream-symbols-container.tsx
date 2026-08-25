@@ -15,7 +15,6 @@ import { PaginationBar } from '@/shared/presentation/ui/pagination-bar';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
 import { formatFinancialNumber } from '@/shared/utils';
-import type { StreamSymbolEntity } from '@market/domain/entities/MarketInstrument';
 
 const CATEGORIES = [
   { id: 'all', label: 'ALL STREAM SYMBOLS' },

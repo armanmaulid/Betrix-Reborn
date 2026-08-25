@@ -1,5 +1,5 @@
 import { ValidationError, NotFoundError } from '@betrix/core';
-import { IUserRepository, IVerificationRepository, User } from '@betrix/domain';
+import { IUserRepository, IVerificationRepository } from '@betrix/domain';
 import { VerifyEmailDTO } from '../../schemas/auth.schema.js';
 
 export class VerifyEmailUseCase {

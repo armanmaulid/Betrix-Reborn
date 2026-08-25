@@ -5,8 +5,7 @@ import {
   IDeviceRepository,
   IUserRepository,
   Session,
-  User,
-  Device
+  User
 } from '@betrix/domain';
 
 export interface CreateSessionResult {
@@ -89,7 +88,6 @@ export class AuthService {
   public signJwt(
     user: { id: string; email: string; isAdmin: boolean },
     session: { token: string },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     signFn: (payload: any) => string
   ): string {
     return signFn({

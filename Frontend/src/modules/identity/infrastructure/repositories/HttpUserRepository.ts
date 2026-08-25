@@ -7,7 +7,7 @@ import type {
 } from '../../domain/repositories/IUserRepository';
 import { User } from '../../domain/entities/User';
 import { UserMapper } from '../mappers/UserMapper';
-import { apiFetch, HttpClient } from '@shared/infrastructure/http/api-client';
+import { HttpClient } from '@shared/infrastructure/http/api-client';
 import type { PaginatedResult } from '@shared/domain/types/Pagination';
 
 export class HttpUserRepository implements IUserRepository {

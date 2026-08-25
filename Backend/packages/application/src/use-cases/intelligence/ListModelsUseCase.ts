@@ -1,4 +1,4 @@
-import { IAiAgentRepository, ModelPolicy, ModelConfig } from '@betrix/domain';
+import { IAiAgentRepository, ModelPolicy } from '@betrix/domain';
 
 export class ListModelsUseCase {
   constructor(

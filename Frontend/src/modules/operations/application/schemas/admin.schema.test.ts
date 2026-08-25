@@ -2,10 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { BroadcastMessageSchema, SystemCleanupSchema } from './admin.schema';
 import { UpdateAdminUserSchema } from '@identity/application/schemas/admin-user.schema';
 import { CreateVoucherSchema } from '@billing/application/schemas/voucher.schema';
-import {
-  CreateAgentSchema,
-  UpdateAgentSchema
-} from '@/modules/intelligence/application/schemas/agent.schema';
+import { CreateAgentSchema } from '@/modules/intelligence/application/schemas/agent.schema';
 
 describe('Admin & Agent Zod Schemas Validation Parity Tests', () => {
   describe('UpdateAdminUserSchema', () => {

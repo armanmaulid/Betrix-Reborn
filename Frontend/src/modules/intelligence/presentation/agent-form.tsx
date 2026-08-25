@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Bot, Sparkles, Sliders, Key } from 'lucide-react';
-import { z } from 'zod';
 import {
   CreateAgentSchema,
   UpdateAgentSchema,

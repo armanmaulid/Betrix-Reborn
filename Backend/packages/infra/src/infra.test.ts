@@ -11,7 +11,7 @@ import {
   FinnhubRealtimeClient,
   DukascopyHistoryClient
 } from './index.js';
-import { User, PriceTick, Symbol } from '@betrix/domain';
+import { User, PriceTick } from '@betrix/domain';
 
 const DATABASE_URL =
   process.env.DATABASE_URL || 'postgresql://betrix:betrixpass@localhost:5432/betrix_reborn';

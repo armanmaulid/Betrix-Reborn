@@ -12,7 +12,6 @@ import {
   AuditLogQuerySchema,
   SystemCleanupSchema,
   IdParamSchema,
-  PaginationQuerySchema,
   CreateAgentSchema,
   UpdateAgentSchema,
   AgentIdParamSchema,
@@ -145,7 +144,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
           success: true,
           data: result
         });
-      } catch (err) {
+      } catch {
         return reply.status(404).send({
           success: false,
           error: { message: 'Session not found or already revoked' }
@@ -204,7 +203,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
           success: true,
           data: result
         });
-      } catch (err) {
+      } catch {
         return reply.status(404).send({
           success: false,
           error: { message: 'Device not found or already removed' }

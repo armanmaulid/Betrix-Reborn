@@ -4,8 +4,6 @@ import {
   RegisterSchema,
   LoginSchema,
   SendMessageSchema,
-  MarketContextOptionsSchema,
-  GetOHLCParamsSchema,
   CreateVoucherSchema,
   RedeemVoucherSchema
 } from './schemas/index.js';
@@ -13,66 +11,29 @@ import {
   CaptchaService,
   AuthService,
   MarketDataService,
-  NewsService,
   ContextInjectionService,
   WorkerManagerService
 } from './services/index.js';
 import {
   RegisterUseCase,
-  LoginUseCase,
-  GoogleOAuthUseCase,
-  VerifyEmailUseCase,
-  ResendVerificationUseCase,
-  ForgotPasswordUseCase,
-  ResetPasswordUseCase,
-  ChangePasswordUseCase,
-  ChangeEmailUseCase,
   GetStreamTicketUseCase,
-  RevokeSessionUseCase,
-  LogoutAllUseCase,
-  GetProfileUseCase,
-  UpdateProfileUseCase,
   RedeemVoucherUseCase
 } from './use-cases/identity/index.js';
 import {
   SendMessageUseCase,
   StreamMessageUseCase,
-  GetChatHistoryUseCase,
-  DeleteChatSessionUseCase,
-  ExportChatUseCase,
   ListModelsUseCase,
   CreateAgentUseCase,
   ListAgentsUseCase,
-  SetDefaultAgentUseCase,
   TestAgentUseCase
 } from './use-cases/intelligence/index.js';
-import { GetSymbolsUseCase, GetPricesUseCase, GetOHLCUseCase } from './use-cases/market/index.js';
-import { FetchNewsUseCase, StoreNewsUseCase, GetNewsUseCase } from './use-cases/news/index.js';
+import { GetPricesUseCase } from './use-cases/market/index.js';
 import {
-  GetInboxUseCase,
-  GetSentMessagesUseCase,
-  GetThreadUseCase,
-  SendUserMessageUseCase,
-  MarkMessageReadUseCase,
-  DeleteMessageUseCase,
-  UpdateNotificationPrefsUseCase
-} from './use-cases/messaging/index.js';
-import {
-  GetAdminUsersUseCase,
-  GetAdminUserDetailUseCase,
   UpdateAdminUserUseCase,
   CreateAdminUserUseCase,
   DeleteAdminUserUseCase,
-  ResetUserPasswordUseCase,
   CreateVoucherUseCase,
-  ListVouchersUseCase,
-  RevokeVoucherUseCase,
-  GetSystemMetricsUseCase,
-  GetAnalyticsUseCase,
-  GetAuditLogsUseCase,
-  ExportAuditLogsUseCase,
   BroadcastMessageUseCase,
-  SystemCleanupUseCase,
   GetAdminUserChatHistoryUseCase
 } from './use-cases/admin/index.js';
 import { ChatLoggingHandler } from './handlers/ChatLoggingHandler.js';
@@ -84,8 +45,6 @@ import {
   OHLCBar,
   PriceTick,
   NewsArticle,
-  Message,
-  AdminAction,
   CreditVoucher,
   EventDispatcher
 } from '@betrix/domain';
@@ -1173,7 +1132,7 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       let savedUser: any = null;
       const localMockUserRepo = {
         findByEmail: vi.fn().mockResolvedValue(null),
-        findById: vi.fn().mockImplementation((id: string) => Promise.resolve(savedUser)),
+        findById: vi.fn().mockImplementation((_id: string) => Promise.resolve(savedUser)),
         save: vi.fn().mockImplementation((u: any) => {
           savedUser = u;
           return Promise.resolve(u);

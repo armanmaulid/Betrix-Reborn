@@ -15,7 +15,7 @@ interface AnalyticsSummaryProps {
 
 export function AnalyticsSummary({
   analytics,
-  isLoading,
+  isLoading: _isLoading,
   isError,
   onRefresh,
   isRefetching

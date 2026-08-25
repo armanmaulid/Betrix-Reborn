@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { apiFetch, ApiError } from './api-client';
+import { apiFetch } from './api-client';
 
 describe('Shared Infrastructure Http Client (apiFetch)', () => {
   const originalFetch = global.fetch;

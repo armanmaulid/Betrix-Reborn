@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { UpdateUserDialog } from './update-user-dialog';
 import { ResetPasswordDialog } from './reset-password-dialog';
 import { UserChatHistory } from './user-chat-history';

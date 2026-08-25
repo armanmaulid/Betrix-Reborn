@@ -15,7 +15,7 @@ export class DeviceDomainService {
   public static validateBinding(
     targetUserId: string,
     existingDevice: Nullable<Device>,
-    fingerprint: DeviceFingerprint
+    _fingerprint: DeviceFingerprint
   ): IDeviceBindingCheck {
     if (!existingDevice) {
       return { canBind: true };

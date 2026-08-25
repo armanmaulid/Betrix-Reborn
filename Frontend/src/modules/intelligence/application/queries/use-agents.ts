@@ -8,8 +8,7 @@ import type { AiAgent } from '@intelligence/domain/entities/AiAgent';
 import type {
   CreateAgentInput,
   UpdateAgentInput,
-  AgentTestPayload,
-  AgentTestResult
+  AgentTestPayload
 } from '@intelligence/domain/repositories/IAgentRepository';
 
 export function useAgentsQuery() {

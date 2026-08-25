@@ -1,4 +1,4 @@
-import { Nullable, NotFoundError } from '@betrix/core';
+import { Nullable } from '@betrix/core';
 import {
   ISymbolRepository,
   IMarketCacheStore,

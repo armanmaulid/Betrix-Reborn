@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionToken, verifySession } from '@/lib/server-auth';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   const token = await getSessionToken();
   const user = await verifySession(token);
 

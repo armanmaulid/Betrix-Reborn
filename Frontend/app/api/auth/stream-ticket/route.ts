@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionToken, verifySession, BACKEND_URL } from '@/lib/server-auth';
 import { sanitizeBackendResponse } from '@/shared/infrastructure/http/api-client';
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const token = await getSessionToken();
     const user = await verifySession(token);

@@ -1,5 +1,4 @@
 import {
-  AppError,
   AuthenticationError,
   ForbiddenError,
   PreconditionRequiredError,

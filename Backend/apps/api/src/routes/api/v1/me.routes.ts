@@ -10,7 +10,6 @@ import {
   UpdateNotificationPrefsSchema,
   PaginationQuerySchema
 } from '@betrix/application';
-import { Type } from '@sinclair/typebox';
 
 export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
   const { useCases } = fastify.container;

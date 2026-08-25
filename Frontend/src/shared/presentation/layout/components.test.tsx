@@ -48,7 +48,7 @@ describe('Phase 2 HUD & Component Tests', () => {
       const onConfirmMock = vi.fn();
       const onCloseMock = vi.fn();
 
-      const { rerender } = render(
+      render(
         <DestructiveConfirmDialog
           isOpen={true}
           onClose={onCloseMock}

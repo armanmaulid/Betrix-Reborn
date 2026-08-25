@@ -37,10 +37,10 @@ const authPluginCallback: FastifyPluginAsync = async (fastify) => {
   // 2. Decorate fastify.authenticate (Hybrid JWT + Active Session Verification).
   // The verified user is stashed on `request.authUser` so requireAdmin does
   // not need to re-query the DB (3 hits → 2 per admin request).
-  fastify.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.decorate('authenticate', async (request: FastifyRequest, _reply: FastifyReply) => {
     try {
       await request.jwtVerify();
-    } catch (err: any) {
+    } catch {
       throw new UnauthorizedError('Invalid or expired authentication token.');
     }
 

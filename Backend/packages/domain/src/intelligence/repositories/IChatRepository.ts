@@ -1,4 +1,4 @@
-import { Nullable, PaginatedResult, PaginationParams } from '@betrix/core';
+import { PaginatedResult, PaginationParams } from '@betrix/core';
 import { ChatMessage } from '../entities/ChatMessage.js';
 
 export interface IChatRepository {

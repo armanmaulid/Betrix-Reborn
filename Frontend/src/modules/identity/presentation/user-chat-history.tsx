@@ -7,10 +7,8 @@ import {
   X,
   ChevronDown,
   ChevronRight,
-  ChevronLeft,
   Bot,
   User,
-  Zap,
   Clock,
   Coins
 } from 'lucide-react';
@@ -19,7 +17,6 @@ import { PaginationBar } from '@/shared/presentation/ui/pagination-bar';
 import { formatFinancialNumber } from '@/shared/utils';
 import { formatDateTime } from '@/shared/utils/formatters';
 import type { AdminChatMessage } from '@/modules/identity/domain/entities/User';
-import type { PaginatedResult } from '@shared/domain/types/Pagination';
 
 interface UserChatHistoryProps {
   userId: string;

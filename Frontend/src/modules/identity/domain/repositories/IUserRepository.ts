@@ -1,4 +1,4 @@
-import { User, type UserProps } from '../entities/User';
+import { User } from '../entities/User';
 import type { PaginatedResult, PaginationQueryParams } from '@shared/domain/types/Pagination';
 
 export interface UserQueryParams extends PaginationQueryParams {

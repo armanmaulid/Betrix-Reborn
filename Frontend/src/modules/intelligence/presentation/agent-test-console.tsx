@@ -11,10 +11,8 @@ import {
   Check,
   Clock,
   Sliders,
-  Sparkles,
   ChevronDown,
-  ChevronRight,
-  AlertCircle
+  ChevronRight
 } from 'lucide-react';
 import { useTestAgentMutation } from '@/modules/intelligence/application/queries/use-agents';
 import { TestAgentSchema } from '@/modules/intelligence/application/schemas/agent.schema';
@@ -90,9 +88,7 @@ export function AgentTestConsole({ agent }: AgentTestConsoleProps) {
 
       const controller = new AbortController();
       abortRef.current = controller;
-      let timedOut = false;
       const timeoutId = setTimeout(() => {
-        timedOut = true;
         controller.abort();
       }, INFERENCE_TIMEOUT_MS);
 

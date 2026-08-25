@@ -1,4 +1,4 @@
-import { AiAgent, type AiAgentProps } from '../../domain/entities/AiAgent';
+import { AiAgent } from '../../domain/entities/AiAgent';
 
 export class AgentMapper {
   public static toDomain(dto: any): AiAgent {

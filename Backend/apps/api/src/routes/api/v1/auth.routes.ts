@@ -9,7 +9,6 @@ import {
   ResetPasswordSchema
 } from '@betrix/application';
 import { GoogleVerifierNotConfiguredError } from '@betrix/application';
-import { Type } from '@sinclair/typebox';
 
 export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
   const { useCases, services } = fastify.container;
