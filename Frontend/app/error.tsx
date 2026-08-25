@@ -12,8 +12,9 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log full error details for debugging — digest is safe to log
-    console.error('Terminal runtime exception intercepted:', error.message, error.digest);
+    // Log only the digest — error.message may contain sensitive payload
+    // fragments and the digest is what support needs to correlate server-side.
+    console.error('Terminal runtime exception intercepted. Digest:', error.digest);
   }, [error]);
 
   return (

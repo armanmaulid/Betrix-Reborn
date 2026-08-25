@@ -41,6 +41,17 @@ async function startMasterWorker() {
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 
+  // Process-level safety nets: an unhandled rejection in any background
+  // subsystem must be logged, not silently swallowed — and must not take the
+  // whole supervisor down without a graceful stop attempt.
+  process.on('unhandledRejection', (reason) => {
+    logger.error({ err: reason }, 'Unhandled promise rejection in worker process');
+  });
+  process.on('uncaughtException', (err) => {
+    logger.error({ err }, 'Uncaught exception in worker process — initiating shutdown');
+    void shutdown();
+  });
+
   try {
     // Start all 5 workers concurrently. Each worker's own start() checks
     // worker_states (the SSOT — see IWorkerStateRepository) before running:

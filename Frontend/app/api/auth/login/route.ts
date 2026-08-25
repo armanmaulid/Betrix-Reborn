@@ -50,7 +50,15 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Accept: 'application/json'
+        Accept: 'application/json',
+        // Forward client metadata so the backend can derive its server-side
+        // device fingerprint from the REAL client (requires TRUST_PROXY=true
+        // on the backend when running behind this BFF).
+        'User-Agent': request.headers.get('user-agent') || 'unknown',
+        'X-Forwarded-For':
+          request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+          request.headers.get('x-real-ip') ||
+          ''
       },
       body: JSON.stringify({
         email,
@@ -101,10 +109,12 @@ export async function POST(request: NextRequest) {
 
     const isHttps =
       request.nextUrl.protocol === 'https:' || request.headers.get('x-forwarded-proto') === 'https';
-    // In production, cookies are ALWAYS secure regardless of COOKIE_SECURE env var.
-    // COOKIE_SECURE only takes effect in non-production (dev/lan) environments.
-    const isSecure =
-      process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true' || isHttps;
+    // `Secure` must follow the ACTUAL transport protocol, not NODE_ENV: a
+    // production build served over plain HTTP (LAN smoke tests, docker on a
+    // home server) would otherwise set a cookie the browser silently drops,
+    // leaving users stuck on the login screen. COOKIE_SECURE=true forces it
+    // on for deployments terminating TLS upstream of an odd proxy setup.
+    const isSecure = isHttps || process.env.COOKIE_SECURE === 'true';
 
     // 1. httpOnly Secure JWT Token Cookie
     cookieStore.set('betrix_admin_token', token, {

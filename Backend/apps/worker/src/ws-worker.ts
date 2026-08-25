@@ -242,7 +242,9 @@ export class FinnhubWsWorker extends ManagedWorkerBase implements IManagedWorker
       logger.info(`Unsubscribing from Finnhub symbol: ${sym}`);
       try {
         this.ws.send(JSON.stringify({ type: 'unsubscribe', symbol: sym }));
-      } catch {}
+      } catch {
+        // Socket already closed — deletion below is still required.
+      }
       this.subscribedSymbols.delete(sym);
     }
 
@@ -305,7 +307,9 @@ export class FinnhubWsWorker extends ManagedWorkerBase implements IManagedWorker
       }
       try {
         this.ws.close(1000, 'Worker shutdown');
-      } catch {}
+      } catch {
+        // Already closed — nothing to do.
+      }
       this.ws = null;
     }
     this.detachCommandListener();

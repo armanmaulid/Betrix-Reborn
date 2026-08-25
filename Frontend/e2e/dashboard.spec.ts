@@ -1,14 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { ADMIN_COOKIE } from './helpers/mock-auth';
 
 test.describe('E2E Live Operations Dashboard', () => {
   test.beforeEach(async ({ context, page }) => {
     await context.addCookies([
-      {
-        name: 'betrix_admin_token',
-        value: 'mock-admin-token',
-        domain: '127.0.0.1',
-        path: '/'
-      }
+      ADMIN_COOKIE
     ]);
 
     await page.route('**/api/admin/metrics', async (route) => {

@@ -31,16 +31,19 @@ export class RedeemVoucherUseCase {
       throw new ValidationError('This voucher has expired.');
     }
 
-    const redeemed = await this.voucherRepo.redeem(voucher.id, userId);
-    if (!redeemed) {
-      throw new ValidationError('Failed to redeem voucher.');
-    }
-
-    const newBalance = await this.creditRepo.addCredits(
+    // Atomic redemption: voucher burn + credit grant + ledger entry commit in
+    // ONE transaction — the voucher can never be consumed without its credits
+    // being granted (and concurrent double-redemptions stay impossible).
+    const { redeemed, newBalance } = await this.voucherRepo.redeemAtomically(
+      voucher.id,
       userId,
       voucher.amount,
       `VOUCHER_REDEMPTION:${voucher.code}`
     );
+
+    if (!redeemed) {
+      throw new ValidationError('Failed to redeem voucher.');
+    }
 
     return {
       success: true,

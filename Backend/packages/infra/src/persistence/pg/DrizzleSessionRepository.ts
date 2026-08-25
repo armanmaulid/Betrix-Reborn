@@ -1,8 +1,15 @@
-import { eq, lt, sql } from 'drizzle-orm';
+import { eq, lt } from 'drizzle-orm';
 import { ISessionRepository, Session, Nullable } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { sessions } from '../drizzle/schema.js';
+import { hashTokenForStorage } from './token-hash.js';
 
+/**
+ * Session tokens are stored as SHA-256 digests (see token-hash.ts): the raw
+ * value exists only in the issued response / JWT payload. NOTE: deploying
+ * this change invalidates pre-existing sessions once (they were stored
+ * plaintext) — users simply log in again.
+ */
 export class DrizzleSessionRepository implements ISessionRepository {
   constructor(private readonly db: DrizzleDb) {}
 
@@ -25,7 +32,11 @@ export class DrizzleSessionRepository implements ISessionRepository {
   }
 
   async findByToken(token: string): Promise<Nullable<Session>> {
-    const result = await this.db.select().from(sessions).where(eq(sessions.token, token)).limit(1);
+    const result = await this.db
+      .select()
+      .from(sessions)
+      .where(eq(sessions.token, hashTokenForStorage(token)))
+      .limit(1);
     return result[0] ? this.mapToDomain(result[0]) : null;
   }
 
@@ -40,7 +51,7 @@ export class DrizzleSessionRepository implements ISessionRepository {
       .values({
         id: session.id || undefined,
         userId: session.userId,
-        token: session.token,
+        token: hashTokenForStorage(session.token),
         deviceFingerprint: session.deviceFingerprint,
         ip: session.ip,
         userAgent: session.userAgent,
@@ -53,7 +64,10 @@ export class DrizzleSessionRepository implements ISessionRepository {
   }
 
   async delete(token: string): Promise<boolean> {
-    const deleted = await this.db.delete(sessions).where(eq(sessions.token, token)).returning();
+    const deleted = await this.db
+      .delete(sessions)
+      .where(eq(sessions.token, hashTokenForStorage(token)))
+      .returning();
     return deleted.length > 0;
   }
 

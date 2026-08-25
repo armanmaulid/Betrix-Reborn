@@ -22,7 +22,10 @@ export class FinnhubNewsAdapter implements INewsProvider {
 
     try {
       const url = `https://finnhub.io/api/v1/news?category=${encodeURIComponent(category)}&token=${this.apiKey}`;
-      const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+      const resp = await fetch(url, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(10_000)
+      });
 
       if (!resp.ok) {
         console.error(`[FinnhubNewsAdapter] News fetch returned status ${resp.status}`);

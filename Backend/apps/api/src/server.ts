@@ -29,7 +29,11 @@ export async function createServer() {
             }
           }
         : undefined
-    }
+    },
+    // TRUST_PROXY=true when running behind a trusted reverse proxy / BFF so
+    // request.ip reflects X-Forwarded-For (correct rate-limit buckets and
+    // server-side device fingerprints). Never enable when directly exposed.
+    trustProxy: env.TRUST_PROXY
   }).withTypeProvider<TypeBoxTypeProvider>();
 
   // 1. Register Core Security & Infrastructure Plugins
@@ -83,6 +87,12 @@ export async function startServer() {
 
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+  // Log unhandled rejections instead of letting them crash the loop silently;
+  // a genuinely broken state still triggers graceful shutdown on throw.
+  process.on('unhandledRejection', (reason) => {
+    app.log.error({ err: reason }, 'Unhandled promise rejection in API process');
+  });
 
   try {
     await app.listen({ port: env.PORT, host: env.HOST });

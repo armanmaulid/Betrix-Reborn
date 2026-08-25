@@ -1,8 +1,14 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { Nullable, PaginatedResult, PaginationParams } from '@betrix/core';
-import { CreditVoucher, IVoucherRepository, VoucherFilter, VoucherSort } from '@betrix/domain';
+import {
+  AtomicRedeemResult,
+  CreditVoucher,
+  IVoucherRepository,
+  VoucherFilter,
+  VoucherSort
+} from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
-import { creditVouchers } from '../drizzle/schema.js';
+import { creditTransactions, creditVouchers, users } from '../drizzle/schema.js';
 
 export class DrizzleVoucherRepository implements IVoucherRepository {
   constructor(private readonly db: DrizzleDb) {}
@@ -74,6 +80,47 @@ export class DrizzleVoucherRepository implements IVoucherRepository {
       .returning({ id: creditVouchers.id });
 
     return result.length > 0;
+  }
+
+  /**
+   * Single-transaction redemption: conditional voucher burn + credit grant +
+   * ledger entry commit together or not at all. Prevents the "voucher burned
+   * but credits never granted" integrity failure of the two-step flow.
+   */
+  async redeemAtomically(
+    voucherId: string,
+    userId: string,
+    amount: number,
+    action: string
+  ): Promise<AtomicRedeemResult> {
+    return await this.db.transaction(async (tx) => {
+      // 1. Conditional burn — only wins if still unredeemed.
+      const burned = await tx
+        .update(creditVouchers)
+        .set({ isRedeemed: true, redeemedById: userId, redeemedAt: new Date() })
+        .where(and(eq(creditVouchers.id, voucherId), eq(creditVouchers.isRedeemed, false)))
+        .returning({ id: creditVouchers.id });
+
+      if (burned.length === 0) {
+        return { redeemed: false, newBalance: 0 };
+      }
+
+      // 2. Grant credits + ledger entry inside the SAME transaction.
+      const updatedUser = await tx
+        .update(users)
+        .set({ credits: sql`${users.credits} + ${amount}` })
+        .where(eq(users.id, userId))
+        .returning({ credits: users.credits });
+
+      await tx.insert(creditTransactions).values({
+        userId,
+        amount,
+        action,
+        createdAt: new Date()
+      });
+
+      return { redeemed: true, newBalance: updatedUser[0]?.credits ?? 0 };
+    });
   }
 
   async revoke(voucherId: string): Promise<boolean> {

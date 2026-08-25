@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Copy, Check, Trash2, ExternalLink } from 'lucide-react';
-import type { CreditVoucher } from '@intelligence/domain/entities/CreditVoucher';
+import type { CreditVoucher } from '@billing/domain/entities/CreditVoucher';
 import { formatFinancialNumber } from '@/shared/utils';
 import { formatDate, formatDateTime } from '@/shared/utils/formatters';
 

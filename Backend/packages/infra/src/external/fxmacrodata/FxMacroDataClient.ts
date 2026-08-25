@@ -87,7 +87,12 @@ export class FxMacroDataClient {
 
     for (let attempt = 0; attempt <= this.maxRetryAttempts; attempt++) {
       try {
-        const resp = await fetch(`${this.baseUrl}${path}`, { headers: this.headers() });
+        // Per-attempt hard timeout — retries with backoff are useless against
+        // a hung TCP connection without one.
+        const resp = await fetch(`${this.baseUrl}${path}`, {
+          headers: this.headers(),
+          signal: AbortSignal.timeout(10_000)
+        });
 
         if (resp.ok) {
           return (await resp.json()) as T;

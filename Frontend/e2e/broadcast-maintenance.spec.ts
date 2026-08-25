@@ -1,14 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { ADMIN_COOKIE } from './helpers/mock-auth';
 
 test.describe('E2E Broadcast & Maintenance Console', () => {
   test.beforeEach(async ({ context }) => {
     await context.addCookies([
-      {
-        name: 'betrix_admin_token',
-        value: 'mock-admin-token',
-        domain: '127.0.0.1',
-        path: '/'
-      }
+      ADMIN_COOKIE
     ]);
   });
 

@@ -4,8 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { voucherRepository } from '@billing/infrastructure/repositories/HttpVoucherRepository';
 import { billingKeys } from '@billing/application/billing.keys';
 import { useAdminMutation } from '@shared/application/useAdminMutation';
-import type { CreditVoucher } from '@intelligence/domain/entities/CreditVoucher';
-import type { CreateVoucherInput } from '@/modules/operations/application/schemas/admin.schema';
+import type { CreditVoucher } from '@billing/domain/entities/CreditVoucher';
+import type { CreateVoucherInput } from '@billing/application/schemas/voucher.schema';
 import type { PaginatedResult } from '@shared/domain/types/Pagination';
 
 export interface VouchersQueryParams {

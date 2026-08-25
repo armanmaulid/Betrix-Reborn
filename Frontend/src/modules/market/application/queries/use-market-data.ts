@@ -83,22 +83,26 @@ export function useDeleteOhlcSymbolMutation() {
   );
 }
 
-export function useMarketPricesSnapshot() {
+/**
+ * REST fallback for the live price board. While the SSE stream is healthy the
+ * snapshot is only needed to seed newly-mounted symbols, so polling stops
+ * entirely (the stream reconnect logic resumes it by flipping isConnected).
+ */
+export function useMarketPricesSnapshot(isStreamConnected: boolean = false) {
   return useQuery<PriceTick[]>({
     queryKey: marketKeys.prices(),
     queryFn: () => marketRepository.getPricesSnapshot(),
     staleTime: 1000,
-    refetchInterval: 1500,
-    refetchOnWindowFocus: true
+    refetchInterval: isStreamConnected ? false : 1500,
+    refetchOnWindowFocus: !isStreamConnected
   });
 }
 
 export function useRealtimeMarketStream() {
-  const { data: initialPrices = [], isLoading: isSnapshotLoading } = useMarketPricesSnapshot();
-  const [livePrices, setLivePrices] = useState<Map<string, PriceTick>>(new Map());
-  // Connectivity is owned exclusively by the SSE lifecycle — a REST snapshot
-  // response says nothing about the stream and must not flip this flag.
   const [isConnected, setIsConnected] = useState(false);
+  const { data: initialPrices = [], isLoading: isSnapshotLoading } =
+    useMarketPricesSnapshot(isConnected);
+  const [livePrices, setLivePrices] = useState<Map<string, PriceTick>>(new Map());
   // Symbols that have received at least one live SSE tick. The REST snapshot
   // must never overwrite them (its data may be older than the last tick).
   const liveSymbolsRef = useRef<Set<string>>(new Set());

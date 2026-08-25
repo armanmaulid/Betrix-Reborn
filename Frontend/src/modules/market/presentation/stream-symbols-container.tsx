@@ -82,7 +82,9 @@ export function StreamSymbolsContainer() {
     try {
       await saveMutation.mutateAsync({
         symbol: formData.symbol.toUpperCase(),
-        finnhubSymbol: formData.finnhubSymbol?.toUpperCase() || formData.symbol.toUpperCase(),
+        // Stream mode's zod schema guarantees a valid EXCHANGE:SYMBOL ticker;
+        // no silent fallback that could mask a missing mapping.
+        finnhubSymbol: formData.finnhubSymbol.toUpperCase(),
         category: formData.category,
         description: formData.description,
         isActive: formData.isActive

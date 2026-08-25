@@ -28,9 +28,11 @@ export class CachedMarketDataProvider implements IHistoricalProvider {
 
     // Invariant (ADR-27): Only D1 candles are cached in Redis
     if (tfLower === 'd1') {
-      // Try cache first — if we have enough bars, return directly
       const cached = await this.cacheStore.getOHLC(symbol, 'd1');
-      if (cached && cached.length > 0) {
+      // Serve from cache ONLY when the cached bars actually COVER the
+      // requested range. The D1 cache stores just the latest bar(s), so an
+      // unguarded hit made `?limit=200` return a single candle until TTL.
+      if (cached && this.cacheCoversRange(cached, fromDate)) {
         return cached;
       }
     }
@@ -49,5 +51,18 @@ export class CachedMarketDataProvider implements IHistoricalProvider {
     }
 
     return bars;
+  }
+
+  /**
+   * The cache is a "latest bar(s)" snapshot: it can only answer requests that
+   * fall inside the newest bar's window (i.e. recent-range queries such as the
+   * 24h % change calculation).
+   */
+  private cacheCoversRange(cached: OHLCBar[], fromDate: Date): boolean {
+    if (cached.length === 0) return false;
+    // `time` is a Unix timestamp in seconds.
+    const newestSec = Math.max(...cached.map((bar) => bar.time));
+    // Requested range must not extend before what the snapshot can represent.
+    return fromDate.getTime() / 1000 >= newestSec - 24 * 60 * 60;
   }
 }

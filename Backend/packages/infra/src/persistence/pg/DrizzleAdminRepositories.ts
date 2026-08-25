@@ -272,8 +272,9 @@ export class DrizzleAnalyticsRepository implements IAnalyticsRepository {
         .limit(5)
     ]);
 
-    // Token Usage Time-Series based on period
-    let tokenUsageRows: { date: string; tokens: number }[] = [];
+    // Token Usage Time-Series based on period.
+    // No initializer: the if/else chain below is exhaustive and always assigns.
+    let tokenUsageRows: { date: string; tokens: number }[];
 
     if (period === 'weekly') {
       tokenUsageRows = await this.db

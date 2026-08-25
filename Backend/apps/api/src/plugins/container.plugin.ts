@@ -49,6 +49,7 @@ import {
   RegisterUseCase,
   LoginUseCase,
   GoogleOAuthUseCase,
+  GoogleVerifierNotConfiguredError,
   VerifyEmailUseCase,
   ResendVerificationUseCase,
   ForgotPasswordUseCase,
@@ -373,7 +374,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
           email_verified: true
         };
       }
-      throw new Error('Google OAuth token verification requires Google API client configuration');
+      throw new GoogleVerifierNotConfiguredError();
     }
   };
 

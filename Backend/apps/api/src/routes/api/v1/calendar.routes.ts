@@ -5,7 +5,9 @@ const GetCalendarQuerySchema = Type.Object({
   currency: Type.Optional(Type.String()),
   month: Type.Optional(
     Type.String({
-      description: 'YYYY-MM — omit to get upcoming events instead of a specific month'
+      description: 'YYYY-MM — omit to get upcoming events instead of a specific month',
+      // Strict format — a garbage month previously produced NaN date bounds.
+      pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
     })
   ),
   limit: Type.Optional(Type.Number())

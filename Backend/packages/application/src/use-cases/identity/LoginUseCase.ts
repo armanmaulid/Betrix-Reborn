@@ -18,6 +18,7 @@ import {
 import { AuthService } from '../../services/AuthService.js';
 import { CaptchaService } from '../../services/CaptchaService.js';
 import { LoginDTO } from '../../schemas/auth.schema.js';
+import { resolveServerFingerprint } from './resolveDeviceFingerprint.js';
 
 export interface LoginResult {
   user: User;
@@ -41,7 +42,9 @@ export class LoginUseCase {
     context?: { ip?: string; userAgent?: string }
   ): Promise<LoginResult> {
     const email = dto.email.toLowerCase().trim();
-    const fingerprint = dto.deviceFingerprint;
+    // ADR-05: the binding key is derived SERVER-SIDE from request context —
+    // never trust the client-supplied string (see resolveServerFingerprint).
+    const fingerprint = resolveServerFingerprint(dto.deviceFingerprint, context);
 
     // 1. Check Anti-Bruteforce Policy & CAPTCHA requirement
     const recentFailures = await this.loginAttemptRepo.countRecentFailures(email, 15);

@@ -34,7 +34,9 @@ const authPluginCallback: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // 2. Decorate fastify.authenticate (Hybrid JWT + Active Session Verification)
+  // 2. Decorate fastify.authenticate (Hybrid JWT + Active Session Verification).
+  // The verified user is stashed on `request.authUser` so requireAdmin does
+  // not need to re-query the DB (3 hits → 2 per admin request).
   fastify.decorate('authenticate', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       await request.jwtVerify();
@@ -58,14 +60,23 @@ const authPluginCallback: FastifyPluginAsync = async (fastify) => {
     if (!user || user.status !== 'active') {
       throw new UnauthorizedError('Account is not active. Please contact support.');
     }
+    (request as FastifyRequest & { authUser?: unknown }).authUser = user;
   });
 
   // 3. Decorate fastify.requireAdmin (Role-Based Access Control)
   fastify.decorate('requireAdmin', async (request: FastifyRequest, reply: FastifyReply) => {
     await fastify.authenticate(request, reply);
 
-    // Authoritative role check from DB — JWT claim can be up to 7 days stale
-    const user = await fastify.container.repositories.userRepo.findById(request.user.userId);
+    // Authoritative role check from DB — JWT claim can be up to 7 days stale.
+    // Reuse the user authenticate() already loaded when possible.
+    let user = (request as FastifyRequest & { authUser?: { isAdmin?: boolean } }).authUser as
+      | { isAdmin?: boolean }
+      | undefined;
+    if (!user) {
+      user = (await fastify.container.repositories.userRepo.findById(
+        request.user.userId
+      )) as unknown as { isAdmin?: boolean } | undefined;
+    }
     if (!user?.isAdmin) {
       throw new ForbiddenError('Administrative privileges required for this action.');
     }

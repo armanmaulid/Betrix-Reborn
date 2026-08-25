@@ -7,6 +7,7 @@ import {
 } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { failedLoginAttempts, verificationTokens } from '../drizzle/schema.js';
+import { hashTokenForStorage } from './token-hash.js';
 
 export class DrizzleLoginAttemptRepository implements ILoginAttemptRepository {
   constructor(private readonly db: DrizzleDb) {}
@@ -67,7 +68,8 @@ export class DrizzleVerificationRepository implements IVerificationRepository {
       .insert(verificationTokens)
       .values({
         userId,
-        token,
+        // Stored as a digest — a DB leak must not yield usable email links.
+        token: hashTokenForStorage(token),
         type,
         expiresAt,
         createdAt: new Date()
@@ -78,7 +80,7 @@ export class DrizzleVerificationRepository implements IVerificationRepository {
     return {
       id: row.id,
       userId: row.userId,
-      token: row.token,
+      token, // echo the RAW token back to the caller (goes into the email link)
       type: row.type,
       expiresAt: row.expiresAt,
       createdAt: row.createdAt
@@ -86,30 +88,30 @@ export class DrizzleVerificationRepository implements IVerificationRepository {
   }
 
   async verify(token: string, type: string): Promise<Nullable<VerificationRecord>> {
-    const rows = await this.db
-      .select()
-      .from(verificationTokens)
+    // ATOMIC single-use consume: DELETE ... RETURNING removes the replay
+    // window of the previous SELECT-then-DELETE (two concurrent requests with
+    // the same token could both read it before either deleted it).
+    const deleted = await this.db
+      .delete(verificationTokens)
       .where(
         and(
-          eq(verificationTokens.token, token),
+          eq(verificationTokens.token, hashTokenForStorage(token)),
           eq(verificationTokens.type, type),
           gte(verificationTokens.expiresAt, new Date())
         )
       )
-      .limit(1);
+      .returning();
 
-    if (!rows[0]) return null;
-
-    // Invalidate once verified
-    await this.db.delete(verificationTokens).where(eq(verificationTokens.id, rows[0].id));
+    const row = deleted[0];
+    if (!row) return null;
 
     return {
-      id: rows[0].id,
-      userId: rows[0].userId,
-      token: rows[0].token,
-      type: rows[0].type,
-      expiresAt: rows[0].expiresAt,
-      createdAt: rows[0].createdAt
+      id: row.id,
+      userId: row.userId,
+      token,
+      type: row.type,
+      expiresAt: row.expiresAt,
+      createdAt: row.createdAt
     };
   }
 

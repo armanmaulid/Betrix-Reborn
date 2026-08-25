@@ -15,7 +15,7 @@ import type {
   UpdateAdminUserInput,
   ResetUserPasswordInput,
   CreateAdminUserInput
-} from '@/modules/operations/application/schemas/admin.schema';
+} from '@identity/application/schemas/admin-user.schema';
 import type { PaginatedResult } from '@shared/domain/types/Pagination';
 import { apiFetch } from '@shared/infrastructure/http/api-client';
 

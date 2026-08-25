@@ -1,11 +1,14 @@
 import { Type, Static } from '@sinclair/typebox';
 
 // Register DTO
+// NOTE: deviceFingerprint is OPTIONAL and advisory only — the authoritative
+// binding key is derived server-side from request IP/user-agent
+// (see resolveServerFingerprint).
 export const RegisterSchema = Type.Object({
   email: Type.String({ format: 'email' }),
   password: Type.String({ minLength: 8, maxLength: 128 }),
   name: Type.Optional(Type.String({ minLength: 2, maxLength: 100 })),
-  deviceFingerprint: Type.String({ minLength: 10 }),
+  deviceFingerprint: Type.Optional(Type.String({ minLength: 10 })),
   phone: Type.Optional(Type.String()),
   address: Type.Optional(Type.String()),
   birthdate: Type.Optional(Type.String()),
@@ -18,7 +21,7 @@ export type RegisterDTO = Static<typeof RegisterSchema>;
 export const LoginSchema = Type.Object({
   email: Type.String({ format: 'email' }),
   password: Type.String({ minLength: 1 }),
-  deviceFingerprint: Type.String({ minLength: 10 }),
+  deviceFingerprint: Type.Optional(Type.String({ minLength: 10 })),
   captchaId: Type.Optional(Type.String()),
   captchaAnswer: Type.Optional(Type.String())
 });
@@ -27,7 +30,7 @@ export type LoginDTO = Static<typeof LoginSchema>;
 // Google OAuth DTO
 export const GoogleOAuthSchema = Type.Object({
   idToken: Type.String({ minLength: 10 }),
-  deviceFingerprint: Type.String({ minLength: 10 })
+  deviceFingerprint: Type.Optional(Type.String({ minLength: 10 }))
 });
 export type GoogleOAuthDTO = Static<typeof GoogleOAuthSchema>;
 

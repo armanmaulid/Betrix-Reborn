@@ -173,23 +173,21 @@ export function UsersContainer() {
         isLoading={isLoading}
       />
 
-      {/* Create User Dialog */}
+      {/* Create User Dialog — cache invalidation is handled by useAdminMutation */}
       <CreateUserDialog
         isOpen={isCreateOpen}
         onClose={() => {
           setIsCreateOpen(false);
-          refetch();
         }}
       />
 
-      {/* Update User Dialog */}
+      {/* Update User Dialog — cache invalidation is handled by useAdminMutation */}
       {selectedUserForEdit && (
         <UpdateUserDialog
           user={selectedUserForEdit as any}
           isOpen={Boolean(selectedUserForEdit)}
           onClose={() => {
             setSelectedUserForEdit(null);
-            refetch();
           }}
         />
       )}

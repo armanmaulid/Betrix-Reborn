@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { SymbolModal } from './symbol-modal';
 
@@ -47,12 +47,35 @@ describe('SymbolModal Component', () => {
     const submitBtn = screen.getByRole('button', { name: /SAVE INSTRUMENT/i });
     fireEvent.click(submitBtn);
 
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({
-        symbol: 'XAUUSD',
-        category: 'forex',
-        isActive: true
-      })
+    // react-hook-form validates asynchronously — wait for the submit handler
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          symbol: 'XAUUSD',
+          category: 'forex',
+          isActive: true
+        })
+      )
     );
+  });
+
+  it('should reject invalid finnhub ticker format in stream mode', async () => {
+    const onSave = vi.fn();
+    render(
+      <SymbolModal isOpen={true} onClose={vi.fn()} onSave={onSave} mode="stream" />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('EURUSD'), { target: { value: 'BTCUSD' } });
+    const providerInput = screen.getByPlaceholderText('OANDA:EUR_USD');
+    fireEvent.change(providerInput, { target: { value: 'not-a-ticker' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /SAVE STREAM SYMBOL/i }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Format must be EXCHANGE:SYMBOL/i)
+      ).toBeInTheDocument()
+    );
+    expect(onSave).not.toHaveBeenCalled();
   });
 });

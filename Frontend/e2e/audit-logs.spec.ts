@@ -1,14 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { ADMIN_COOKIE } from './helpers/mock-auth';
 
 test.describe('E2E Security & Activity Audit Trail', () => {
   test.beforeEach(async ({ context, page }) => {
     await context.addCookies([
-      {
-        name: 'betrix_admin_token',
-        value: 'mock-admin-token',
-        domain: '127.0.0.1',
-        path: '/'
-      }
+      ADMIN_COOKIE
     ]);
 
     await page.route('**/api/admin/audit-logs*', async (route) => {

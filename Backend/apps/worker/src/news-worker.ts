@@ -108,8 +108,12 @@ export class NewsWorker extends ManagedWorkerBase implements IManagedWorker {
 
   public async start(): Promise<void> {
     if (!this.apiKey) {
-      logger.error('FINNHUB_API_KEY is not configured in .env. Exiting News Worker...');
-      process.exit(1);
+      // Log-and-skip: a missing optional API key must not kill the whole
+      // worker process (cleanup/calendar/sync workers don't need it).
+      logger.warn(
+        'FINNHUB_API_KEY is not configured — News Worker will stay idle until the key is provided.'
+      );
+      return;
     }
     if (await this.wasDeliberatelyHalted()) {
       logger.info('News Worker was previously paused/stopped by an admin — not auto-starting.');
@@ -144,7 +148,8 @@ export class NewsWorker extends ManagedWorkerBase implements IManagedWorker {
 
     try {
       const url = `https://finnhub.io/api/v1/news?category=general&token=${this.apiKey}`;
-      const resp = await fetch(url);
+      // Hard timeout — a hung TCP connection must not stall the news cycle.
+      const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) });
 
       if (!resp.ok) {
         logger.warn(`Finnhub News API returned status: ${resp.status} ${resp.statusText}`);

@@ -9,6 +9,7 @@ import {
 } from '@betrix/domain';
 import { AuthService } from '../../services/AuthService.js';
 import { GoogleOAuthDTO } from '../../schemas/auth.schema.js';
+import { resolveServerFingerprint } from './resolveDeviceFingerprint.js';
 
 export interface GooglePayload {
   sub: string;
@@ -19,6 +20,18 @@ export interface GooglePayload {
 
 export interface IGoogleTokenVerifier {
   verifyIdToken(token: string): Promise<GooglePayload>;
+}
+
+/**
+ * Thrown when no real Google token verifier is wired in the composition root
+ * (no GOOGLE_CLIENT_ID/SECRET). Routes map this to 501 Not Implemented — a
+ * plain Error would surface as a misleading 500 INTERNAL_SERVER_ERROR.
+ */
+export class GoogleVerifierNotConfiguredError extends Error {
+  constructor() {
+    super('Google OAuth is not configured on this deployment.');
+    this.name = 'GoogleVerifierNotConfiguredError';
+  }
 }
 
 export interface GoogleOAuthResult {
@@ -55,7 +68,8 @@ export class GoogleOAuthUseCase {
 
     const email = payload.email.toLowerCase().trim();
     const googleId = payload.sub;
-    const fingerprint = dto.deviceFingerprint;
+    // ADR-05: server-derived binding key (see resolveServerFingerprint).
+    const fingerprint = resolveServerFingerprint(dto.deviceFingerprint, context);
 
     let user = await this.userRepo.findByGoogleId(googleId);
     let isNewUser = false;

@@ -31,6 +31,16 @@ export function proxy(request: NextRequest) {
       return NextResponse.next();
     }
 
+    // API consumers must receive a machine-readable 401, not a 307 to the
+    // HTML login page — fetch() follows redirects transparently and would
+    // surface a confusing "unexpected token <" parse error instead.
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json(
+        { success: false, error: { message: 'Session required' } },
+        { status: 401 }
+      );
+    }
+
     const loginUrl = new URL('/login', request.url);
     if (pathname !== '/' && !pathname.startsWith('/login')) {
       loginUrl.searchParams.set('from', pathname);

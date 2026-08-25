@@ -67,6 +67,13 @@ export class SseHub {
     request.raw.on('close', () => {
       this.removeClient(id);
     });
+    // CRITICAL: socket errors (EPIPE / write-after-end) are emitted
+    // ASYNCHRONOUSLY — a synchronous try/catch around res.write() never sees
+    // them. Without this listener a burst of disconnects during broadcast can
+    // crash the whole process with an unhandled 'error' event.
+    reply.raw.on('error', () => {
+      this.removeClient(id);
+    });
   }
 
   public removeClient(id: string): void {
@@ -140,7 +147,18 @@ export class SseHub {
   private sendEvent(client: SseClient, event: string, data: unknown): void {
     try {
       const dataStr = typeof data === 'string' ? data : JSON.stringify(data);
-      client.reply.raw.write(`event: ${event}\ndata: ${dataStr}\n\n`);
+      const writable = client.reply.raw;
+      // write() returning false means the kernel buffer is full — the client
+      // is too slow (or already gone). Drop it instead of buffering without
+      // bound and building memory pressure on the process.
+      if (writable.destroyed || writable.writableEnded) {
+        this.removeClient(client.id);
+        return;
+      }
+      const ok = writable.write(`event: ${event}\ndata: ${dataStr}\n\n`);
+      if (!ok) {
+        this.removeClient(client.id);
+      }
     } catch {
       this.removeClient(client.id);
     }
@@ -150,7 +168,13 @@ export class SseHub {
     this.heartbeatTimer = setInterval(() => {
       for (const client of this.clients.values()) {
         try {
-          client.reply.raw.write(`event: ping\ndata: ${Date.now()}\n\n`);
+          const writable = client.reply.raw;
+          if (writable.destroyed || writable.writableEnded) {
+            this.removeClient(client.id);
+            continue;
+          }
+          const ok = writable.write(`event: ping\ndata: ${Date.now()}\n\n`);
+          if (!ok) this.removeClient(client.id);
         } catch {
           this.removeClient(client.id);
         }

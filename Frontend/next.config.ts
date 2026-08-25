@@ -21,6 +21,14 @@ function getDynamicDevOrigins(): string[] {
   return Array.from(origins);
 }
 
+// `unsafe-eval` is required by Next.js dev tooling (react-refresh/HMR) but has
+// no business in production — it largely defeats the XSS mitigation value of
+// the CSP. Inline scripts remain necessary for Next's bootstrap runtime.
+const scriptSrc =
+  process.env.NODE_ENV === 'production'
+    ? "script-src 'self' 'unsafe-inline'"
+    : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
+
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -29,8 +37,7 @@ const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000' },
   {
     key: 'Content-Security-Policy',
-    value:
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    value: `default-src 'self'; ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`
   }
 ];
 

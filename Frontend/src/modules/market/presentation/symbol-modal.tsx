@@ -1,8 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Database, Activity } from 'lucide-react';
 import { TerminalModal } from '@/shared/presentation/ui/terminal-modal';
+import {
+  buildSymbolSchema,
+  SYMBOL_CATEGORIES,
+  type SymbolFormValues
+} from '@market/application/schemas/symbol.schema';
 
 export interface SymbolFormData {
   symbol: string;
@@ -12,7 +19,6 @@ export interface SymbolFormData {
   dukascopySymbol?: string;
   isActive: boolean;
 }
-
 export interface SymbolModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -22,14 +28,6 @@ export interface SymbolModalProps {
   isPending?: boolean;
 }
 
-export const SYMBOL_CATEGORIES = [
-  { value: 'forex', label: 'FOREX' },
-  { value: 'metal', label: 'PRECIOUS METALS' },
-  { value: 'energy', label: 'ENERGY' },
-  { value: 'crypto', label: 'CRYPTO' },
-  { value: 'indices', label: 'INDICES' }
-];
-
 export function SymbolModal({
   isOpen,
   onClose,
@@ -38,23 +36,41 @@ export function SymbolModal({
   mode = 'catalog',
   isPending = false
 }: SymbolModalProps) {
-  const [symbol, setSymbol] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('forex');
-  const [finnhubSymbol, setFinnhubSymbol] = useState('');
-  const [dukascopySymbol, setDukascopySymbol] = useState('');
-  const [isActive, setIsActive] = useState(true);
+  const schema = useMemo(() => buildSymbolSchema(mode), [mode]);
 
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors }
+  } = useForm<SymbolFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      symbol: '',
+      description: '',
+      category: 'forex',
+      finnhubSymbol: '',
+      dukascopySymbol: '',
+      isActive: true
+    }
+  });
+
+  const watchedSymbol = watch('symbol');
+
+  // Reset the form whenever the dialog opens (prevents stale cancel+reopen state)
   useEffect(() => {
     if (isOpen) {
-      setSymbol(initialData?.symbol || '');
-      setDescription(initialData?.description || '');
-      setCategory(initialData?.category || 'forex');
-      setFinnhubSymbol(initialData?.finnhubSymbol || '');
-      setDukascopySymbol(initialData?.dukascopySymbol || '');
-      setIsActive(initialData?.isActive !== undefined ? initialData.isActive : true);
+      reset({
+        symbol: initialData?.symbol || '',
+        description: initialData?.description || '',
+        category: (initialData?.category as SymbolFormValues['category']) || 'forex',
+        finnhubSymbol: initialData?.finnhubSymbol || '',
+        dukascopySymbol: initialData?.dukascopySymbol || '',
+        isActive: initialData?.isActive !== undefined ? initialData.isActive : true
+      });
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, reset]);
 
   if (!isOpen) return null;
 
@@ -63,17 +79,17 @@ export function SymbolModal({
   const title =
     mode === 'stream'
       ? isEdit
-        ? `EDIT STREAM SYMBOL // ${symbol}`
+        ? `EDIT STREAM SYMBOL // ${watchedSymbol}`
         : 'ADD NEW FINNHUB STREAM SYMBOL'
       : mode === 'ohlc'
         ? isEdit
-          ? `EDIT OHLC SYMBOL // ${symbol}`
+          ? `EDIT OHLC SYMBOL // ${watchedSymbol}`
           : 'ADD NEW DUKASCOPY OHLC SYMBOL'
         : isEdit
-          ? `EDIT INSTRUMENT // ${symbol}`
+          ? `EDIT INSTRUMENT // ${watchedSymbol}`
           : 'ADD NEW MARKET INSTRUMENT';
 
-  const icon = mode === 'stream' ? Activity : mode === 'ohlc' ? Activity : Database;
+  const icon = mode === 'catalog' ? Database : Activity;
   const variant = mode === 'stream' ? 'positive' : mode === 'ohlc' ? 'info' : 'accent';
   const saveButtonColor =
     mode === 'stream'
@@ -82,17 +98,14 @@ export function SymbolModal({
         ? 'bg-info text-black hover:opacity-80'
         : 'bg-accent text-black hover:bg-accent/80';
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!symbol.trim()) return;
-
+  const onValid = async (values: SymbolFormValues) => {
     await onSave({
-      symbol: symbol.trim().toUpperCase(),
-      description: description.trim(),
-      category,
-      finnhubSymbol: finnhubSymbol.trim(),
-      dukascopySymbol: dukascopySymbol.trim() || undefined,
-      isActive
+      symbol: values.symbol.trim().toUpperCase(),
+      description: values.description.trim(),
+      category: values.category,
+      finnhubSymbol: (values.finnhubSymbol ?? '').trim(),
+      dukascopySymbol: (values.dukascopySymbol ?? '').trim() || undefined,
+      isActive: values.isActive
     });
   };
 
@@ -105,74 +118,100 @@ export function SymbolModal({
       variant={variant}
       maxWidth="md"
     >
-      <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs font-mono">
+      <form onSubmit={handleSubmit(onValid)} className="p-5 space-y-4 text-xs font-mono">
         {/* Symbol Code */}
         <div className="space-y-1">
-          <label className="text-[10px] text-muted-foreground uppercase">
+          <label htmlFor="symbol-modal-symbol" className="text-[10px] text-muted-foreground uppercase">
             SYMBOL IDENTIFIER (E.G. EURUSD, XAUUSD, BTCUSD) *
           </label>
           <input
+            id="symbol-modal-symbol"
             type="text"
-            required
             disabled={isEdit}
             placeholder="EURUSD"
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+            {...register('symbol')}
+            onChange={(e) => {
+              // keep uppercase-only UX while staying RHF-controlled
+              e.target.value = e.target.value.toUpperCase();
+              register('symbol').onChange(e);
+            }}
             className="w-full bg-black border border-border px-3 py-1.5 text-xs text-foreground uppercase focus:outline-none focus:border-accent font-bold disabled:opacity-60"
           />
+          {errors.symbol && <p className="text-[10px] text-negative">{errors.symbol.message}</p>}
         </div>
 
         {/* Finnhub Ticker (stream mode) or Dukascopy Ticker (ohlc mode) */}
         {mode === 'ohlc' ? (
           <div className="space-y-1">
-            <label className="text-[10px] text-muted-foreground uppercase">
+            <label
+              htmlFor="symbol-modal-provider"
+              className="text-[10px] text-muted-foreground uppercase"
+            >
               DUKASCOPY TICKER (E.G. eurusd, xauusd, btcusd) *
             </label>
             <input
+              id="symbol-modal-provider"
               type="text"
-              required
               placeholder="eurusd"
-              value={dukascopySymbol}
-              onChange={(e) => setDukascopySymbol(e.target.value)}
+              {...register('dukascopySymbol')}
               className="w-full bg-black border border-border px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent font-bold"
             />
+            {errors.dukascopySymbol && (
+              <p className="text-[10px] text-negative">{errors.dukascopySymbol.message}</p>
+            )}
           </div>
         ) : (
           <div className="space-y-1">
-            <label className="text-[10px] text-muted-foreground uppercase">
+            <label
+              htmlFor="symbol-modal-provider"
+              className="text-[10px] text-muted-foreground uppercase"
+            >
               FINNHUB TICKER (E.G. OANDA:EUR_USD, BINANCE:BTCUSDT){mode === 'stream' ? ' *' : ''}
             </label>
             <input
+              id="symbol-modal-provider"
               type="text"
-              required={mode === 'stream'}
               placeholder="OANDA:EUR_USD"
-              value={finnhubSymbol}
-              onChange={(e) => setFinnhubSymbol(e.target.value)}
+              {...register('finnhubSymbol')}
               className="w-full bg-black border border-border px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent font-bold"
             />
+            {errors.finnhubSymbol && (
+              <p className="text-[10px] text-negative">{errors.finnhubSymbol.message}</p>
+            )}
           </div>
         )}
 
         {/* Description */}
         <div className="space-y-1">
-          <label className="text-[10px] text-muted-foreground uppercase">
+          <label
+            htmlFor="symbol-modal-description"
+            className="text-[10px] text-muted-foreground uppercase"
+          >
             DESCRIPTION / PAIR NAME
           </label>
           <input
+            id="symbol-modal-description"
             type="text"
             placeholder="Euro / US Dollar"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            {...register('description')}
             className="w-full bg-black border border-border px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent"
           />
+          {errors.description && (
+            <p className="text-[10px] text-negative">{errors.description.message}</p>
+          )}
         </div>
 
         {/* Category */}
         <div className="space-y-1">
-          <label className="text-[10px] text-muted-foreground uppercase">CATEGORY</label>
+          <label
+            htmlFor="symbol-modal-category"
+            className="text-[10px] text-muted-foreground uppercase"
+          >
+            CATEGORY
+          </label>
           <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            id="symbol-modal-category"
+            {...register('category')}
             className="w-full bg-black border border-border px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent"
           >
             {SYMBOL_CATEGORIES.map((cat) => (
@@ -181,21 +220,28 @@ export function SymbolModal({
               </option>
             ))}
           </select>
+          {errors.category && <p className="text-[10px] text-negative">{errors.category.message}</p>}
         </div>
 
         {/* Dukascopy Ticker (catalog mode only) */}
         {mode === 'catalog' && (
           <div className="space-y-1">
-            <label className="text-[10px] text-muted-foreground uppercase">
+            <label
+              htmlFor="symbol-modal-dukascopy"
+              className="text-[10px] text-muted-foreground uppercase"
+            >
               DUKASCOPY TICKER MAPPING (E.G. eurusd, btcusd, xauusd)
             </label>
             <input
+              id="symbol-modal-dukascopy"
               type="text"
               placeholder="eurusd"
-              value={dukascopySymbol}
-              onChange={(e) => setDukascopySymbol(e.target.value)}
+              {...register('dukascopySymbol')}
               className="w-full bg-black border border-border px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent"
             />
+            {errors.dukascopySymbol && (
+              <p className="text-[10px] text-negative">{errors.dukascopySymbol.message}</p>
+            )}
           </div>
         )}
 
@@ -204,8 +250,7 @@ export function SymbolModal({
           <input
             type="checkbox"
             id="symbol-modal-active"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
+            {...register('isActive')}
             className="accent-accent cursor-pointer"
           />
           <label

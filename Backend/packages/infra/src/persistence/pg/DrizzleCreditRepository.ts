@@ -41,16 +41,25 @@ export class DrizzleCreditRepository implements ICreditRepository {
     return result[0]?.credits ?? 0;
   }
 
+  /**
+   * Unconditional-looking deduction hardened with a sufficiency predicate:
+   * returns -1 when the balance would go negative instead of clamping to 0
+   * (which previously allowed silent free usage). Currently only used by
+   * legacy call paths — live AI chat flows use reserveCredits/settleReservation.
+   */
   async deductCredits(userId: string, amount: number, action: string): Promise<number> {
     return await this.db.transaction(async (tx) => {
-      // Deduct from user
       const updatedUser = await tx
         .update(users)
         .set({
-          credits: sql`GREATEST(0, ${users.credits} - ${amount})`
+          credits: sql`${users.credits} - ${amount}`
         })
-        .where(eq(users.id, userId))
+        .where(and(eq(users.id, userId), sql`${users.credits} >= ${amount}`))
         .returning({ credits: users.credits });
+
+      if (updatedUser.length === 0) {
+        return -1; // insufficient balance
+      }
 
       // Record transaction
       await tx.insert(creditTransactions).values({
@@ -60,7 +69,7 @@ export class DrizzleCreditRepository implements ICreditRepository {
         createdAt: new Date()
       });
 
-      return updatedUser[0]?.credits ?? 0;
+      return updatedUser[0]!.credits;
     });
   }
 
@@ -103,26 +112,42 @@ export class DrizzleCreditRepository implements ICreditRepository {
     action: string
   ): Promise<number> {
     return await this.db.transaction(async (tx) => {
-      // Charge actual cost (floor 0), release exactly this reservation.
-      // ponytail: actualCost > reservedAmount is allowed to under-charge — ceiling
-      // is maxTokens-aware reservation set by the caller. Fine at current rates.
+      // Serialize concurrent settlements per user so the charge computation
+      // below cannot race with other reserve/settle operations.
+      const current = await tx
+        .select({ credits: users.credits, reserved: users.reservedCredits })
+        .from(users)
+        .where(eq(users.id, userId))
+        .for('update')
+        .limit(1);
+
+      const row = current[0];
+      if (!row) return 0;
+
+      // Charge is capped by BOTH the reservation and the available balance —
+      // an over-budget completion can never pull the balance below zero or
+      // grant free usage beyond what was reserved.
+      const charge = Math.max(0, Math.min(actualCost, reservedAmount, row.credits));
+
       const updated = await tx
         .update(users)
         .set({
-          credits: sql`GREATEST(0, ${users.credits} - ${actualCost})`,
+          credits: sql`${users.credits} - ${charge}`,
           reservedCredits: sql`GREATEST(0, ${users.reservedCredits} - ${reservedAmount})`
         })
         .where(eq(users.id, userId))
         .returning({ credits: users.credits });
 
-      await tx.insert(creditTransactions).values({
-        userId,
-        amount: -actualCost,
-        action,
-        createdAt: new Date()
-      });
+      if (charge > 0) {
+        await tx.insert(creditTransactions).values({
+          userId,
+          amount: -charge,
+          action,
+          createdAt: new Date()
+        });
+      }
 
-      return updated[0]?.credits ?? 0;
+      return updated[0]?.credits ?? row.credits - charge;
     });
   }
 

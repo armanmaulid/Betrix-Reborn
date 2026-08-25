@@ -122,8 +122,14 @@ export const AnalyticsQuerySchema = Type.Object({
       { default: 'daily' }
     )
   ),
-  startDate: Type.Optional(Type.String()),
-  endDate: Type.Optional(Type.String())
+  // RFC3339/ISO date strings — unvalidated strings previously reached Postgres
+  // casts and surfaced as 500s on garbage input.
+  startDate: Type.Optional(
+    Type.String({ pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}([T ][0-9:.]+(Z|[+-][0-9]{2}:?[0-9]{2})?)?$' })
+  ),
+  endDate: Type.Optional(
+    Type.String({ pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}([T ][0-9:.]+(Z|[+-][0-9]{2}:?[0-9]{2})?)?$' })
+  )
 });
 export type AnalyticsQueryDTO = Static<typeof AnalyticsQuerySchema>;
 

@@ -11,6 +11,7 @@ import {
 } from '@betrix/domain';
 import { AuthService } from '../../services/AuthService.js';
 import { RegisterDTO } from '../../schemas/auth.schema.js';
+import { resolveServerFingerprint } from './resolveDeviceFingerprint.js';
 
 export interface IEmailDispatcher {
   sendVerificationEmail(to: string, link: string, name?: string): Promise<boolean>;
@@ -41,7 +42,8 @@ export class RegisterUseCase {
     context?: { ip?: string; userAgent?: string }
   ): Promise<RegisterResult> {
     const email = dto.email.toLowerCase().trim();
-    const fingerprint = dto.deviceFingerprint;
+    // ADR-05: server-derived binding key (see resolveServerFingerprint).
+    const fingerprint = resolveServerFingerprint(dto.deviceFingerprint, context);
 
     // 1. Check Device Uniqueness (ADR-05)
     if (this.enforceDeviceBinding) {

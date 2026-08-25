@@ -21,6 +21,21 @@ const rateLimitPluginCallback: FastifyPluginAsync = async (fastify) => {
       };
     }
   });
+
+  // Credential endpoints get a much tighter bucket so IP rotation is the only
+  // way around brute-force defense — and one noisy consumer of public market
+  // data can never lock everyone out of login (shared global bucket).
+  const AUTH_RATE_LIMIT = { max: 10, timeWindow: '1 minute' } as const;
+  // NOTE: onRoute sees the pre-prefix url ('/login'), hence the optional
+  // 'auth/' segment in the pattern.
+  const CREDENTIAL_ENDPOINT =
+    /\/(auth\/)?(login|register|forgot-password|reset-password|resend-verification)$/;
+  fastify.addHook('onRoute', (routeOptions) => {
+    const url = routeOptions.url || '';
+    if (CREDENTIAL_ENDPOINT.test(url)) {
+      routeOptions.config = { ...routeOptions.config, rateLimit: { ...AUTH_RATE_LIMIT } };
+    }
+  });
 };
 
 export const rateLimitPlugin = fp(rateLimitPluginCallback, {

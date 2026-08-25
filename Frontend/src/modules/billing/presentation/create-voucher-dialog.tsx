@@ -7,7 +7,7 @@ import { Ticket, Sparkles } from 'lucide-react';
 import {
   CreateVoucherSchema,
   type CreateVoucherInput
-} from '@/modules/operations/application/schemas/admin.schema';
+} from '@billing/application/schemas/voucher.schema';
 import { useCreateVoucherMutation } from '@/modules/billing/application/queries/use-vouchers';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { TerminalModal } from '@/shared/presentation/ui/terminal-modal';
@@ -46,10 +46,24 @@ export function CreateVoucherDialog({ isOpen, onClose }: CreateVoucherDialogProp
 
   const onSubmit = async (data: CreateVoucherInput) => {
     try {
+      // `datetime-local` yields a timezone-naive string ("2026-08-30T12:00")
+      // which the browser interprets as LOCAL time. Convert to an explicit
+      // ISO-UTC instant so the backend cannot misread it in another TZ.
+      const rawExpiry = data.expiresAt?.trim();
+      let expiresAt: string | undefined;
+      if (rawExpiry) {
+        const parsed = new Date(rawExpiry);
+        if (Number.isNaN(parsed.getTime())) {
+          error('CREATION FAILED', 'Expiration date is invalid.');
+          return;
+        }
+        expiresAt = parsed.toISOString();
+      }
+
       const payload: CreateVoucherInput = {
         amount: data.amount,
         code: data.code?.trim() || undefined,
-        expiresAt: data.expiresAt?.trim() || undefined
+        expiresAt
       };
 
       const result: any = await createMutation.mutateAsync(payload);
@@ -126,7 +140,7 @@ export function CreateVoucherDialog({ isOpen, onClose }: CreateVoucherDialogProp
         {/* Expiration Date */}
         <div className="space-y-1">
           <label className="text-[10px] uppercase text-muted-foreground tracking-wider block">
-            EXPIRATION TIMESTAMP (OPTIONAL)
+            EXPIRATION TIMESTAMP (OPTIONAL — SENT AS UTC)
           </label>
           <input
             type="datetime-local"

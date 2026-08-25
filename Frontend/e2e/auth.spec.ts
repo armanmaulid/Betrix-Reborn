@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { MOCK_ADMIN_TOKEN } from './helpers/mock-auth';
 
 test.describe('E2E Auth Gateway & Route Guard', () => {
   test('should render terminal login interface with Bloomberg styling', async ({ page }) => {
@@ -41,12 +42,12 @@ test.describe('E2E Auth Gateway & Route Guard', () => {
         status: 200,
         contentType: 'application/json',
         headers: {
-          'Set-Cookie': 'betrix_admin_token=mock-jwt-admin-token; Path=/; SameSite=Lax'
+          'Set-Cookie': `betrix_admin_token=${MOCK_ADMIN_TOKEN}; Path=/; SameSite=Lax`
         },
         body: JSON.stringify({
           success: true,
           data: {
-            token: 'mock-jwt-admin-token',
+            token: MOCK_ADMIN_TOKEN,
             user: {
               id: 'adm-001',
               email: 'admin@betrix.ai',

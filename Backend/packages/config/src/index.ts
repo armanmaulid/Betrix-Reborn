@@ -1,4 +1,5 @@
 import { Type, Static } from '@sinclair/typebox';
+import { Value } from '@sinclair/typebox/value';
 import dotenv from 'dotenv';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -39,6 +40,8 @@ export const EnvSchema = Type.Object({
 
 export type EnvConfig = Static<typeof EnvSchema>;
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 // Fail fast: JWT_SECRET must be set and strong — never fall back to a known value.
 const jwtSecret = process.env.JWT_SECRET;
 if (!jwtSecret || jwtSecret.length < 32) {
@@ -47,23 +50,59 @@ if (!jwtSecret || jwtSecret.length < 32) {
   );
 }
 
-export const env = {
+// Fail fast on missing CRITICAL infrastructure config. Dev-only fallbacks keep
+// `docker-compose.dev.yml` ergonomics but must never silently mask a missing
+// DATABASE_URL / Redis in production.
+function requireEnv(name: string, devFallback: string): string {
+  const value = process.env[name];
+  if (value && value.length > 0) return value;
+  if (isProduction) {
+    throw new Error(
+      `${name} is required in production — refusing to start with the dev fallback (${devFallback})`
+    );
+  }
+  return devFallback;
+}
+
+// Resolve raw values first (dev fallbacks included), THEN validate — so the
+// schema judges what the app will actually run with.
+const resolvedEnv = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: Number(process.env.PORT) || 3000,
   HOST: process.env.HOST || '0.0.0.0',
-  DATABASE_URL:
-    process.env.DATABASE_URL || 'postgresql://betrix:betrixpass@localhost:5432/betrix_reborn',
-  UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL || 'http://localhost:8079',
-  UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN || 'local_dev_token',
+  DATABASE_URL: requireEnv(
+    'DATABASE_URL',
+    'postgresql://betrix:betrixpass@localhost:5432/betrix_reborn'
+  ),
+  UPSTASH_REDIS_REST_URL: requireEnv('UPSTASH_REDIS_REST_URL', 'http://localhost:8079'),
+  UPSTASH_REDIS_REST_TOKEN: requireEnv('UPSTASH_REDIS_REST_TOKEN', 'local_dev_token'),
   JWT_SECRET: jwtSecret,
-  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
-  DEVICE_ENFORCEMENT: process.env.DEVICE_ENFORCEMENT !== 'false',
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
+  DEVICE_ENFORCEMENT: process.env.DEVICE_ENFORCEMENT !== 'false',
+  BROKER_UTC_OFFSET: Number(process.env.BROKER_UTC_OFFSET) || 3,
+  FINNHUB_LOG_TICKS: process.env.FINNHUB_LOG_TICKS === 'true',
+  AI_BASE_URL: process.env.AI_BASE_URL,
+  AI_API_KEY: process.env.AI_API_KEY,
+  DEFAULT_MODEL: process.env.DEFAULT_MODEL
+};
+
+// Validate the resolved environment so malformed values (e.g. PORT=abc)
+// surface at boot instead of deep inside request handling.
+{
+  const errors = Array.from(Value.Errors(EnvSchema, resolvedEnv));
+  if (errors.length > 0) {
+    const detail = errors.map((e) => `${e.path}: ${e.message}`).join('; ');
+    throw new Error(`Invalid environment configuration → ${detail}`);
+  }
+}
+
+export const env = {
+  ...resolvedEnv,
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
   RATE_LIMIT_MAX: Number(process.env.RATE_LIMIT_MAX) || 120,
   RATE_LIMIT_WINDOW_MS: Number(process.env.RATE_LIMIT_WINDOW_MS) || 60000,
-  BROKER_UTC_OFFSET: Number(process.env.BROKER_UTC_OFFSET) || 3,
-  FINNHUB_LOG_TICKS: process.env.FINNHUB_LOG_TICKS === 'true',
+  TRUST_PROXY: process.env.TRUST_PROXY === 'true',
   FINNHUB_API_KEY: process.env.FINNHUB_API_KEY || '',
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   AI_BASE_URL: process.env.AI_BASE_URL || 'http://localhost:20128/v1',

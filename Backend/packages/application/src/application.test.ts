@@ -607,6 +607,28 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
           mockVouchersDb.set(redeemed.code, redeemed);
           return true;
         }),
+        redeemAtomically: vi.fn(
+          async (id: string, userId: string, amount: number, _action: string) => {
+            const voucher = Array.from(mockVouchersDb.values()).find((v) => v.id === id);
+            if (!voucher || voucher.isRedeemed) return { redeemed: false, newBalance: 0 };
+            const burned = new CreditVoucher({
+              ...voucher['props'],
+              isRedeemed: true,
+              redeemedById: userId,
+              redeemedAt: new Date()
+            });
+            mockVouchersDb.set(burned.code, burned);
+
+            // Mirror the in-memory credit grant so balances stay consistent.
+            const user = mockUsersDb.get(userId);
+            if (user) {
+              const updated = user.withAddedCredits(amount);
+              mockUsersDb.set(userId, updated);
+              return { redeemed: true, newBalance: updated.credits };
+            }
+            return { redeemed: true, newBalance: 0 };
+          }
+        ),
         revoke: vi.fn(async (id: string) => {
           const voucher = Array.from(mockVouchersDb.values()).find((v) => v.id === id);
           if (voucher) {

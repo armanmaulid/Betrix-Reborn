@@ -8,6 +8,7 @@ import {
   ForgotPasswordSchema,
   ResetPasswordSchema
 } from '@betrix/application';
+import { GoogleVerifierNotConfiguredError } from '@betrix/application';
 import { Type } from '@sinclair/typebox';
 
 export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
@@ -112,26 +113,38 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.googleOAuthUseCase.execute(request.body, {
-        ip: request.ip,
-        userAgent: request.headers['user-agent']
-      });
+      try {
+        const result = await useCases.googleOAuthUseCase.execute(request.body, {
+          ip: request.ip,
+          userAgent: request.headers['user-agent']
+        });
 
-      const jwtToken = services.authService.signJwt(
-        result.user,
-        result.session,
-        fastify.jwt.sign.bind(fastify.jwt)
-      );
+        const jwtToken = services.authService.signJwt(
+          result.user,
+          result.session,
+          fastify.jwt.sign.bind(fastify.jwt)
+        );
 
-      return reply.send({
-        success: true,
-        data: {
-          token: jwtToken,
-          sessionToken: result.token,
-          user: result.user.toJSON(),
-          isNewUser: result.isNewUser
+        return reply.send({
+          success: true,
+          data: {
+            token: jwtToken,
+            sessionToken: result.token,
+            user: result.user.toJSON(),
+            isNewUser: result.isNewUser
+          }
+        });
+      } catch (err) {
+        // Unconfigured provider is a deployment state, not a server fault —
+        // answer 501 so clients show "unavailable" instead of a 500.
+        if (err instanceof GoogleVerifierNotConfiguredError) {
+          return reply.status(501).send({
+            success: false,
+            error: { code: 'NOT_IMPLEMENTED', message: err.message }
+          });
         }
-      });
+        throw err;
+      }
     }
   );
 

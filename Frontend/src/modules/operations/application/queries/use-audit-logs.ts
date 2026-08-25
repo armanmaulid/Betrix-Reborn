@@ -5,7 +5,7 @@ import { operationsRepository } from '@operations/infrastructure/repositories/Ht
 import { operationsKeys } from '@operations/application/operations.keys';
 import type { AuditLog } from '@operations/domain/entities/AuditLog';
 import type { PaginatedResult } from '@shared/domain/types/Pagination';
-import { formatDate } from '@/shared/utils/formatters';
+import { downloadBlob, fileTimestamp } from '@/shared/utils/download';
 
 export interface AuditLogQueryParams {
   page?: number;
@@ -54,12 +54,5 @@ export async function downloadAuditLogsExport(params: {
   }
 
   const blob = await res.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `audit-logs-${formatDate(new Date())}.${params.format}`;
-  document.body.appendChild(a);
-  a.click();
-  window.URL.revokeObjectURL(url);
-  document.body.removeChild(a);
+  downloadBlob(blob, `audit-logs-${fileTimestamp()}.${params.format}`);
 }

@@ -7,7 +7,7 @@ import { ShieldAlert, Lock } from 'lucide-react';
 import {
   UpdateAdminUserSchema,
   type UpdateAdminUserInput
-} from '@/modules/operations/application/schemas/admin.schema';
+} from '@identity/application/schemas/admin-user.schema';
 import { useUpdateUserMutation } from '@/modules/identity/application/queries/use-users';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { TerminalModal } from '@/shared/presentation/ui/terminal-modal';

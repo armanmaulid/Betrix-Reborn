@@ -47,7 +47,7 @@ export async function apiFetch<T = any>(path: string, init?: HttpRequestOptions)
     return {} as T;
   }
 
-  let data: any;
+  let data: unknown;
   if (typeof res.json === 'function') {
     try {
       data = await res.json();
@@ -66,8 +66,13 @@ export async function apiFetch<T = any>(path: string, init?: HttpRequestOptions)
 
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
-    if (typeof data === 'object' && data !== null) {
-      message = (data as any)?.error?.message || (data as any)?.message || message;
+    const record = data as Record<string, unknown> | string;
+    if (typeof record === 'object' && record !== null) {
+      const err = (record as { error?: { message?: unknown }; message?: unknown });
+      message =
+        (typeof err?.error?.message === 'string' && err.error.message) ||
+        (typeof err?.message === 'string' && err.message) ||
+        message;
     } else if (typeof data === 'string' && data.trim().length > 0) {
       message = data;
     }
@@ -80,16 +85,17 @@ export async function apiFetch<T = any>(path: string, init?: HttpRequestOptions)
 /**
  * Unwrap a single-item API response: `res.data ?? res`
  */
-export function unwrapData<T>(res: any): T {
-  return (res?.data ?? res) as T;
+export function unwrapData<T>(res: unknown): T {
+  return ((res as { data?: unknown })?.data ?? res) as T;
 }
 
 /**
  * Unwrap a list API response, falling back to empty array.
  * Eliminates the repeated `res.data ?? (Array.isArray(res) ? res : [])` pattern.
  */
-export function unwrapListData<T>(res: any): T[] {
-  if (Array.isArray(res?.data)) return res.data as T[];
+export function unwrapListData<T>(res: unknown): T[] {
+  const payload = (res as { data?: unknown })?.data;
+  if (Array.isArray(payload)) return payload as T[];
   if (Array.isArray(res)) return res as T[];
   return [];
 }

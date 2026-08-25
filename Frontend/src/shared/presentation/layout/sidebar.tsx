@@ -45,6 +45,7 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
                   key={item.href}
                   href={item.href}
                   title={`${item.name} [${item.num}]`}
+                  aria-current={isActive ? 'page' : undefined}
                   className={`group relative flex items-center justify-center py-2.5 font-mono text-xs transition-colors border-l-2 ${
                     isActive
                       ? 'border-accent bg-surface text-accent font-bold'
@@ -111,6 +112,7 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? 'page' : undefined}
                 className={`group flex items-center justify-between px-2.5 py-2 font-mono text-xs transition-colors border-l-2 ${
                   isActive
                     ? 'border-accent bg-surface text-accent font-bold'

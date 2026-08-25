@@ -1,6 +1,18 @@
 import { Redis } from '@upstash/redis';
 import { ICaptchaStore, IOAuthCodeStore, IStreamTicketStore, Nullable } from '@betrix/domain';
 
+/**
+ * Atomic single-use consume: GETDEL removes the key and returns its value in
+ * ONE server-side operation, so two concurrent requests presenting the same
+ * ticket/captcha/oauth-code can never both read it before either deletes it
+ * (the GET→DELETE race that broke the single-use invariant).
+ * Upstash REST supports the GETDEL command natively.
+ */
+async function consumeAtomic(redis: Redis, key: string): Promise<Nullable<string>> {
+  const value = await redis.getdel<string>(key);
+  return value === null || value === undefined ? null : String(value);
+}
+
 export class RedisCaptchaStore implements ICaptchaStore {
   private static readonly PREFIX = 'auth:captcha:';
 
@@ -13,13 +25,7 @@ export class RedisCaptchaStore implements ICaptchaStore {
   }
 
   async getAndDelete(challengeId: string): Promise<Nullable<string>> {
-    const key = `${RedisCaptchaStore.PREFIX}${challengeId}`;
-    const value = await this.redis.get<string>(key);
-    if (value !== null && value !== undefined) {
-      await this.redis.del(key);
-      return String(value);
-    }
-    return null;
+    return consumeAtomic(this.redis, `${RedisCaptchaStore.PREFIX}${challengeId}`);
   }
 }
 
@@ -35,13 +41,7 @@ export class RedisOAuthCodeStore implements IOAuthCodeStore {
   }
 
   async getAndDelete(code: string): Promise<Nullable<string>> {
-    const key = `${RedisOAuthCodeStore.PREFIX}${code}`;
-    const value = await this.redis.get<string>(key);
-    if (value !== null && value !== undefined) {
-      await this.redis.del(key);
-      return String(value);
-    }
-    return null;
+    return consumeAtomic(this.redis, `${RedisOAuthCodeStore.PREFIX}${code}`);
   }
 }
 
@@ -57,12 +57,6 @@ export class RedisStreamTicketStore implements IStreamTicketStore {
   }
 
   async getAndDelete(ticket: string): Promise<Nullable<string>> {
-    const key = `${RedisStreamTicketStore.PREFIX}${ticket}`;
-    const value = await this.redis.get<string>(key);
-    if (value !== null && value !== undefined) {
-      await this.redis.del(key);
-      return String(value);
-    }
-    return null;
+    return consumeAtomic(this.redis, `${RedisStreamTicketStore.PREFIX}${ticket}`);
   }
 }

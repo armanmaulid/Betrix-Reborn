@@ -1,4 +1,4 @@
-import { CreditVoucher } from '@intelligence/domain/entities/CreditVoucher';
+import { CreditVoucher } from '@billing/domain/entities/CreditVoucher';
 import { toDomainPaginated } from '@shared/domain/types/Pagination';
 
 export class VoucherMapper {

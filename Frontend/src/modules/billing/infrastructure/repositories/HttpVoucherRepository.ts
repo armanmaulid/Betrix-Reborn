@@ -2,7 +2,7 @@ import type {
   IVoucherRepository,
   CreateVoucherInput
 } from '../../domain/repositories/IVoucherRepository';
-import { CreditVoucher } from '@intelligence/domain/entities/CreditVoucher';
+import { CreditVoucher } from '@billing/domain/entities/CreditVoucher';
 import { VoucherMapper } from '../mappers/VoucherMapper';
 import { HttpClient } from '@shared/infrastructure/http/api-client';
 import type { PaginatedResult, PaginationQueryParams } from '@shared/domain/types/Pagination';

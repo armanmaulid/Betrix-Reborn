@@ -47,7 +47,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         activeEl instanceof HTMLInputElement ||
         activeEl instanceof HTMLTextAreaElement ||
         activeEl instanceof HTMLSelectElement ||
-        activeEl?.getAttribute('contenteditable') === 'true';
+        // contenteditable="" and "plaintext-only" are valid editing states too
+        (activeEl !== null && 'isContentEditable' in activeEl && activeEl.isContentEditable);
 
       if (isTyping || isCommandPaletteOpen) {
         return;

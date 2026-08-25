@@ -10,7 +10,11 @@ export function generateRandomToken(bytes: number = 32): string {
 }
 export const generateSecureToken = generateRandomToken;
 
-export async function hashPassword(plaintext: string, saltRounds: number = 10): Promise<string> {
+// Cost 12 is the 2026 baseline for bcrypt (cost 10 ≈ sub-100ms GPU brute force).
+// Existing hashes verify transparently — bcrypt reads the cost from the hash.
+const BCRYPT_SALT_ROUNDS = 12;
+
+export async function hashPassword(plaintext: string, saltRounds: number = BCRYPT_SALT_ROUNDS): Promise<string> {
   return bcrypt.hash(plaintext, saltRounds);
 }
 
