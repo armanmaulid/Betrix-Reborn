@@ -28,6 +28,10 @@ export interface AiStreamCallbacks {
 }
 
 export interface IAiGateway {
-  complete(request: AiCompletionRequest): Promise<AiCompletionResponse>;
-  stream(request: AiCompletionRequest, callbacks: AiStreamCallbacks): Promise<void>;
+  complete(request: AiCompletionRequest, signal?: AbortSignal): Promise<AiCompletionResponse>;
+  stream(
+    request: AiCompletionRequest,
+    callbacks: AiStreamCallbacks,
+    signal?: AbortSignal
+  ): Promise<void>;
 }

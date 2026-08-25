@@ -1197,6 +1197,11 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
         deleteByUserId: vi.fn().mockResolvedValue(true)
       };
 
+      const localMockCreditRepo = {
+        addCredits: vi.fn().mockImplementation((_userId: string, amount: number) => Promise.resolve(amount)),
+        deductCredits: vi.fn().mockImplementation((_userId: string, amount: number) => Promise.resolve(-amount))
+      };
+
       // 1. Create Pro User
       const createUserUseCase = new CreateAdminUserUseCase(
         localMockUserRepo as any,
@@ -1219,7 +1224,8 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       const updateUserUseCase = new UpdateAdminUserUseCase(
         localMockUserRepo as any,
         localMockAdminActionRepo as any,
-        localMockSessionRepo as any
+        localMockSessionRepo as any,
+        localMockCreditRepo as any
       );
 
       const updated = await updateUserUseCase.execute('admin-1', created.user.id, {
@@ -1228,6 +1234,51 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
 
       expect(updated.tier).toBe('vip');
       expect(localMockUserRepo.update).toHaveBeenCalled();
+
+      // 2.5 Credit delta reconciliation (Bug #2): admin sets an absolute target
+      // balance; the use case must apply the DIFFERENCE via add/deduct, never
+      // overwrite. Starting balance 100 -> target 500 => +400.
+      const creditUser = {
+        id: 'credit-user',
+        email: 'credit@betrix.io',
+        name: 'Credit User',
+        isAdmin: false,
+        status: 'active',
+        tier: 'pro',
+        credits: 100
+      };
+      localMockUserRepo.findById = vi.fn().mockResolvedValue(creditUser);
+      localMockCreditRepo.addCredits.mockClear();
+      localMockCreditRepo.deductCredits.mockClear();
+
+      const creditUpdated = await updateUserUseCase.execute('admin-1', 'credit-user', {
+        credits: 500
+      });
+
+      expect(localMockCreditRepo.addCredits).toHaveBeenCalledWith(
+        'credit-user',
+        400,
+        expect.stringContaining('ADMIN_ADJUSTMENT')
+      );
+      expect(localMockCreditRepo.deductCredits).not.toHaveBeenCalled();
+      expect(creditUpdated.credits).toBe(400);
+
+      // Target below current balance => deduct the difference (500 -> 250 => -250).
+      localMockUserRepo.findById = vi.fn().mockResolvedValue({ ...creditUser, credits: 500 });
+      localMockCreditRepo.addCredits.mockClear();
+      localMockCreditRepo.deductCredits.mockClear();
+
+      const creditDown = await updateUserUseCase.execute('admin-1', 'credit-user', {
+        credits: 250
+      });
+
+      expect(localMockCreditRepo.deductCredits).toHaveBeenCalledWith(
+        'credit-user',
+        250,
+        expect.stringContaining('ADMIN_ADJUSTMENT')
+      );
+      expect(localMockCreditRepo.addCredits).not.toHaveBeenCalled();
+      expect(creditDown.credits).toBe(-250);
 
       // 3. Security Guard: Self-Demotion
       const selfAdmin = {

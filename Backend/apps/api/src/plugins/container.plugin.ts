@@ -429,7 +429,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
 
   const getAdminUsersUseCase = new GetAdminUsersUseCase(userRepo);
   const getAdminUserDetailUseCase = new GetAdminUserDetailUseCase(userRepo, sessionRepo, deviceRepo, usageRepo, activityLogRepo);
-  const updateAdminUserUseCase = new UpdateAdminUserUseCase(userRepo, adminActionRepo, sessionRepo, notifier);
+  const updateAdminUserUseCase = new UpdateAdminUserUseCase(userRepo, adminActionRepo, sessionRepo, creditRepo, notifier);
   const createAdminUserUseCase = new CreateAdminUserUseCase(userRepo, adminActionRepo, authService);
   const deleteAdminUserUseCase = new DeleteAdminUserUseCase(userRepo, adminActionRepo);
   const resetUserPasswordUseCase = new ResetUserPasswordUseCase(userRepo, sessionRepo, adminActionRepo, authService);

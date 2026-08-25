@@ -41,7 +41,8 @@ export class StreamMessageUseCase {
   public async execute(
     userId: string,
     dto: StreamMessageDTO,
-    callbacks: StreamMessageCallbacks
+    callbacks: StreamMessageCallbacks,
+    signal?: AbortSignal
   ): Promise<void> {
     // 1. Atomic credit reservation (Bug 8 fix — no check-then-deduct race)
     const maxTokens = dto.maxTokens || 8192;
@@ -178,7 +179,8 @@ export class StreamMessageUseCase {
           onError: (err) => {
             callbacks.onError?.(err);
           }
-        }
+        },
+        signal
       );
     } finally {
       // Resolve the credit hold exactly once, however the stream ended:

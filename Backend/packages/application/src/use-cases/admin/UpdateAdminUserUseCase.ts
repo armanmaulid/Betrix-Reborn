@@ -4,6 +4,7 @@ import {
   IUserRepository,
   IAdminActionRepository,
   ISessionRepository,
+  ICreditRepository,
   INotifier,
   AdminAction,
   User
@@ -15,6 +16,7 @@ export class UpdateAdminUserUseCase {
     private readonly userRepo: IUserRepository,
     private readonly adminActionRepo: IAdminActionRepository,
     private readonly sessionRepo: ISessionRepository,
+    private readonly creditRepo: ICreditRepository,
     private readonly notifier?: INotifier
   ) {}
 
@@ -60,13 +62,13 @@ export class UpdateAdminUserUseCase {
     if (dto.credits !== undefined) {
       const delta = dto.credits - saved.credits;
       if (delta !== 0) {
-        if (delta > 0) {
-          const newBalance = await this.creditRepo.addCredits(targetUserId, delta, "ADMIN_ADJUSTMENT:" + adminId);
-        } else {
-          const newBalance = await this.creditRepo.deductCredits(targetUserId, -delta, "ADMIN_ADJUSTMENT:" + adminId);
-        }
+        const newBalance =
+          delta > 0
+            ? await this.creditRepo.addCredits(targetUserId, delta, 'ADMIN_ADJUSTMENT:' + adminId)
+            : await this.creditRepo.deductCredits(targetUserId, -delta, 'ADMIN_ADJUSTMENT:' + adminId);
         saved = new User({ ...saved, credits: newBalance });
       }
+    }
 
     const accessRevoked =
       (dto.status !== undefined && dto.status !== 'active') ||

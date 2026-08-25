@@ -18,26 +18,30 @@ export class AiGatewayClient implements IAiGateway {
     this.timeoutMs = timeoutMs;
   }
 
-  async complete(request: AiCompletionRequest): Promise<AiCompletionResponse> {
+  async complete(request: AiCompletionRequest, signal?: AbortSignal): Promise<AiCompletionResponse> {
     let reply = '';
     let thinking = '';
     let inputTokens = 0;
     let outputTokens = 0;
     let latencyMs = 0;
 
-    await this.stream(request, {
-      onThink: (chunk) => {
-        thinking += chunk;
+    await this.stream(
+      request,
+      {
+        onThink: (chunk) => {
+          thinking += chunk;
+        },
+        onDelta: (chunk) => {
+          reply += chunk;
+        },
+        onDone: (meta) => {
+          inputTokens = meta.inputTokens;
+          outputTokens = meta.outputTokens;
+          latencyMs = meta.latencyMs;
+        }
       },
-      onDelta: (chunk) => {
-        reply += chunk;
-      },
-      onDone: (meta) => {
-        inputTokens = meta.inputTokens;
-        outputTokens = meta.outputTokens;
-        latencyMs = meta.latencyMs;
-      }
-    });
+      signal
+    );
 
     return {
       reply: reply.trim() || (thinking.trim() ? 'Analysis complete.' : 'Analysis complete.'),
@@ -48,10 +52,25 @@ export class AiGatewayClient implements IAiGateway {
     };
   }
 
-  async stream(request: AiCompletionRequest, callbacks: AiStreamCallbacks): Promise<void> {
+  async stream(
+    request: AiCompletionRequest,
+    callbacks: AiStreamCallbacks,
+    externalSignal?: AbortSignal
+  ): Promise<void> {
     const startTime = Date.now();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    // Bug #5: abort the upstream fetch when the CLIENT disconnects, not only on
+    // our internal timeout. Without this, a user who closes the tab mid-stream
+    // keeps the (billed) generation running to completion while nobody receives
+    // the output. The controller's signal is what fetch() actually observes, so
+    // relaying the external abort through it is enough.
+    const onExternalAbort = () => controller.abort();
+    if (externalSignal) {
+      if (externalSignal.aborted) controller.abort();
+      externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+    }
 
     const targetBaseUrl = (request.baseUrl || this.baseUrl).replace(/\/+$/, '');
     const targetApiKey = request.apiKey || this.apiKey;
@@ -140,6 +159,7 @@ export class AiGatewayClient implements IAiGateway {
       }
       throw err;
     } finally {
+      if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
       clearTimeout(timeout);
     }
   }

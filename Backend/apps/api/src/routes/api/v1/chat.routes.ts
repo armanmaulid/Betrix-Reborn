@@ -58,23 +58,35 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
         }
       };
 
+      // Bug #5: abort the generation the moment the client disconnects so we
+      // stop paying the upstream AI provider for tokens nobody will receive.
+      const abortController = new AbortController();
+      request.raw.on('close', () => {
+        if (!reply.raw.writableEnded) abortController.abort();
+      });
+
       try {
-        await useCases.streamMessageUseCase.execute(request.user.userId, request.body, {
-          onThink: (chunk: string) => {
-            writeEvent('think', chunk);
+        await useCases.streamMessageUseCase.execute(
+          request.user.userId,
+          request.body,
+          {
+            onThink: (chunk: string) => {
+              writeEvent('think', chunk);
+            },
+            onDelta: (chunk: string) => {
+              writeEvent('delta', chunk);
+            },
+            onDone: (meta) => {
+              writeEvent('done', meta);
+              reply.raw.end();
+            },
+            onError: (err: Error) => {
+              writeEvent('error', { message: err.message });
+              reply.raw.end();
+            }
           },
-          onDelta: (chunk: string) => {
-            writeEvent('delta', chunk);
-          },
-          onDone: (meta) => {
-            writeEvent('done', meta);
-            reply.raw.end();
-          },
-          onError: (err: Error) => {
-            writeEvent('error', { message: err.message });
-            reply.raw.end();
-          }
-        });
+          abortController.signal
+        );
       } catch (err: any) {
         writeEvent('error', { message: err.message || 'Stream processing failed' });
         reply.raw.end();
