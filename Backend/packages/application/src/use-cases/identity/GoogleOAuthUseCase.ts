@@ -79,6 +79,12 @@ export class GoogleOAuthUseCase {
       user = await this.userRepo.findByEmail(email);
 
       if (user) {
+        if (!user.emailVerified) {
+          throw new ConflictError(
+            "An unverified account already exists with this email. " +
+            "Please verify the existing account or contact support before using Google Sign-In."
+          );
+        }
         // Auto-link Google ID and mark email verified
         const updatedUser = new User({
           ...user,

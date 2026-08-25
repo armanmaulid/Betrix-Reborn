@@ -58,11 +58,16 @@ export class UpdateAdminUserUseCase {
 
     // Credits updated separately to avoid lost-update race on balance
     if (dto.credits !== undefined) {
-      await this.userRepo.updateCredits(targetUserId, dto.credits);
-      saved = new User({ ...saved, credits: dto.credits });
-    }
+      const delta = dto.credits - saved.credits;
+      if (delta !== 0) {
+        if (delta > 0) {
+          const newBalance = await this.creditRepo.addCredits(targetUserId, delta, "ADMIN_ADJUSTMENT:" + adminId);
+        } else {
+          const newBalance = await this.creditRepo.deductCredits(targetUserId, -delta, "ADMIN_ADJUSTMENT:" + adminId);
+        }
+        saved = new User({ ...saved, credits: newBalance });
+      }
 
-    // Ban/suspend/demotion take effect immediately — kill existing sessions
     const accessRevoked =
       (dto.status !== undefined && dto.status !== 'active') ||
       (dto.isAdmin !== undefined && !dto.isAdmin && user.isAdmin);
