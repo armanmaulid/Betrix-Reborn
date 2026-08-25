@@ -13,6 +13,7 @@
     "test": "turbo test",
     "lint": "eslint .",
     "typecheck": "turbo lint",
+    "typecheck:native": "node node_modules/@typescript/native/bin/tsc --version && for p in packages/core packages/domain packages/config packages/infra packages/application apps/api apps/worker; do node node_modules/@typescript/native/bin/tsc --noEmit -p $p/tsconfig.json || exit 1; done",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "turbo db:generate",
@@ -27,6 +28,7 @@
     "prettier": "^3.9.6",
     "turbo": "^2.10.11",
     "typescript": "npm:@typescript/typescript6@^6.0.0",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.11"
   },

@@ -12,6 +12,7 @@
     "clean": "node -e \"const fs = require('fs'); fs.rmSync('.next', { recursive: true, force: true }); fs.rmSync('test-results', { recursive: true, force: true });\"",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "typecheck:native": "node node_modules/@typescript/native/bin/tsc --version && node node_modules/@typescript/native/bin/tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run --passWithNoTests",
