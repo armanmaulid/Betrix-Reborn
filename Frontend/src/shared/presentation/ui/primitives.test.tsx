@@ -74,8 +74,10 @@ describe('Shared UI Primitives', () => {
           </tr>
         </TableShell>
       );
-      for (const label of ['TIME', 'EVENT', 'ACTUAL']) {
-        expect(screen.getByText(label)).toBeInTheDocument();
+      // Column labels are uppercased via CSS only — the DOM text keeps its
+      // original casing, so assert case-insensitively here.
+      for (const column of columns) {
+        expect(screen.getByText(new RegExp(`^${column.label}$`, 'i'))).toBeInTheDocument();
       }
       expect(screen.getByText('NFP')).toBeInTheDocument();
     });
