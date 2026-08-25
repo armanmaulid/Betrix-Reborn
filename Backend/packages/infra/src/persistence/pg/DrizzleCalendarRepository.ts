@@ -152,6 +152,24 @@ export class DrizzleCalendarRepository implements ICalendarRepository {
     return rows.map((r) => this.mapToDomain(r));
   }
 
+  async listAnnouncementUnixInRange(
+    currency: string,
+    startUnix: number,
+    endUnix: number
+  ): Promise<number[]> {
+    const rows = await this.db
+      .select({ announcementUnix: calendarEvents.announcementUnix })
+      .from(calendarEvents)
+      .where(
+        and(
+          eq(calendarEvents.currency, currency.toUpperCase()),
+          gte(calendarEvents.announcementUnix, startUnix),
+          lte(calendarEvents.announcementUnix, endUnix)
+        )
+      );
+    return rows.map((r) => r.announcementUnix);
+  }
+
   async findByAnnouncementId(announcementId: string): Promise<CalendarEvent | null> {
     const rows = await this.db
       .select()

@@ -17,5 +17,14 @@ export interface ICalendarRepository {
     startUnix: number,
     endUnix: number
   ): Promise<CalendarEvent[]>;
+  /**
+   * Lightweight day-coverage probe for seeders: just the announcementUnix
+   * column for the range, no entity hydration.
+   */
+  listAnnouncementUnixInRange(
+    currency: string,
+    startUnix: number,
+    endUnix: number
+  ): Promise<number[]>;
   findByAnnouncementId(announcementId: string): Promise<CalendarEvent | null>;
 }

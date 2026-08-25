@@ -5,6 +5,7 @@ import { NewsWorker } from './news-worker.js';
 import { SyncWorker } from './sync-worker.js';
 import { CleanupWorker } from './cleanup-worker.js';
 import { CalendarWorker } from './calendar-worker.js';
+import { CalendarSeederWorker } from './calendar-seeder-worker.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -24,6 +25,7 @@ async function startMasterWorker() {
   const syncWorker = new SyncWorker();
   const cleanupWorker = new CleanupWorker();
   const calendarWorker = new CalendarWorker();
+  const calendarSeederWorker = new CalendarSeederWorker();
 
   const shutdown = async () => {
     logger.info('Received termination signal. Gracefully stopping all workers...');
@@ -32,7 +34,8 @@ async function startMasterWorker() {
       newsWorker.stop(),
       syncWorker.stop(),
       cleanupWorker.stop(),
-      calendarWorker.stop()
+      calendarWorker.stop(),
+      calendarSeederWorker.stop()
     ]);
     logger.info('All workers stopped. Exiting cleanly.');
     process.exit(0);
@@ -53,7 +56,7 @@ async function startMasterWorker() {
   });
 
   try {
-    // Start all 5 workers concurrently. Each worker's own start() checks
+    // Start all 6 workers concurrently. Each worker's own start() checks
     // worker_states (the SSOT — see IWorkerStateRepository) before running:
     // a worker an admin previously paused/stopped does not silently
     // auto-start again just because this process restarted.
@@ -62,10 +65,11 @@ async function startMasterWorker() {
       newsWorker.start(),
       syncWorker.start(),
       cleanupWorker.start(),
-      calendarWorker.start()
+      calendarWorker.start(),
+      calendarSeederWorker.start()
     ]);
 
-    logger.info(' All 5 Worker subsystems are running actively in the background.');
+    logger.info(' All 6 Worker subsystems are running actively in the background.');
   } catch (err: any) {
     logger.error({ err: err.message }, 'Fatal error during worker startup');
     process.exit(1);

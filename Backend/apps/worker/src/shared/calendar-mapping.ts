@@ -30,6 +30,40 @@ export function pickForecast(group: FxMacroDataPredictionGroup | undefined): {
   return { value: null, type: null };
 }
 
+/**
+ * Schedule-only seeding helpers (CalendarSeederWorker). One /v1/calendar call
+ * returns the release schedule WITHOUT Before/Forecast/Actual — passing
+ * undefined announcement/prediction through toCalendarEvent yields exactly
+ * those rows, and the periodic value-refresh pass fills values later.
+ */
+
+export function toScheduleOnlyEvents(
+  rawEvents: FxMacroDataCalendarEvent[],
+  currency: string
+): CalendarEvent[] {
+  return rawEvents.map((raw) => toCalendarEvent(raw, currency.toUpperCase(), undefined, undefined));
+}
+
+function utcDayKey(unixSeconds: number): string {
+  return new Date(unixSeconds * 1000).toISOString().slice(0, 10);
+}
+
+/**
+ * Day-level idempotence for the seeder: drop upstream events whose UTC day
+ * already has ANY stored row. raw.date is upstream's "YYYY-MM-DD" (UTC day),
+ * which is exactly the bucket key used on the database side.
+ */
+export function filterEventsMissingDays(
+  rawEvents: FxMacroDataCalendarEvent[],
+  existingUnixSeconds: number[]
+): FxMacroDataCalendarEvent[] {
+  const coveredDays = new Set(existingUnixSeconds.map(utcDayKey));
+  return rawEvents.filter((raw) => {
+    if (!raw.date) return false; // unplaceable without a date — skip defensively
+    return !coveredDays.has(raw.date);
+  });
+}
+
 export function toCalendarEvent(
   raw: FxMacroDataCalendarEvent,
   currency: string,

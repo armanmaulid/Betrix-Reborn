@@ -1,0 +1,267 @@
+import cron, { ScheduledTask } from 'node-cron';
+import pino from 'pino';
+import { env } from '@betrix/config';
+import { BrokerTimeCalculator } from '@betrix/domain';
+import {
+  createPgPool,
+  createDrizzleClient,
+  createRedisClient,
+  DrizzleCalendarRepository,
+  DrizzleWorkerStateRepository,
+  RedisWorkerCommandBus,
+  FxMacroDataClient,
+  type FxMacroDataCalendarEvent
+} from '@betrix/infra';
+import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
+import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
+import { filterEventsMissingDays, toScheduleOnlyEvents } from './shared/calendar-mapping.js';
+
+const logger = pino({
+  level: env.LOG_LEVEL || 'info',
+  transport: {
+    target: 'pino-pretty',
+    options: { colorize: true }
+  }
+});
+
+/**
+ * How far back/forward the startup seed looks, relative to the current UTC
+ * year: [currentYear - 1, currentYear, currentYear + 1].
+ */
+function seedYearSpan(): number[] {
+  const current = new Date().getUTCFullYear();
+  return [current - 1, current, current + 1];
+}
+
+function utcYearRange(year: number): { startUnix: number; endUnix: number } {
+  return {
+    startUnix: Math.floor(Date.UTC(year, 0, 1) / 1000),
+    endUnix: Math.floor(Date.UTC(year + 1, 0, 1) / 1000) - 1
+  };
+}
+
+/**
+ * CalendarSeederWorker — guarantees the economic calendar SCHEDULE exists.
+ *
+ * Split of duties (deliberate, no overlap):
+ *  - THIS worker owns COVERAGE: schedule rows (names/times), seeded cheaply.
+ *    • On start: last year + this year + next year, skipping any UTC day that
+ *      already has rows (day-level idempotence → restarts are near no-ops).
+ *    • Daily broker-rollover cron: if the CURRENT month has no rows, seed it.
+ *  - CalendarWorker ("fxmacrodata-calendar-sync") owns VALUES: SSE stream,
+ *    join-based monthly enrichment, and the periodic Before/Actual/Forecast
+ *    refresh pass. It is untouched by this worker.
+ *
+ * Cost: schedule-only means ONE GET /v1/calendar call per run — a restart
+ * storm cannot dent the 100 req/day free tier, unlike a full indicator join.
+ */
+export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedWorker {
+  private dailyCronJob: ScheduledTask | null = null;
+  private isPaused = false;
+  private processedCount = 0;
+  private errorCount = 0;
+  private lastError: string | null = null;
+  private pool: ReturnType<typeof createPgPool>;
+  private calendarRepo: DrizzleCalendarRepository;
+  private fxMacroData = new FxMacroDataClient();
+
+  constructor(private readonly brokerUtcOffset: number = env.BROKER_UTC_OFFSET) {
+    const redis = createRedisClient();
+    const pool = createPgPool(env.DATABASE_URL, 5);
+    const db = createDrizzleClient(pool);
+    super(
+      'calendar-scheduler-seed',
+      new RedisWorkerCommandBus(redis),
+      new DrizzleWorkerStateRepository(db),
+      logger
+    );
+
+    this.pool = pool;
+    this.calendarRepo = new DrizzleCalendarRepository(db);
+  }
+
+  public async start(): Promise<void> {
+    if (await this.wasDeliberatelyHalted()) {
+      logger.info(
+        'Calendar Seeder Worker was previously paused/stopped by an admin — not auto-starting.'
+      );
+      return;
+    }
+    await this.doStart();
+  }
+
+  protected async doStart(): Promise<void> {
+    const cronExpr = BrokerTimeCalculator.getBrokerRolloverCronExpression(this.brokerUtcOffset);
+    logger.info(
+      `Starting Calendar Seeder Worker (Broker Offset: UTC+${this.brokerUtcOffset}, cron: '${cronExpr}')...`
+    );
+    this.isPaused = false;
+
+    // Task 1 — startup coverage for last/current/next year. Idempotent at
+    // DAY level, so repeated deployments only insert genuinely missing days.
+    await this.seedStartupYears();
+
+    // Task 2 — daily guard: "does THIS month have data? skip : seed".
+    this.dailyCronJob = cron.schedule(cronExpr, async () => {
+      if (this.isPaused) return;
+      await this.seedCurrentMonthIfMissing();
+    });
+
+    this.attachCommandListener();
+  }
+
+  /**
+   * Seeds the schedule for [Y-1, Y, Y+1] in ONE upstream call:
+   * fetch the full calendar once, then keep only events whose UTC day has no
+   * stored row yet inside the three-year window.
+   */
+  public async seedStartupYears(): Promise<void> {
+    const currency = env.FXMACRODATA_CALENDAR_CURRENCY.toUpperCase();
+    const years = seedYearSpan();
+    const firstYear = years[0];
+    const lastYear = years[years.length - 1];
+    if (firstYear === undefined || lastYear === undefined) return;
+
+    try {
+      const [schedule, existingUnix] = await Promise.all([
+        this.fetchSchedule(),
+        this.calendarRepo.listAnnouncementUnixInRange(
+          currency,
+          utcYearRange(firstYear).startUnix,
+          utcYearRange(lastYear).endUnix
+        )
+      ]);
+
+      const missing = filterEventsMissingDays(schedule, existingUnix);
+      const saved = await this.calendarRepo.saveMany(toScheduleOnlyEvents(missing, currency));
+      this.processedCount += saved;
+
+      const perYear = new Map<number, number>();
+      for (const e of missing) {
+        const y = Number(e.date?.slice(0, 4));
+        if (!Number.isNaN(y)) perYear.set(y, (perYear.get(y) ?? 0) + 1);
+      }
+      logger.info(
+        `[CALENDAR SEED] Startup check ${years.join('/')}: ` +
+          `schedule=${schedule.length}, daysMissing=${missing.length}, inserted=${saved} ` +
+          `(${[...perYear.entries()].map(([y, n]) => `${y}:${n}`).join(', ') || 'no gaps'}).`
+      );
+    } catch (err: any) {
+      // Never throw — an FXMacroData outage must not crash the worker process.
+      this.errorCount += 1;
+      this.lastError = err.message;
+      logger.error({ err: err.message }, '[CALENDAR SEED] Startup seeding failed.');
+    }
+  }
+
+  /**
+   * Task 2 — exactly the requested daily behaviour: does the CURRENT month
+   * have rows? yes → skip (zero HTTP calls); no → seed its schedule.
+   */
+  public async seedCurrentMonthIfMissing(): Promise<void> {
+    const currency = env.FXMACRODATA_CALENDAR_CURRENCY.toUpperCase();
+    const currentYearMonth = new Date().toISOString().slice(0, 7);
+
+    try {
+      const existingCount = await this.calendarRepo.countByCurrencyAndMonth(
+        currency,
+        currentYearMonth
+      );
+      if (existingCount > 0) {
+        logger.info(
+          `[CALENDAR SEED] ${currency} ${currentYearMonth} already has ${existingCount} events, skip.`
+        );
+        return;
+      }
+
+      const schedule = await this.fetchSchedule();
+      const monthEvents = schedule.filter((e) => e.date?.startsWith(currentYearMonth));
+      const saved = await this.calendarRepo.saveMany(toScheduleOnlyEvents(monthEvents, currency));
+      this.processedCount += saved;
+      logger.info(
+        `[CALENDAR SEED] Seeded ${saved}/${monthEvents.length} scheduled events for ${currency} ${currentYearMonth}.`
+      );
+    } catch (err: any) {
+      this.errorCount += 1;
+      this.lastError = err.message;
+      logger.error(
+        { err: err.message },
+        `[CALENDAR SEED] Monthly seed failed for ${currency} ${currentYearMonth}.`
+      );
+    }
+  }
+
+  /** Single upstream call powering both tasks — the whole quota story. */
+  private async fetchSchedule(): Promise<FxMacroDataCalendarEvent[]> {
+    return this.fxMacroData.fetchCalendar(env.FXMACRODATA_CALENDAR_CURRENCY);
+  }
+
+  /**
+   * Same pause semantics as the other workers: the daily cron simply checks
+   * the flag, so pause/resume costs nothing and loses nothing.
+   */
+  protected async doPause(): Promise<void> {
+    this.isPaused = true;
+    logger.info('Calendar Seeder Worker paused — crons idle until resumed.');
+  }
+
+  protected async doStop(): Promise<void> {
+    this.isPaused = false;
+    if (this.dailyCronJob) {
+      this.dailyCronJob.stop();
+      this.dailyCronJob = null;
+    }
+    this.detachCommandListener();
+    logger.info('Calendar Seeder Worker stopped.');
+  }
+
+  protected async doRestart(): Promise<void> {
+    await this.doStop();
+    await this.doStart();
+  }
+
+  public getHealth(): WorkerHealthSnapshot {
+    return {
+      status: this.isPaused ? 'paused' : 'running',
+      processedCount: this.processedCount,
+      errorCount: this.errorCount,
+      lastError: this.lastError
+    };
+  }
+
+  public async stop(): Promise<void> {
+    await this.doStop();
+    await this.pool.end();
+    logger.info('Calendar Seeder Worker stopped cleanly.');
+  }
+
+  public async restart(): Promise<void> {
+    await this.doRestart();
+  }
+
+  public async pause(): Promise<void> {
+    await this.doPause();
+  }
+}
+
+// Direct CLI entrypoint execution
+const isDirectExecution =
+  process.argv[1]?.endsWith('calendar-seeder-worker.ts') ||
+  process.argv[1]?.endsWith('calendar-seeder-worker.js');
+if (isDirectExecution) {
+  const worker = new CalendarSeederWorker();
+
+  const shutdown = async () => {
+    logger.info('Received shutdown signal. Stopping Calendar Seeder Worker...');
+    await worker.stop();
+    process.exit(0);
+  };
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+
+  worker.start().catch((err) => {
+    logger.error(err, 'Failed to start Calendar Seeder Worker');
+    process.exit(1);
+  });
+}
