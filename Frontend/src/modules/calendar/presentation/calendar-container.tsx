@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { CalendarDays, RefreshCw, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { CalendarDays, RefreshCw } from 'lucide-react';
 import { useCalendarQuery } from '@calendar/application/queries/use-calendar';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
 import { formatFinancialNumber } from '@/shared/utils';
@@ -135,33 +135,61 @@ function formatValue(value: number | null): string {
   return formatFinancialNumber(value);
 }
 
-function SurpriseIndicator({ event }: { event: CalendarEvent }) {
+/**
+ * Currency → Country presentation map. Data-driven on purpose: adding a
+ * currency here instantly enables it in the filter select and the Country
+ * column everywhere, with no other code change. Unknown codes fall back to a
+ * globe glyph so a future backend currency never renders broken.
+ */
+const CURRENCY_META: Record<string, { flag: string; country: string }> = {
+  USD: { flag: '🇺🇸', country: 'USA' },
+  EUR: { flag: '🇪🇺', country: 'EURO AREA' },
+  GBP: { flag: '🇬🇧', country: 'UK' },
+  JPY: { flag: '🇯🇵', country: 'JAPAN' },
+  CHF: { flag: '🇨🇭', country: 'SWITZERLAND' },
+  AUD: { flag: '🇦🇺', country: 'AUSTRALIA' },
+  NZD: { flag: '🇳🇿', country: 'NEW ZEALAND' },
+  CAD: { flag: '🇨🇦', country: 'CANADA' },
+  CNY: { flag: '🇨🇳', country: 'CHINA' }
+};
+
+function countryLabel(currency: string): string {
+  const meta = CURRENCY_META[currency.toUpperCase()];
+  return meta ? `${meta.flag} ${meta.country}` : `🌐 ${currency.toUpperCase()}`;
+}
+
+/** Actual-vs-forecast surprise is folded into the ACTUAL cell colour. */
+function actualCellTone(event: CalendarEvent): string {
   const surprise = event.surprise();
-  if (surprise === null) return <Minus className="w-3 h-3 text-muted-foreground" />;
-  if (surprise > 0) return <TrendingUp className="w-3 h-3 text-positive" />;
-  if (surprise < 0) return <TrendingDown className="w-3 h-3 text-negative" />;
-  return <Minus className="w-3 h-3 text-muted-foreground" />;
+  if (surprise === null || surprise === 0) return 'text-foreground';
+  return surprise > 0 ? 'text-positive' : 'text-negative';
+}
+
+function surpriseTitle(event: CalendarEvent): string | undefined {
+  const surprise = event.surprise();
+  if (surprise === null) return undefined;
+  return `Surprise vs forecast: ${surprise > 0 ? '+' : ''}${formatFinancialNumber(surprise)}`;
 }
 
 function EventTableRows({ events }: { events: CalendarEvent[] }) {
   return (
     <>
       {events.map((event) => (
-        <tr
-          key={event.id}
-          className="border-b border-border/40 hover:bg-surface-hover transition-colors"
-        >
-          <td className="px-3 py-2 whitespace-nowrap tabular-nums text-muted-foreground">
+        <tr key={event.id} className="transition-colors hover:bg-surface-hover/80">
+          <td className="p-3 whitespace-nowrap tabular-nums text-muted-foreground">
             {formatEventTime(event.announcementUnix)}
           </td>
-          <td className="px-3 py-2">
+          <td className="p-3">
             <span
               className={`inline-block px-1.5 py-0.5 border text-[9px] font-bold uppercase ${IMPORTANCE_STYLES[event.importance]}`}
             >
               {event.importance}
             </span>
           </td>
-          <td className="px-3 py-2">
+          <td className="p-3 whitespace-nowrap" title={event.currency}>
+            {countryLabel(event.currency)}
+          </td>
+          <td className="p-3">
             <div className="font-bold text-foreground">{event.eventName}</div>
             {event.forecastType && (
               <div className="text-[9px] text-muted-foreground uppercase mt-0.5">
@@ -174,19 +202,17 @@ function EventTableRows({ events }: { events: CalendarEvent[] }) {
               </div>
             )}
           </td>
-          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-            {formatValue(event.beforeValue)}
-          </td>
-          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-            {formatValue(event.forecastValue)}
-          </td>
-          <td className="px-3 py-2 text-right tabular-nums font-bold text-foreground">
+          <td
+            className={`p-3 text-right font-bold tabular-nums ${actualCellTone(event)}`}
+            title={surpriseTitle(event)}
+          >
             {formatValue(event.actualValue)}
           </td>
-          <td className="px-3 py-2">
-            <div className="flex items-center justify-center">
-              <SurpriseIndicator event={event} />
-            </div>
+          <td className="p-3 text-right tabular-nums text-muted-foreground">
+            {formatValue(event.beforeValue)}
+          </td>
+          <td className="p-3 text-right tabular-nums text-muted-foreground">
+            {formatValue(event.forecastValue)}
           </td>
         </tr>
       ))}
@@ -332,7 +358,11 @@ export function CalendarContainer() {
             aria-label="Currency"
             className="bg-surface border border-border px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent uppercase font-bold tracking-wider"
           >
-            <option value="USD">USD</option>
+            {Object.keys(CURRENCY_META).map((code) => (
+              <option key={code} value={code}>
+                {countryLabel(code)}
+              </option>
+            ))}
           </select>
 
           <div className="ml-auto text-xs text-muted-foreground">
@@ -361,33 +391,42 @@ export function CalendarContainer() {
         ref={listRef}
         className="border border-border bg-surface overflow-x-auto max-h-[72vh] overflow-y-auto relative"
       >
-        {isLoading ? (
-          <div className="p-12 text-center text-xs text-muted-foreground animate-pulse">
-            LOADING ECONOMIC CALENDAR...
-          </div>
-        ) : isError ? (
-          <div className="p-8 text-center text-xs text-negative">
-            ERROR QUERYING ECONOMIC CALENDAR.
-          </div>
-        ) : groups.length === 0 ? (
-          <div className="p-12 text-center text-xs text-muted-foreground border-dashed">
-            NO CALENDAR EVENTS FOUND FOR THE SELECTED RANGE.
-          </div>
-        ) : (
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 z-10">
-              <tr className="border-b border-border text-[10px] uppercase text-muted-foreground bg-surface">
-                <th className="text-left px-3 py-2 font-bold">Time</th>
-                <th className="text-left px-3 py-2 font-bold">Impact</th>
-                <th className="text-left px-3 py-2 font-bold">Event</th>
-                <th className="text-right px-3 py-2 font-bold">Before</th>
-                <th className="text-right px-3 py-2 font-bold">Forecast</th>
-                <th className="text-right px-3 py-2 font-bold">Actual</th>
-                <th className="text-center px-3 py-2 font-bold">Surprise</th>
+        <table className="w-full text-left text-xs border-collapse">
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b border-border bg-black/80 text-[10px] uppercase tracking-wider text-muted-foreground">
+              <th className="p-3">TIME</th>
+              <th className="p-3">IMPORTANCE</th>
+              <th className="p-3">COUNTRY</th>
+              <th className="p-3">EVENT</th>
+              <th className="p-3 text-right">ACTUAL</th>
+              <th className="p-3 text-right">PREVIOUS</th>
+              <th className="p-3 text-right">FORECAST</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/60">
+            {isLoading ? (
+              <tr>
+                <td
+                  colSpan={DAY_HEADER_COLUMNS}
+                  className="p-8 text-center text-muted-foreground animate-pulse"
+                >
+                  LOADING ECONOMIC CALENDAR...
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {groups.map((group) => {
+            ) : isError ? (
+              <tr>
+                <td colSpan={DAY_HEADER_COLUMNS} className="p-8 text-center text-negative">
+                  ERROR QUERYING ECONOMIC CALENDAR.
+                </td>
+              </tr>
+            ) : groups.length === 0 ? (
+              <tr>
+                <td colSpan={DAY_HEADER_COLUMNS} className="p-8 text-center text-muted-foreground">
+                  NO CALENDAR EVENTS FOUND FOR THE SELECTED RANGE.
+                </td>
+              </tr>
+            ) : (
+              groups.map((group) => {
                 const isToday = group.relativeLabel === 'TODAY';
                 return (
                   <React.Fragment key={group.key}>
@@ -396,7 +435,7 @@ export function CalendarContainer() {
                         if (el) groupRefs.current.set(group.key, el);
                         else groupRefs.current.delete(group.key);
                       }}
-                      className={`border-y border-border ${isToday ? 'bg-accent/15' : 'bg-black/50'}`}
+                      className={isToday ? 'bg-accent/15' : 'bg-black/50'}
                     >
                       <td colSpan={DAY_HEADER_COLUMNS} className="px-3 py-1.5">
                         <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider">
@@ -427,10 +466,10 @@ export function CalendarContainer() {
                     <EventTableRows events={group.events} />
                   </React.Fragment>
                 );
-              })}
-            </tbody>
-          </table>
-        )}
+              })
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
