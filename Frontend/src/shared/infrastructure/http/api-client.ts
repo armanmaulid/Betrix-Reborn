@@ -68,7 +68,7 @@ export async function apiFetch<T = any>(path: string, init?: HttpRequestOptions)
     let message = `Request failed (${res.status})`;
     const record = data as Record<string, unknown> | string;
     if (typeof record === 'object' && record !== null) {
-      const err = (record as { error?: { message?: unknown }; message?: unknown });
+      const err = record as { error?: { message?: unknown }; message?: unknown };
       message =
         (typeof err?.error?.message === 'string' && err.error.message) ||
         (typeof err?.message === 'string' && err.message) ||

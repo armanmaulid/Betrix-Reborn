@@ -13,9 +13,7 @@ const { Pool } = pg;
  * Set `PGSSL_REJECT_UNAUTHORIZED=false` ONLY for local/docker topologies
  * where the hostname allowlist below does not apply — never in production.
  */
-function resolveSsl(
-  connectionString: string
-): false | pg.ConnectionConfig['ssl'] {
+function resolveSsl(connectionString: string): false | pg.ConnectionConfig['ssl'] {
   const url = new URL(connectionString);
   const hostname = url.hostname.toLowerCase();
 

@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  BroadcastMessageSchema,
-  SystemCleanupSchema
-} from './admin.schema';
+import { BroadcastMessageSchema, SystemCleanupSchema } from './admin.schema';
 import { UpdateAdminUserSchema } from '@identity/application/schemas/admin-user.schema';
 import { CreateVoucherSchema } from '@billing/application/schemas/voucher.schema';
 import {

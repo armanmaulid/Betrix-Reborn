@@ -18,7 +18,10 @@ export class AiGatewayClient implements IAiGateway {
     this.timeoutMs = timeoutMs;
   }
 
-  async complete(request: AiCompletionRequest, signal?: AbortSignal): Promise<AiCompletionResponse> {
+  async complete(
+    request: AiCompletionRequest,
+    signal?: AbortSignal
+  ): Promise<AiCompletionResponse> {
     let reply = '';
     let thinking = '';
     let inputTokens = 0;

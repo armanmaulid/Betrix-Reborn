@@ -3,9 +3,7 @@ import { ADMIN_COOKIE } from './helpers/mock-auth';
 
 test.describe('E2E Live Operations Dashboard', () => {
   test.beforeEach(async ({ context, page }) => {
-    await context.addCookies([
-      ADMIN_COOKIE
-    ]);
+    await context.addCookies([ADMIN_COOKIE]);
 
     await page.route('**/api/admin/metrics', async (route) => {
       await route.fulfill({

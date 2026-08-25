@@ -1198,8 +1198,12 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       };
 
       const localMockCreditRepo = {
-        addCredits: vi.fn().mockImplementation((_userId: string, amount: number) => Promise.resolve(amount)),
-        deductCredits: vi.fn().mockImplementation((_userId: string, amount: number) => Promise.resolve(-amount))
+        addCredits: vi
+          .fn()
+          .mockImplementation((_userId: string, amount: number) => Promise.resolve(amount)),
+        deductCredits: vi
+          .fn()
+          .mockImplementation((_userId: string, amount: number) => Promise.resolve(-amount))
       };
 
       // 1. Create Pro User

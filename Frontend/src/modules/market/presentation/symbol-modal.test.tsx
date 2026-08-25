@@ -61,9 +61,7 @@ describe('SymbolModal Component', () => {
 
   it('should reject invalid finnhub ticker format in stream mode', async () => {
     const onSave = vi.fn();
-    render(
-      <SymbolModal isOpen={true} onClose={vi.fn()} onSave={onSave} mode="stream" />
-    );
+    render(<SymbolModal isOpen={true} onClose={vi.fn()} onSave={onSave} mode="stream" />);
 
     fireEvent.change(screen.getByPlaceholderText('EURUSD'), { target: { value: 'BTCUSD' } });
     const providerInput = screen.getByPlaceholderText('OANDA:EUR_USD');
@@ -72,9 +70,7 @@ describe('SymbolModal Component', () => {
     fireEvent.click(screen.getByRole('button', { name: /SAVE STREAM SYMBOL/i }));
 
     await waitFor(() =>
-      expect(
-        screen.getByText(/Format must be EXCHANGE:SYMBOL/i)
-      ).toBeInTheDocument()
+      expect(screen.getByText(/Format must be EXCHANGE:SYMBOL/i)).toBeInTheDocument()
     );
     expect(onSave).not.toHaveBeenCalled();
   });

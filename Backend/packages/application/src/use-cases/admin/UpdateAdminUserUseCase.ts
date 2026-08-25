@@ -65,7 +65,11 @@ export class UpdateAdminUserUseCase {
         const newBalance =
           delta > 0
             ? await this.creditRepo.addCredits(targetUserId, delta, 'ADMIN_ADJUSTMENT:' + adminId)
-            : await this.creditRepo.deductCredits(targetUserId, -delta, 'ADMIN_ADJUSTMENT:' + adminId);
+            : await this.creditRepo.deductCredits(
+                targetUserId,
+                -delta,
+                'ADMIN_ADJUSTMENT:' + adminId
+              );
         saved = new User({ ...saved, credits: newBalance });
       }
     }

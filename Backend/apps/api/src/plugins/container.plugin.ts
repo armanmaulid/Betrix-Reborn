@@ -346,7 +346,11 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
       await workerCommandBus.publishCommand(workerId, { action, adminId, timestamp: Date.now() });
     }
   };
-  const workerManagerService = new WorkerManagerService(undefined, workerStateRepo, workerCommandPublisher);
+  const workerManagerService = new WorkerManagerService(
+    undefined,
+    workerStateRepo,
+    workerCommandPublisher
+  );
 
   // Wire active Redis market price fetcher into SseHub
   if (fastify.sseHub && env.NODE_ENV !== 'test' && !process.env.VITEST) {
@@ -378,13 +382,53 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
     }
   };
 
-  const registerUseCase = new RegisterUseCase(userRepo, deviceRepo, verificationRepo, authService, emailService, 100, isDevMode, env.DEVICE_ENFORCEMENT, activityLogRepo);
-  const loginUseCase = new LoginUseCase(userRepo, deviceRepo, loginAttemptRepo, authService, captchaService, env.DEVICE_ENFORCEMENT, activityLogRepo);
-  const googleOAuthUseCase = new GoogleOAuthUseCase(userRepo, deviceRepo, authService, mockGoogleVerifier, 100, env.DEVICE_ENFORCEMENT);
+  const registerUseCase = new RegisterUseCase(
+    userRepo,
+    deviceRepo,
+    verificationRepo,
+    authService,
+    emailService,
+    100,
+    isDevMode,
+    env.DEVICE_ENFORCEMENT,
+    activityLogRepo
+  );
+  const loginUseCase = new LoginUseCase(
+    userRepo,
+    deviceRepo,
+    loginAttemptRepo,
+    authService,
+    captchaService,
+    env.DEVICE_ENFORCEMENT,
+    activityLogRepo
+  );
+  const googleOAuthUseCase = new GoogleOAuthUseCase(
+    userRepo,
+    deviceRepo,
+    authService,
+    mockGoogleVerifier,
+    100,
+    env.DEVICE_ENFORCEMENT
+  );
   const verifyEmailUseCase = new VerifyEmailUseCase(userRepo, verificationRepo);
-  const resendVerificationUseCase = new ResendVerificationUseCase(userRepo, verificationRepo, emailService, isDevMode);
-  const forgotPasswordUseCase = new ForgotPasswordUseCase(userRepo, verificationRepo, emailService, isDevMode);
-  const resetPasswordUseCase = new ResetPasswordUseCase(userRepo, verificationRepo, sessionRepo, authService);
+  const resendVerificationUseCase = new ResendVerificationUseCase(
+    userRepo,
+    verificationRepo,
+    emailService,
+    isDevMode
+  );
+  const forgotPasswordUseCase = new ForgotPasswordUseCase(
+    userRepo,
+    verificationRepo,
+    emailService,
+    isDevMode
+  );
+  const resetPasswordUseCase = new ResetPasswordUseCase(
+    userRepo,
+    verificationRepo,
+    sessionRepo,
+    authService
+  );
   const changePasswordUseCase = new ChangePasswordUseCase(userRepo, sessionRepo, authService);
   const changeEmailUseCase = new ChangeEmailUseCase(userRepo, authService);
   const getStreamTicketUseCase = new GetStreamTicketUseCase(ticketStore);
@@ -394,8 +438,23 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const updateProfileUseCase = new UpdateProfileUseCase(userRepo);
   const redeemVoucherUseCase = new RedeemVoucherUseCase(voucherRepo, creditRepo);
 
-  const sendMessageUseCase = new SendMessageUseCase(chatRepo, creditRepo, aiGateway, contextInjectionService, agentRepo, appConfig.defaultModel);
-  const streamMessageUseCase = new StreamMessageUseCase(chatRepo, creditRepo, aiGateway, contextInjectionService, eventDispatcher, agentRepo, appConfig.defaultModel);
+  const sendMessageUseCase = new SendMessageUseCase(
+    chatRepo,
+    creditRepo,
+    aiGateway,
+    contextInjectionService,
+    agentRepo,
+    appConfig.defaultModel
+  );
+  const streamMessageUseCase = new StreamMessageUseCase(
+    chatRepo,
+    creditRepo,
+    aiGateway,
+    contextInjectionService,
+    eventDispatcher,
+    agentRepo,
+    appConfig.defaultModel
+  );
   const getChatHistoryUseCase = new GetChatHistoryUseCase(chatRepo);
   const deleteChatSessionUseCase = new DeleteChatSessionUseCase(chatRepo);
   const exportChatUseCase = new ExportChatUseCase(chatRepo);
@@ -428,11 +487,28 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const updateNotificationPrefsUseCase = new UpdateNotificationPrefsUseCase(messageRepo);
 
   const getAdminUsersUseCase = new GetAdminUsersUseCase(userRepo);
-  const getAdminUserDetailUseCase = new GetAdminUserDetailUseCase(userRepo, sessionRepo, deviceRepo, usageRepo, activityLogRepo);
-  const updateAdminUserUseCase = new UpdateAdminUserUseCase(userRepo, adminActionRepo, sessionRepo, creditRepo, notifier);
+  const getAdminUserDetailUseCase = new GetAdminUserDetailUseCase(
+    userRepo,
+    sessionRepo,
+    deviceRepo,
+    usageRepo,
+    activityLogRepo
+  );
+  const updateAdminUserUseCase = new UpdateAdminUserUseCase(
+    userRepo,
+    adminActionRepo,
+    sessionRepo,
+    creditRepo,
+    notifier
+  );
   const createAdminUserUseCase = new CreateAdminUserUseCase(userRepo, adminActionRepo, authService);
   const deleteAdminUserUseCase = new DeleteAdminUserUseCase(userRepo, adminActionRepo);
-  const resetUserPasswordUseCase = new ResetUserPasswordUseCase(userRepo, sessionRepo, adminActionRepo, authService);
+  const resetUserPasswordUseCase = new ResetUserPasswordUseCase(
+    userRepo,
+    sessionRepo,
+    adminActionRepo,
+    authService
+  );
   const createVoucherUseCase = new CreateVoucherUseCase(voucherRepo, adminActionRepo);
   const listVouchersUseCase = new ListVouchersUseCase(voucherRepo);
   const revokeVoucherUseCase = new RevokeVoucherUseCase(voucherRepo, adminActionRepo);
@@ -441,27 +517,50 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const getAnalyticsUseCase = new GetAnalyticsUseCase(analyticsRepo);
   const getAuditLogsUseCase = new GetAuditLogsUseCase(adminActionRepo, userRepo);
   const exportAuditLogsUseCase = new ExportAuditLogsUseCase(adminActionRepo);
-  const broadcastMessageUseCase = new BroadcastMessageUseCase(userRepo, messageRepo, adminActionRepo, notifier);
-  const systemCleanupUseCase = new SystemCleanupUseCase(sessionRepo, verificationRepo, loginAttemptRepo, adminActionRepo);
-  const getAdminUserChatHistoryUseCase = new GetAdminUserChatHistoryUseCase(userRepo, chatRepo, adminActionRepo);
+  const broadcastMessageUseCase = new BroadcastMessageUseCase(
+    userRepo,
+    messageRepo,
+    adminActionRepo,
+    notifier
+  );
+  const systemCleanupUseCase = new SystemCleanupUseCase(
+    sessionRepo,
+    verificationRepo,
+    loginAttemptRepo,
+    adminActionRepo
+  );
+  const getAdminUserChatHistoryUseCase = new GetAdminUserChatHistoryUseCase(
+    userRepo,
+    chatRepo,
+    adminActionRepo
+  );
   const listWorkersUseCase = new ListWorkersUseCase(workerManagerService);
   const controlWorkerUseCase = new ControlWorkerUseCase(workerManagerService, adminActionRepo);
   const saveSymbolUseCase = new SaveSymbolUseCase(symbolRepo, adminActionRepo);
   const deleteSymbolUseCase = new DeleteSymbolUseCase(symbolRepo, adminActionRepo);
   const getStreamSymbolsUseCase = new GetStreamSymbolsUseCase(streamSymbolRepo);
   const saveStreamSymbolUseCase = new SaveStreamSymbolUseCase(streamSymbolRepo, adminActionRepo);
-  const deleteStreamSymbolUseCase = new DeleteStreamSymbolUseCase(streamSymbolRepo, adminActionRepo);
+  const deleteStreamSymbolUseCase = new DeleteStreamSymbolUseCase(
+    streamSymbolRepo,
+    adminActionRepo
+  );
   const getOhlcSymbolsUseCase = new GetOhlcSymbolsUseCase(ohlcSymbolRepo);
-  const saveOhlcSymbolUseCase = new SaveOhlcSymbolUseCase(ohlcSymbolRepo, symbolRepo, adminActionRepo);
+  const saveOhlcSymbolUseCase = new SaveOhlcSymbolUseCase(
+    ohlcSymbolRepo,
+    symbolRepo,
+    adminActionRepo
+  );
   const deleteOhlcSymbolUseCase = new DeleteOhlcSymbolUseCase(ohlcSymbolRepo, adminActionRepo);
   const deleteNewsUseCase = new DeleteNewsUseCase(newsRepo, adminActionRepo);
   const batchDeleteNewsUseCase = new BatchDeleteNewsUseCase(newsRepo, adminActionRepo);
   const revokeUserSessionUseCase = new RevokeUserSessionUseCase(sessionRepo, adminActionRepo);
-  const revokeAllUserSessionsUseCase = new RevokeAllUserSessionsUseCase(sessionRepo, adminActionRepo);
+  const revokeAllUserSessionsUseCase = new RevokeAllUserSessionsUseCase(
+    sessionRepo,
+    adminActionRepo
+  );
   const removeUserDeviceUseCase = new RemoveUserDeviceUseCase(deviceRepo, adminActionRepo);
 
   const container: AppContainer = {
-
     config: appConfig,
     pgPool,
     db,
@@ -575,12 +674,12 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
       getOhlcSymbolsUseCase,
       saveOhlcSymbolUseCase,
       deleteOhlcSymbolUseCase,
-    deleteNewsUseCase,
-    batchDeleteNewsUseCase,
-    revokeUserSessionUseCase,
-    revokeAllUserSessionsUseCase,
-    removeUserDeviceUseCase
-  },
+      deleteNewsUseCase,
+      batchDeleteNewsUseCase,
+      revokeUserSessionUseCase,
+      revokeAllUserSessionsUseCase,
+      removeUserDeviceUseCase
+    },
 
     eventDispatcher
   };

@@ -14,7 +14,10 @@ export const generateSecureToken = generateRandomToken;
 // Existing hashes verify transparently — bcrypt reads the cost from the hash.
 const BCRYPT_SALT_ROUNDS = 12;
 
-export async function hashPassword(plaintext: string, saltRounds: number = BCRYPT_SALT_ROUNDS): Promise<string> {
+export async function hashPassword(
+  plaintext: string,
+  saltRounds: number = BCRYPT_SALT_ROUNDS
+): Promise<string> {
   return bcrypt.hash(plaintext, saltRounds);
 }
 

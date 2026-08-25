@@ -70,8 +70,7 @@ const authPluginCallback: FastifyPluginAsync = async (fastify) => {
     // Authoritative role check from DB — JWT claim can be up to 7 days stale.
     // Reuse the user authenticate() already loaded when possible.
     let user = (request as FastifyRequest & { authUser?: { isAdmin?: boolean } }).authUser as
-      | { isAdmin?: boolean }
-      | undefined;
+      { isAdmin?: boolean } | undefined;
     if (!user) {
       user = (await fastify.container.repositories.userRepo.findById(
         request.user.userId

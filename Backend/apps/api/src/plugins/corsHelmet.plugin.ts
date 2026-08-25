@@ -15,7 +15,9 @@ const corsHelmetPluginCallback: FastifyPluginAsync = async (fastify) => {
   }
 
   const isWildcard = env.CORS_ORIGIN.trim() === '*';
-  const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean);
+  const allowedOrigins = env.CORS_ORIGIN.split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
 
   // 1. Register CORS
   await fastify.register(fastifyCors, {

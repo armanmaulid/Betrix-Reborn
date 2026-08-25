@@ -81,8 +81,8 @@ export class GoogleOAuthUseCase {
       if (user) {
         if (!user.emailVerified) {
           throw new ConflictError(
-            "An unverified account already exists with this email. " +
-            "Please verify the existing account or contact support before using Google Sign-In."
+            'An unverified account already exists with this email. ' +
+              'Please verify the existing account or contact support before using Google Sign-In.'
           );
         }
         // Auto-link Google ID and mark email verified

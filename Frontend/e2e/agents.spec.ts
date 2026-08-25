@@ -3,9 +3,7 @@ import { ADMIN_COOKIE } from './helpers/mock-auth';
 
 test.describe('E2E AI Agent Management Hub', () => {
   test.beforeEach(async ({ context, page }) => {
-    await context.addCookies([
-      ADMIN_COOKIE
-    ]);
+    await context.addCookies([ADMIN_COOKIE]);
 
     await page.route('**/api/admin/agents', async (route) => {
       await route.fulfill({

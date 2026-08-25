@@ -3,9 +3,7 @@ import { ADMIN_COOKIE } from './helpers/mock-auth';
 
 test.describe('E2E Broadcast & Maintenance Console', () => {
   test.beforeEach(async ({ context }) => {
-    await context.addCookies([
-      ADMIN_COOKIE
-    ]);
+    await context.addCookies([ADMIN_COOKIE]);
   });
 
   test('should render broadcast center with target selectors and char counter', async ({

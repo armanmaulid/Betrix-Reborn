@@ -4,3 +4,4 @@ coverage/
 .turbo/
 pnpm-lock.yaml
 *.tsbuildinfo
+**/drizzle/meta/**

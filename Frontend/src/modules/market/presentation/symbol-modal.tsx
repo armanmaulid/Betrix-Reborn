@@ -121,7 +121,10 @@ export function SymbolModal({
       <form onSubmit={handleSubmit(onValid)} className="p-5 space-y-4 text-xs font-mono">
         {/* Symbol Code */}
         <div className="space-y-1">
-          <label htmlFor="symbol-modal-symbol" className="text-[10px] text-muted-foreground uppercase">
+          <label
+            htmlFor="symbol-modal-symbol"
+            className="text-[10px] text-muted-foreground uppercase"
+          >
             SYMBOL IDENTIFIER (E.G. EURUSD, XAUUSD, BTCUSD) *
           </label>
           <input
@@ -220,7 +223,9 @@ export function SymbolModal({
               </option>
             ))}
           </select>
-          {errors.category && <p className="text-[10px] text-negative">{errors.category.message}</p>}
+          {errors.category && (
+            <p className="text-[10px] text-negative">{errors.category.message}</p>
+          )}
         </div>
 
         {/* Dukascopy Ticker (catalog mode only) */}
