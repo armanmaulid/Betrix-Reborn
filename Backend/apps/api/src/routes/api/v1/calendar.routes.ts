@@ -10,7 +10,14 @@ const GetCalendarQuerySchema = Type.Object({
       pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
     })
   ),
-  limit: Type.Optional(Type.Number())
+  limit: Type.Optional(Type.Number()),
+  pastDays: Type.Optional(
+    Type.Number({
+      description: 'Upcoming mode only: include events released within the last N days (0–30)',
+      minimum: 0,
+      maximum: 30
+    })
+  )
 });
 
 export const calendarRoutes: FastifyPluginAsyncTypebox = async (fastify) => {

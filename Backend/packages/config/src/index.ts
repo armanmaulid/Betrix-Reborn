@@ -119,5 +119,15 @@ export const env = {
   FXMACRODATA_API_KEY: process.env.FXMACRODATA_API_KEY || '',
   FXMACRODATA_RETRY_MAX_ATTEMPTS: Number(process.env.FXMACRODATA_RETRY_MAX_ATTEMPTS) || 3,
   FXMACRODATA_RETRY_BASE_DELAY_MS: Number(process.env.FXMACRODATA_RETRY_BASE_DELAY_MS) || 1000,
-  FXMACRODATA_SSE_RECONNECT_DELAY_MS: Number(process.env.FXMACRODATA_SSE_RECONNECT_DELAY_MS) || 5000
+  FXMACRODATA_SSE_RECONNECT_DELAY_MS:
+    Number(process.env.FXMACRODATA_SSE_RECONNECT_DELAY_MS) || 5000,
+  // Value-refresh pass (CalendarWorker.refreshRecentValues): backfills Actual
+  // for released events and re-pulls Forecast for upcoming ones even without a
+  // paid SSE key. The call budget keeps the free tier (100 req/day) safe — a
+  // tick with nothing to refresh makes zero HTTP calls.
+  CALENDAR_REFRESH_CRON: process.env.CALENDAR_REFRESH_CRON || '*/30 * * * *',
+  CALENDAR_REFRESH_LOOKBACK_HOURS: Number(process.env.CALENDAR_REFRESH_LOOKBACK_HOURS) || 72,
+  CALENDAR_REFRESH_AHEAD_HOURS: Number(process.env.CALENDAR_REFRESH_AHEAD_HOURS) || 24,
+  CALENDAR_REFRESH_MAX_CODES_PER_PASS: Number(process.env.CALENDAR_REFRESH_MAX_CODES_PER_PASS) || 8,
+  FXMACRODATA_DAILY_CALL_BUDGET: Number(process.env.FXMACRODATA_DAILY_CALL_BUDGET) || 60
 };

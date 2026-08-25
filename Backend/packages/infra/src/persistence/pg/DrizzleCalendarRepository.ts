@@ -109,19 +109,46 @@ export class DrizzleCalendarRepository implements ICalendarRepository {
     return result[0]?.count ?? 0;
   }
 
-  async findUpcoming(currency: string, limit: number = 20): Promise<CalendarEvent[]> {
+  async findUpcoming(
+    currency: string,
+    limit: number = 20,
+    pastDays: number = 0
+  ): Promise<CalendarEvent[]> {
     const nowUnix = Math.floor(Date.now() / 1000);
+    // Widening the lower bound keeps recently-released rows visible so users can
+    // compare Before/Forecast/Actual right after a release instead of the event
+    // vanishing the moment its timestamp passes.
+    const fromUnix = nowUnix - Math.max(0, pastDays) * 86400;
     const rows = await this.db
       .select()
       .from(calendarEvents)
       .where(
         and(
           eq(calendarEvents.currency, currency.toUpperCase()),
-          gte(calendarEvents.announcementUnix, nowUnix)
+          gte(calendarEvents.announcementUnix, fromUnix)
         )
       )
       .orderBy(calendarEvents.announcementUnix)
       .limit(limit);
+    return rows.map((r) => this.mapToDomain(r));
+  }
+
+  async findByCurrencyAndRange(
+    currency: string,
+    startUnix: number,
+    endUnix: number
+  ): Promise<CalendarEvent[]> {
+    const rows = await this.db
+      .select()
+      .from(calendarEvents)
+      .where(
+        and(
+          eq(calendarEvents.currency, currency.toUpperCase()),
+          gte(calendarEvents.announcementUnix, startUnix),
+          lte(calendarEvents.announcementUnix, endUnix)
+        )
+      )
+      .orderBy(calendarEvents.announcementUnix);
     return rows.map((r) => this.mapToDomain(r));
   }
 

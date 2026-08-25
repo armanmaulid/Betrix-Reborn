@@ -52,6 +52,9 @@ export function CalendarContainer() {
   const { data, isLoading, isError, isRefetching, refetch } = useCalendarQuery({
     currency,
     month: mode === 'month' ? month : undefined,
+    // Upcoming mode keeps a small tail of already-released events visible so
+    // Before/Forecast/Actual can be compared right after a release.
+    pastDays: mode === 'upcoming' ? 2 : undefined,
     limit: 100
   });
 

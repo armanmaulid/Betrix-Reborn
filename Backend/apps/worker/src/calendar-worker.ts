@@ -26,12 +26,16 @@ const logger = pino({
 
 export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker {
   private dailyCronJob: ScheduledTask | null = null;
+  private refreshCronJob: ScheduledTask | null = null;
   private unsubscribeSSE: (() => void) | null = null;
   private isShuttingDown = false;
   private isPaused = false;
   private processedCount = 0;
   private errorCount = 0;
   private lastError: string | null = null;
+  /** Daily FXMacroData call budget guard so refresh passes can never blow the free tier. */
+  private budgetUsedToday = 0;
+  private budgetDayUtc = new Date().getUTCDate();
   private pool: ReturnType<typeof createPgPool>;
   private calendarRepo: DrizzleCalendarRepository;
   private fxMacroData = new FxMacroDataClient();
@@ -73,6 +77,16 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
       logger.info('[CRON] Executing daily calendar sync check...');
       await this.syncIfMonthMissing();
     });
+
+    // Periodic value-refresh pass: fills Actual for events that released and
+    // re-pulls Forecast for upcoming ones. Costs ZERO FXMacroData calls on a
+    // tick with nothing to refresh, and a bounded, budgeted number otherwise —
+    // so the REST-only setup (no paid SSE key) stays self-healing.
+    this.refreshCronJob = cron.schedule(env.CALENDAR_REFRESH_CRON, async () => {
+      if (this.isPaused) return;
+      await this.refreshRecentValues();
+    });
+    logger.info(`[CRON] Value-refresh schedule: '${env.CALENDAR_REFRESH_CRON}'`);
 
     this.connectSSE();
     this.attachCommandListener();
@@ -206,6 +220,147 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
   }
 
   /**
+   * Fills in Before/Actual for events that already released and refreshes
+   * Forecast for upcoming ones by re-reading /v1/announcements +
+   * /v1/predictions from FXMacroData.
+   *
+   * Why this exists: the daily sync only INSERTS when the current month has no
+   * rows, so without a paid SSE key nothing ever updated actualValue after a
+   * release — rows stayed frozen at Before=null/Actual=null forever. This pass
+   * makes the REST-only setup self-healing.
+   *
+   * Cost control (free tier = 100 req/day): one call per UNIQUE indicator code
+   * per endpoint (deduped across the whole window), capped per pass, and gated
+   * by a daily call budget. A tick with nothing to refresh makes zero calls.
+   */
+  public async refreshRecentValues(): Promise<void> {
+    const currency = env.FXMACRODATA_CALENDAR_CURRENCY.toUpperCase();
+    const nowSec = Math.floor(Date.now() / 1000);
+    const lookbackStart = nowSec - env.CALENDAR_REFRESH_LOOKBACK_HOURS * 3600;
+    const aheadEnd = nowSec + env.CALENDAR_REFRESH_AHEAD_HOURS * 3600;
+
+    let recent: CalendarEvent[];
+    let upcoming: CalendarEvent[];
+    try {
+      [recent, upcoming] = await Promise.all([
+        this.calendarRepo.findByCurrencyAndRange(currency, lookbackStart, nowSec),
+        this.calendarRepo.findByCurrencyAndRange(currency, nowSec, aheadEnd)
+      ]);
+    } catch (err: any) {
+      this.errorCount += 1;
+      this.lastError = err.message;
+      logger.error({ err: err.message }, '[CALENDAR REFRESH] Failed to load refresh candidates.');
+      return;
+    }
+
+    const needsActual = recent.filter((e) => e.actualValue === null);
+    const targets = new Map<string, CalendarEvent>();
+    for (const e of [...needsActual, ...upcoming]) targets.set(e.id, e);
+    if (targets.size === 0) {
+      logger.info('[CALENDAR REFRESH] Nothing to refresh — no HTTP calls made.');
+      return;
+    }
+
+    // Soonest-first priority so the next release is always covered even when
+    // the per-pass cap truncates a crowded calendar week.
+    const codes: string[] = [
+      ...new Set(
+        [...targets.values()]
+          .sort(
+            (a, b) => Math.abs(a.announcementUnix - nowSec) - Math.abs(b.announcementUnix - nowSec)
+          )
+          .map((e) => e.eventCode)
+      )
+    ].slice(0, env.CALENDAR_REFRESH_MAX_CODES_PER_PASS);
+
+    if (!this.consumeDailyBudget(codes.length * 2)) {
+      this.lastError = 'Daily FXMacroData call budget exhausted';
+      logger.warn(
+        `[CALENDAR REFRESH] Daily call budget (${env.FXMACRODATA_DAILY_CALL_BUDGET}) exhausted — skipping pass.`
+      );
+      return;
+    }
+
+    let updatedRows = 0;
+    for (const code of codes) {
+      let announcements;
+      let predictionGroups;
+      try {
+        [announcements, predictionGroups] = await Promise.all([
+          this.fxMacroData.fetchAnnouncements(currency.toLowerCase(), code),
+          this.fxMacroData.fetchPredictions(currency.toLowerCase(), code)
+        ]);
+      } catch (err: any) {
+        this.errorCount += 1;
+        this.lastError = err.message;
+        logger.warn({ err: err.message }, `[CALENDAR REFRESH] Fetch failed for '${code}'.`);
+        continue;
+      }
+
+      for (const row of targets.values()) {
+        if (row.eventCode !== code) continue;
+
+        // row.id follows the same deterministic convention as upstream's
+        // announcement_id ({currency}_{release}_{date}), so a direct match is
+        // exact — never fuzzy.
+        const announcement = announcements.find((a) => a.announcement_id === row.id);
+        const forecast = pickForecast(predictionGroups.find((p) => p.announcement_id === row.id));
+
+        // Only overwrite with real upstream values — never downgrade an
+        // existing stored value back to null because one response omitted it.
+        const updated = new CalendarEvent({
+          id: row.id,
+          currency: row.currency,
+          eventCode: row.eventCode,
+          eventName: row.eventName,
+          referencePeriodDate: row.referencePeriodDate,
+          announcementUnix: row.announcementUnix,
+          announcementDatetimeUtc: row.announcementDatetimeUtc,
+          announcementDatetimeLocal: row.announcementDatetimeLocal,
+          importance: row.importance,
+          marketTier: row.marketTier,
+          isTopTier: row.isTopTier,
+          sourceName: row.sourceName,
+          sourceUrl: row.sourceUrl,
+          beforeValue: announcement ? announcement.previous_value : row.beforeValue,
+          forecastValue: forecast.value ?? row.forecastValue,
+          forecastType: forecast.type ?? row.forecastType,
+          actualValue: announcement ? announcement.val : row.actualValue,
+          hasOfficialForecast: announcement
+            ? announcement.has_official_forecast
+            : row.hasOfficialForecast
+        });
+
+        try {
+          await this.calendarRepo.upsertOne(updated);
+          updatedRows += 1;
+        } catch (err: any) {
+          this.errorCount += 1;
+          this.lastError = err.message;
+          logger.warn({ err: err.message }, `[CALENDAR REFRESH] Upsert failed for ${row.id}.`);
+        }
+      }
+    }
+
+    this.processedCount += updatedRows;
+    logger.info(
+      `[CALENDAR REFRESH] ${updatedRows} row(s) refreshed across ${codes.length} indicator(s).`
+    );
+  }
+
+  /** Resets at UTC midnight; returns false once today's quota would be exceeded. */
+  private consumeDailyBudget(calls: number): boolean {
+    const todayUtc = new Date().getUTCDate();
+    if (todayUtc !== this.budgetDayUtc) {
+      this.budgetDayUtc = todayUtc;
+      this.budgetUsedToday = 0;
+    }
+    if (this.budgetUsedToday + calls > env.FXMACRODATA_DAILY_CALL_BUDGET) return false;
+    this.budgetUsedToday += calls;
+    return true;
+  }
+
+  /**
    * Keeps the SSE connection OPEN (unlike stop()) and simply discards
    * incoming events while paused — same pause semantics as FinnhubWsWorker,
    * for the same reason: instant resume with no reconnect cost.
@@ -222,6 +377,10 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
     if (this.dailyCronJob) {
       this.dailyCronJob.stop();
       this.dailyCronJob = null;
+    }
+    if (this.refreshCronJob) {
+      this.refreshCronJob.stop();
+      this.refreshCronJob = null;
     }
     this.unsubscribeSSE?.();
     this.unsubscribeSSE = null;
