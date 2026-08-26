@@ -42,4 +42,6 @@ export interface IVoucherRepository {
     filter?: VoucherFilter,
     sort?: VoucherSort
   ): Promise<PaginatedResult<CreditVoucher>>;
+  /** T4.5 — purge redeemed/expired vouchers older than the cutoff (retention). */
+  deleteExpiredOlderThan(cutoff: Date): Promise<number>;
 }

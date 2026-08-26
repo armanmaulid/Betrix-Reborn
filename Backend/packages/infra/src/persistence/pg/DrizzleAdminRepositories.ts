@@ -1,4 +1,4 @@
-import { desc, eq, sql, and, or } from 'drizzle-orm';
+import { desc, eq, sql, and, or, lt } from 'drizzle-orm';
 import { env } from '@betrix/config';
 import { redisKeys } from '../redis/redis-keys.js';
 import {
@@ -162,6 +162,15 @@ export class DrizzleActivityLogRepository implements IActivityLogRepository {
       limit: pagination.limit,
       totalPages: Math.ceil(total / pagination.limit)
     };
+  }
+
+  /** T4.5 — retention: purge activity-log rows created before the cutoff. */
+  async deleteOlderThan(cutoff: Date): Promise<number> {
+    const deleted = await this.db
+      .delete(activityLogs)
+      .where(lt(activityLogs.createdAt, cutoff))
+      .returning({ id: activityLogs.id });
+    return deleted.length;
   }
 }
 

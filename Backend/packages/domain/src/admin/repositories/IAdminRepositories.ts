@@ -65,6 +65,8 @@ export interface IActivityLogRepository {
     userAgent?: string
   ): Promise<void>;
   findByUserId(userId: string, pagination: PaginationParams): Promise<PaginatedResult<unknown>>;
+  /** T4.5 — purge activity-log rows created before the cutoff (retention). */
+  deleteOlderThan(cutoff: Date): Promise<number>;
 }
 
 export interface IAnalyticsRepository {

@@ -277,9 +277,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const db = createDrizzleClient(pgPool);
   // T5.1 — dedicated money pool: isolates financial transactions from app
   // traffic. Falls back to the same URL in dev/single-pool mode.
-  const moneyPool = env.DATABASE_URL_MONEY
-    ? createPgPool(env.DATABASE_URL_MONEY, 6)
-    : null;
+  const moneyPool = env.DATABASE_URL_MONEY ? createPgPool(env.DATABASE_URL_MONEY, 6) : null;
   const moneyDb = moneyPool ? createDrizzleClient(moneyPool) : db;
   const redis = createRedisClient(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN);
 
@@ -621,7 +619,13 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
     sessionRepo,
     verificationRepo,
     loginAttemptRepo,
-    adminActionRepo
+    adminActionRepo,
+    deviceRepo,
+    newsRepo,
+    calendarRepo,
+    voucherRepo,
+    chatRepo,
+    activityLogRepo
   );
   const getAdminUserChatHistoryUseCase = new GetAdminUserChatHistoryUseCase(
     userRepo,

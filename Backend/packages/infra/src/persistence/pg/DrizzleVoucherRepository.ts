@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import { Nullable, PaginatedResult, PaginationParams } from '@betrix/core';
 import {
   AtomicRedeemResult,
@@ -170,5 +170,20 @@ export class DrizzleVoucherRepository implements IVoucherRepository {
       limit: pagination.limit,
       totalPages: Math.ceil(total / pagination.limit) || 1
     };
+  }
+
+  /** T4.5 — retention: purge vouchers redeemed before `cutoff`, or expired
+   *  (unredeemed) before `cutoff`. */
+  async deleteExpiredOlderThan(cutoff: Date): Promise<number> {
+    const deleted = await this.db
+      .delete(creditVouchers)
+      .where(
+        or(
+          and(eq(creditVouchers.isRedeemed, true), lt(creditVouchers.redeemedAt, cutoff)),
+          and(isNull(creditVouchers.redeemedAt), lt(creditVouchers.expiresAt, cutoff))
+        )
+      )
+      .returning({ id: creditVouchers.id });
+    return deleted.length;
   }
 }

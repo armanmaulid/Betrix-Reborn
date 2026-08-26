@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import { IChatRepository, ChatMessage, PaginatedResult, PaginationParams } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { chatMessages } from '../drizzle/schema.js';
@@ -105,6 +105,15 @@ export class DrizzleChatRepository implements IChatRepository {
       .where(and(eq(chatMessages.sessionId, sessionId), eq(chatMessages.userId, userId)))
       .returning();
 
+    return deleted.length;
+  }
+
+  /** T4.5 — retention: purge chat messages created before the cutoff. */
+  async deleteOlderThan(cutoff: Date): Promise<number> {
+    const deleted = await this.db
+      .delete(chatMessages)
+      .where(lt(chatMessages.createdAt, cutoff))
+      .returning({ id: chatMessages.id });
     return deleted.length;
   }
 }

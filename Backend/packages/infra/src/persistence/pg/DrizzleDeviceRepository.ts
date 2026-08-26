@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, lt } from 'drizzle-orm';
 import { IDeviceRepository, Device, Nullable } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { devices } from '../drizzle/schema.js';
@@ -77,6 +77,15 @@ export class DrizzleDeviceRepository implements IDeviceRepository {
 
   async deleteByUserId(userId: string): Promise<number> {
     const deleted = await this.db.delete(devices).where(eq(devices.userId, userId)).returning();
+    return deleted.length;
+  }
+
+  /** T4.5 — retention: remove devices not seen since `cutoff`. */
+  async deleteOlderThan(cutoff: Date): Promise<number> {
+    const deleted = await this.db
+      .delete(devices)
+      .where(lt(devices.lastSeenAt, cutoff))
+      .returning({ id: devices.id });
     return deleted.length;
   }
 }

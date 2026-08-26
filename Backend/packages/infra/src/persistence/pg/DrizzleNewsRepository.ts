@@ -1,4 +1,4 @@
-import { and, arrayContains, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
+import { and, arrayContains, asc, desc, eq, ilike, inArray, lt, or, sql } from 'drizzle-orm';
 import {
   INewsRepository,
   NewsArticle,
@@ -221,5 +221,15 @@ export class DrizzleNewsRepository implements INewsRepository {
       .where(inArray(newsArticles.id, ids))
       .returning({ id: newsArticles.id });
     return result.length;
+  }
+
+  /** T4.5 — retention: purge news older than the cutoff. */
+  async deleteOlderThan(cutoff: Date): Promise<number> {
+    this.invalidatePageCache();
+    const deleted = await this.db
+      .delete(newsArticles)
+      .where(lt(newsArticles.createdAt, cutoff))
+      .returning({ id: newsArticles.id });
+    return deleted.length;
   }
 }

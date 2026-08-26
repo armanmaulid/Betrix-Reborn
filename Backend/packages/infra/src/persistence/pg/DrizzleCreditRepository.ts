@@ -95,10 +95,18 @@ export class DrizzleCreditRepository implements ICreditRepository {
     });
   }
 
+  /**
+   * T5.0b — reserve with an expiry marker. `reserved_until` lets the sweeper
+   * (scripts/ops/012) release holds that were never settled (crash/partition)
+   * instead of leaking the credit hold forever.
+   */
   async reserveCredits(userId: string, amount: number): Promise<boolean> {
     const result = await this.db
       .update(users)
-      .set({ reservedCredits: sql`${users.reservedCredits} + ${amount}` })
+      .set({
+        reservedCredits: sql`${users.reservedCredits} + ${amount}`,
+        reservedUntil: sql`NOW() + INTERVAL '30 minutes'`
+      })
       .where(
         and(eq(users.id, userId), sql`${users.credits} - ${users.reservedCredits} >= ${amount}`)
       )
@@ -134,7 +142,9 @@ export class DrizzleCreditRepository implements ICreditRepository {
         .update(users)
         .set({
           credits: sql`${users.credits} - ${charge}`,
-          reservedCredits: sql`GREATEST(0, ${users.reservedCredits} - ${reservedAmount})`
+          reservedCredits: sql`GREATEST(0, ${users.reservedCredits} - ${reservedAmount})`,
+          // Clear the hold marker only once the reservation is fully drained.
+          reservedUntil: sql`CASE WHEN GREATEST(0, ${users.reservedCredits} - ${reservedAmount}) = 0 THEN NULL ELSE ${users.reservedUntil} END`
         })
         .where(eq(users.id, userId))
         .returning({ credits: users.credits });

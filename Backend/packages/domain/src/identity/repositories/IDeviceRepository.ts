@@ -8,4 +8,6 @@ export interface IDeviceRepository {
   updateLastSeen(fingerprint: string): Promise<boolean>;
   deleteByFingerprint(fingerprint: string): Promise<boolean>;
   deleteByUserId(userId: string): Promise<number>;
+  /** T4.5 — purge device rows last seen before the cutoff (retention). */
+  deleteOlderThan(cutoff: Date): Promise<number>;
 }

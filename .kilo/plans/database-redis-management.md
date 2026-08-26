@@ -177,7 +177,19 @@ Status eksekusi:
 - GATE: BE tsc 7/7 · eslint 0 error · prettier · unit 6+44+2+28 · guard clean ✓
 > Rollback: per-task revert; OPS_SOURCE=pg mengembalikan agregasi live tanpa deploy ulang perilaku inti.
 
-### FASE 4 — STRUKTUR PG
+### FASE 4 — STRUKTUR PG ✅ SELESAI 2026-08-26 (commit a9536fe)
+Status eksekusi (diverifikasi ulang 2026-08-26):
+- [x] T4.0 ✔ Ban-only: `DeleteAdminUserUseCase` kini **BAN** (`updateStatus('banned')`), bukan hard-delete. Route `DELETE /admin/users/:id` dipertahankan namun merepurpos jadi soft-ban (tidak ada lagi physical delete). Append-only enforcement via ops `006_append_only_money.sql`. FK audit diubah SET NULL di migration `0012`.
+- [x] T4.1 ✔ Schema separation 5 domain via `pgSchema()` di Drizzle schema (`schemas.ts`) + migration `0012_schema_separation.sql` + CHECK constraints (`users_status_check`, `chat_tokens_nonneg_check`, `voucher_amount_positive_check`). ⚠️ Lihat catatan drift di §Verification.
+- [x] T4.2 ✔ `005_roles_grants.sql` (least-privilege `money_svc`).
+- [x] T4.3 ✔ `008_partition_monthly.sql` (partisi bulanan audit/chat).
+- [x] T4.4 △ Pgbouncer: tercatat di §G/§H sebagai item infra/config — belum ada perubahan kode aplikasi (deferred ke konfigurasi deploy).
+- [x] T4.5 ✔ **Retensi lengkap diimplementasikan** (lihat §Verification): `SystemCleanupUseCase` memanggil `deleteOlderThan`/`deleteExpiredOlderThan` di device(180d)/activity_logs(90d)/news(18bln)/calendar(<Y-1)/voucher(90d)/chat(365d) repos.
+- [x] T4.6 ✔ Sweep N+1: broadcast→`messageRepo.saveMany` multi-row; batch-revoke→`revokeMany` single statement; `010_agents_default_idx.sql` partial-unique; `007_updated_at_triggers.sql`; `009_calendar_timestamptz.sql`; change-password/calendar upsertOne sudah efisien.
+- GATE: BE tsc 7/7 · eslint · prettier · unit 6+44+2+28 ✓
+> Rollback: per-task revert; schema separation dibatalkan via rollback 0012.
+
+Detail task card:
 - **T4.0** 🆕 Integrity money/audit dini (boleh masuk Fase 4 awal): FK ledger/audit CASCADE→SET NULL; users hard-delete→soft-delete/ban-only (hapus route delete fisik admin); trigger/blocker UPDATE-DELETE pada credit_transactions (append-only enforcement).
 - **T4.1** SET SCHEMA massal (identity/money/trading/content/ops) + qualified pgTable + regenerate migration review manual.
 - **T4.2** Roles/grants least-privilege (money_svc tunggal penulis money).
@@ -189,7 +201,7 @@ Status eksekusi:
 ### FASE 5 — MONEY SPLIT & LEDGER ✅ SELESAI 2026-08-26
 Status eksekusi:
 - [x] T5.0a ✔ `credits`/`reservedCredits` DIHAPUS dari generic `update()` — saldo hanya bisa diubah via CreditRepository (addCredits/deductCredits/settleReservation), tidak pernah lewat admin-panel stale read.
-- [x] T5.0b ✔ Sweeper script `scripts/ops/012_sweeper_reserved_credits.sql` (release holds >30 menit) + kolom `reserved_until` ditambahkan via ops SQL.
+- [x] T5.0b ✔ Sweeper `012_sweeper_reserved_credits.sql` (release hold >30 mnt, FULL release `reserved_credits=0`) + kolom `reserved_until` (Drizzle `users.reservedUntil` + ops 012). **Diperbaiki di verification pass**: app kini SET `reserved_until = NOW()+30m` di `reserveCredits` & CLEAR di `settleReservation`; sweeper sebelumnya salah `-1`/run → diganti full-release.
 - [x] T5.0c ✔ `deductCredits` sentinel `-1` diganti `throw AppError(402)` — InsufficientBalanceError kini typed & tidak pernah lolos sebagai `success:true`.
 - [x] T5.1 ✔ `DATABASE_URL_MONEY` env + dual-pool di container: Credit/Voucher repos pakai money pool terpisah (fallback DATABASE_URL di dev).
 - [x] T5.2 ✔ Ledger double-entry: `money.ledger_entries` (ops SQL 011) dengan append-only trigger + idempotency middleware tersedia untuk FRONT USER.
@@ -231,3 +243,31 @@ Hexagonal architecture · pembagian 6 worker · pola SSE & relay DB · reserve/s
 
 ## §J. DoD GLOBAL (v3)
 1. Semua task ✔ gate hijau per commit. 2. Dashboard 30m idle = **0** full-scan agregat (bukti pg_stat_statements). 3. FLUSH R0 aman (fallback teruji). 4. Dual-process worker smoke: hanya 1 leader, command 1× eksekusi. 5. Redis ops/hari < budget (dashboard angka). 6. Parity bersih 3 hari tiap switch. 7. **Nol plaintext secret di DB** (cek information_schema + sample rows). 8. Restore drill money sukses; sum(ledger)==saldo. 9. Kill -9 mid-stream → reserved_credits dipulihkan oleh sweeper ≤ intervalnya.
+
+---
+
+## §K. VERIFICATION RE-PASS (2026-08-26) — cek ulang Fase 0→5
+Dilakukan verifikasi menyeluruh terhadap kode, migrasi, dan gate. Hasil:
+
+### ✅ Diverifikasi LENGKAP & BENAR
+- **Fase 0**: 001/002/003…013 ops scripts ada; `capture-golden.sh` + `diff-json.mjs` ada (T0.3 ✔); dead-cleanup: `updateCredits/getHistory/findRecentByUserId/RedisOAuthCodeStore/subscribeReports` benar-benar dihapus (grep bersih). `updateStatus` **dipertahankan** karena masih dipakai `DeleteAdminUserUseCase` untuk ban (bukan dead code — penyimpangan aman dari rencana T0.5).
+- **Fase 1**: 19 index (T1.1), `usage_daily`+`upsertRecentUsageDaily` (T1.2), flag `USE_USAGE_DAILY`/`BILLING_SOURCE` (T1.3/1.5), pool stats asli (T1.6) ✔.
+- **Fase 2**: `redis-keys.ts` registry (T2.1), custom rate-limit store `rateLimit.plugin.ts` (T2.2), staleness `PRICE_STALE_MS`+`prunePrices` (T2.4), ticker adaptif+`REDIS_DAILY_BUDGET` (T2.5) ✔.
+- **Fase 2.5**: leader-lease `SET NX` (T6.1), ws pause durability, seeder guard, budget guard, dispatch serialization, jitter, grace window ✔.
+- **Fase 3**: aggregator 60s `ops:gauges`/`ops:analytics` + `getCachedSystemMetrics` + `OPS_SOURCE` (T3.1), cache offloads news/calendar/symbols (T3.2), heartbeat (T3.3) ✔. `T3.4` deferred (sesuai rencana).
+- **Fase 4**: schema separation via `pgSchema()` (T4.1), ban-only (T4.0), 005–010 ops scripts (T4.2/3/6), broadcast N+1→`saveMany` (T4.6) ✔.
+- **Fase 5**: `credits` dikeluarkan dari `update()` (T5.0a), `deductCredits` AppError 402 (T5.0c), dual-pool `DATABASE_URL_MONEY` (T5.1), ledger `011` (T5.2), backup `013` (T5.3) ✔. `T5.4` deferred (sesuai rencana).
+
+### 🔧 DITEMUKAN & DIPERBAIKI SAAT VERIFIKASI
+1. **T4.5 retensi HILANG** — `SystemCleanupUseCase` hanya membersihkan session/token/login-attempt; tidak ada method `deleteOlderThan` di repo device/news/calendar/voucher/chat/activity. **Diperbaiki**: tambah `deleteOlderThan`/`deleteExpiredOlderThan` ke 6 repo (domain+infra) + panggil di `SystemCleanupUseCase` dengan jendela retention (device 180d, activity 90d, news 18bln, calendar <Y-1, voucher 90d, chat 365d).
+2. **T5.0b `reserved_until` tidak pernah diset app** — `reserveCredits` hanya naikkan `reservedCredits`, sehingga sweeper `012` (yang mengecek `reserved_until`) **tidak pernah bisa menyala**. **Diperbaiki**: `reserveCredits` kini set `reserved_until = NOW()+30m`; `settleReservation` clear saat drain; sweeper `012` diganti **full-release** (`reserved_credits=0`) — sebelumnya salah `-1`/run.
+3. **Blok status Fase 4 hilang di dokumen** — kode sudah di-commit (`a9536fe`) tapi plan tidak punya blok `✅ SELESAI`. **Diperbaiki**: tambah blok status Fase 4.
+
+### ⚠️ CATATAN / FOLLOW-UP
+- **Drizzle journal drift**: `0012_schema_separation.sql` ada sebagai file tapi **TIDAK terdaftar** di `drizzle/meta/_journal.json`. Akibatnya `drizzle-kit migrate` tidak menjalankan pemindahan schema, dan `drizzle-kit check` akan melaporkan drift. **Tindakan**: deployment saat ini mengandalkan ops scripts (0012 + 012) dijalankan di luar `migrate`. Rekomendasi: rekonsiliasi snapshot (`drizzle-kit check` + regenerate) saat DB hidup agar chain migrasi bersih & `reserved_until` juga masuk migrasi (bukan hanya ops 012).
+- **T5.0b release-on-shutdown hook**: belum ada hook eksplisit di worker shutdown; mengandalkan sweeper 30m. Acceptable (sesuai Hukum #9 kill -9 → sweeper recover).
+- **T4.4 pgbouncer**: item infra/config, belum diterapkan di kode aplikasi (deferred ke konfigurasi deploy).
+
+### GATE AKHIR (verification pass)
+BE tsc **7/7** · eslint bersih · prettier ✓ · unit **80/80** (6+44+2+28).
+

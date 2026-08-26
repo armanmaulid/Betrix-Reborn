@@ -27,4 +27,6 @@ export interface ICalendarRepository {
     endUnix: number
   ): Promise<number[]>;
   findByAnnouncementId(announcementId: string): Promise<CalendarEvent | null>;
+  /** T4.5 — purge calendar events announced before the cutoff (retention). */
+  deleteOlderThan(cutoff: Date): Promise<number>;
 }

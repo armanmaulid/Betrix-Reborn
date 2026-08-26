@@ -8,4 +8,6 @@ export interface IChatRepository {
   /** Last N messages of a session in chronological order — AI context window. */
   findRecentBySessionId(sessionId: string, userId: string, limit: number): Promise<ChatMessage[]>;
   deleteSession(sessionId: string, userId: string): Promise<number>;
+  /** T4.5 — purge chat messages created before the cutoff (retention). */
+  deleteOlderThan(cutoff: Date): Promise<number>;
 }

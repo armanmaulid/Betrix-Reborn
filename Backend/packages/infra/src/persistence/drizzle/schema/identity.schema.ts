@@ -10,7 +10,7 @@ import {
   timestamp,
   index,
   uniqueIndex,
-  check,
+  check
 } from 'drizzle-orm/pg-core';
 import { identity as identitySchema } from './schemas.js';
 
@@ -27,6 +27,9 @@ export const users = identitySchema.table(
     emailVerified: boolean('email_verified').default(false).notNull(),
     credits: integer('credits').default(100).notNull(),
     reservedCredits: integer('reserved_credits').default(0).notNull(),
+    // T5.0b — liveness marker for reserved holds so the sweeper
+    // (scripts/ops/012) can release stuck holds after a crash/partition.
+    reservedUntil: timestamp('reserved_until', { withTimezone: true }),
     googleId: varchar('google_id', { length: 255 }),
     phone: varchar('phone', { length: 50 }),
     address: text('address'),
