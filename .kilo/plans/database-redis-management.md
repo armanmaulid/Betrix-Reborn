@@ -1,195 +1,178 @@
-# 🗄️ DATABASE & REDIS MANAGEMENT PLAN — v2 (COMPLETE & GRADUAL-SAFE)
-**Repo:** Betrix-Reborn · **Tanggal:** 2026-08-26 · **Status:** BLUEPRINT v2 (menunggu approval)
-**Cara pakai:** Eksekusi task-card **berurutan sesuai graf dependensi (§E)**. Satu task = satu commit. Jangan pernah melompat DependOn.
+# 🗄️ DATABASE & REDIS MANAGEMENT PLAN — v3 (DEEP-DIVE EDITION)
+**Repo:** Betrix-Reborn · **Tanggal:** 2026-08-26 · **Status:** BLUEPRINT v3 (menunggu approval)
+**Provenance:** v2 + hasil deep-dive 5 agen investigasi independen (skema PG, pola query/repo, peta Redis+state in-memory, audit worker/scheduler, alur uang & config).
 
 ---
 
-## §A. CAKUPAN — JAWABAN ATAS "APA SUDAH MENCAKUP KESELURUHAN?"
+## §A. PERUBAHAN v2 → v3 (apa yang ditambah/dikoreksi)
 
-### ✅ Sudah tercakup di v1 (keputusan arsitektur)
-Audit berbasis kode · klasifikasi 6 kelas data · namespace & tier Redis · TTL matrix · offload PG→Redis · index/agregat `usage_daily` · schema separation + grants · physical split money · ledger double-entry + idempotency · backup/DR matrix · roadmap 5 fase.
-
-### ➕ Ditambahkan di v2 (lapisan eksekusi aman)
-| # | Lapisan baru | Mencegah |
+| # | Temuan deep-dive | Dampak ke plan |
 |---|---|---|
-| L1 | **Baseline & Golden Snapshot** (§D-T1..T3) | perubahan angka "kaget" saat pivot sumber data |
-| L2 | **Parity Test / Dual-Run** wajib untuk setiap pergantian sumber baca | bug hasil beda antara jalur lama-baru |
-| L3 | **Dual-Read → Switch Write → Cleanup** sebagai pola migrasi standar | big-bang & data orphan |
-| L4 | **Redis Key Registry** (`redis-keys.ts`) + ESLint ban import langsung | redundan key/nama acak baru |
-| L5 | **Single-Writer Rule** per data + tabel klasifikasi wajib di komentar skema | dua penulis tabrakan / tabel tak terklasifikasi |
-| L6 | **Monitoring & Alerting** (PG, Redis, kuota Upstash) | ketahuan bug belakangan |
-| L7 | **Rollback eksplisit** di setiap task card | stuck di tengah migrasi |
-| L8 | **Feature flags** `OPS_SOURCE`, `USE_USAGE_DAILY`, `RATELIMIT_BACKEND` | switch tidak bisa dibalik cepat |
-| L9 | Audit dedup/redundansi repo (`ChatRepository` vs `MessageRepository`, dsb.) | redundansi lama ikut terbawa |
-| L10 | Env-var table & secret handling | config drift |
+| K1 | 🚨 `credit_transactions`: **NOL index sekunder** + FK `ON DELETE CASCADE` dari users → hapus akun = riwayat finansial musnah | Task baru T4.0a/b (index darurat dipindah ke Fase 1; FK→SET NULL + larang hard-delete di Fase Money) |
+| K2 | 🚨 `admin_actions.admin_id` / `activity_logs.user_id` juga CASCADE → jejak audit ikut terhapus | Masuk Fase 4 (FK SET NULL + kebijakan ban-only) |
+| K3 | 🚨 `UpdateAdminUserUseCase` menulis SEMUA kolom User termasuk `credits` dari bacaan basuhan → lost-update saldo (HIGH money) | Task baru T5.0a |
+| K4 | 🚨 `reserved_credits` tanpa expiry/sweeper → crash = hold bocor permanen | Task baru T5.0b (`reserved_until` + reaper) |
+| K5 | 🚨 Adjust kredit ≠ audit dalam 1 tx; sentinel `-1` lolos ke respons `success:true,credits:-1` | Task baru T5.0c (`adjustCreditsWithAudit` + typed error) |
+| K6 | `ai_agents.api_key` **plaintext** di DB | Task baru Fase 5 (encrypt/vault + mask response) |
+| K7 | ❌ **Tidak ada leader-lock**: 2 proses worker = konsumsi Finnhub dobel, command dieksekusi 2×, worker_states thrash | Task baru T6.1 (lease Redis SET NX / advisory lock) |
+| K8 | Bug state-machine: pause ws-worker tertelan reconnect (ping branch sebelum cek paused) | T6.2 |
+| K9 | Seeder fetch FXMacroData SEBELUM cek apa pun → crash-loop = 288 call/hari | T6.3 (marker last_seed_at) |
+| K10 | Budget guard hanya melindungi refresh; daily-join & SSE handler lewat | T6.4 |
+| K11 | Dispatch command tidak diserialisasi → double timer; report lama menimpa status baru | T6.5 |
+| K12 | Billing pakai ESTIMASI chars÷4; `usage` provider tidak dibaca | T1.5 (akurasi revenue) |
+| K13 | Idempotency: `chat/stream`, `chat`, create-voucher, login-session = **nol proteksi** | Diperluas ke T5.2 + middleware global |
+| K14 | Worker `createRedisClient()` tanpa arg → prod fallback localhost dev (split-brain) | T7.2 |
+| K15 | `createPgPool` tanpa statement/idle timeout | T7.1 |
+| K16 | Worker logger pino-pretty selalu ON di prod; `EventDispatcher`/`ChatLoggingHandler` pakai `console.error` | T7.3 |
+| K17 | Index tambahan besar (google_id unique, sessions(user_id,expires_at), devices(user_id), verification_tokens(user_id,type)+(expires_at), credit_transactions(user_id,created_at), vouchers filter, admin_actions(target_id), failed_login(created_at), news GIN(tags)+trgm) | T1.1 diperluas |
+| K18 | Retensi bolong: `activity_logs` (dikecualikan cleanup!), `admin_actions`, `news_articles`, `calendar_events <Y-1`, `devices` (tanpa purge sama sekali), voucher expired | T4.5 (extend SystemCleanupUseCase) |
+| K19 | `market:prices:all` hash **tanpa TTL/evict** → simbol mati mengendap selamanya; ws mati = harga basah selamanya | T2.4 |
+| K20 | 🔥 **Krisis kuota Upstash**: ticker HGETALL 1s = 86.400 ops/hari ≈ **8,7×** free-tier sendirian; tick HSET 60–600/min lagi | T2.5 (interval adaptif + per-symbol keys + budget guard ala FXMacro) |
+| K21 | Rate-limit in-memory × replica = brute-force dilipatgandakan N | T2.2 dikonfirmasi (custom store INCR+PEXPIRE) |
+| K22 | `broadcastToUser` hanya tembus replica sama; ticker/poll dilipatgandakan per replica | T7.4 (fan-out pub/sub topic; defer sampai multi-replica nyata) |
+| K23 | Dead code repo terkonfirmasi: `updateCredits`, `updateStatus`, `getHistory`, `findRecentByUserId`, `SessionRepository.findById`, `DeviceRepository.deleteByUserId`, `RedisOAuthCodeStore` (unwired), `subscribeReports` (tanpa caller) | T0.5 cleanup list |
+| K24 | Verdict T0.9: **ChatRepository ≠ MessageRepository** (tabel/port/konsumen beda total) → TIDAK digabung; cukup dokumentasi istilah | §C.3 closed |
+| K25 | OHLC bars **tidak ada di PG sama sekali** (hanya config symbol; bars live di Redis dengan TTL rollover ✓) | Registry dikoreksi |
+| K26 | Rantai migrasi rusak: snapshot 0008/0009 hilang; drizzle.config db=`betrix` vs migrate.ts `betrix_reborn`; kredensial dev ter-embed; tanpa down-migration & CI drift check | T0.4 |
+| K27 | `users` hard-delete memusnahkan seluruh graf (termasuk ledger A) → kebijakan soft-delete/ban-only | Fase 5 |
+| K28 | `dbPoolActive/Idle` hard-coded `1/0` → dashboard bohong | T1.6 |
+| K29 | N+1: broadcast ≤10k insert loop, batch-revoke loop, change-password loop, D1 sync loop, calendar upsert loop | T4.6 (sweep) |
+| K30 | Auth double-hit tiap request (findByToken+findById) — pasangan query TERTINGGI QPS | T3.4 (cache digest→user 60s, optional) |
 
 ---
 
-## §B. TUJUH HUKUM ANTI-BUG / ANTI-REDUNDAN (berlaku sepanjang eksekusi)
-
-1. **Baseline dulu, ubah kemudian.** Tidak boleh ada task Fase≥1 sebelum T1–T3 hijau.
-2. **Parity sebelum switch.** Sumber baca baru harus dual-run ≥24 jam dengan hasil identik (diff JSON ==) sebelum flag dibalik.
-3. **Single Source of Truth + Single Writer.** Satu data = satu modul penulis. Lainnya hanya baca/cache.
-4. **Semua key Redis lewat `redis-keys.ts`.** Dilarang string key literal di call-site (dipaksakan ESLint `no-restricted-syntax`).
-5. **`SET` tanpa TTL = error review.** Pengecualian hanya `*:ops:*history` dan `*:idem:*`.
-6. **Tabel baru wajib punya header klasifikasi** `{@class A|B|C|D|E|F}` di komentar definisi + masuk matriks §C.
-7. **Satu task = satu commit = satu gate** (typecheck·lint·prettier·test + smoke route terkait). Gagal gate = tidak lanjut task berikut.
+## §B. TUJUH HUKUM ANTI-BUG / ANTI-REDUNDAN (tetap)
+1. Baseline dulu (T0.*), ubah kemudian. 2. Parity ≥24 jam sebelum switch sumber baca. 3. Single Source of Truth + Single Writer. 4. Semua key via `redis-keys.ts`. 5. `SET` tanpa TTL = error review (kecuali ops-history & idem). 6. Tabel baru wajib header klasifikasi `{@class}`. 7. Satu task = satu commit = satu gate.
+**🆕 Hukum 8 (dari deep-dive):** *Uang tidak boleh melewati jalur fire-and-forget* — setiap mutasi saldo/ledger synchronous, atomic, dengan audit dalam batas transaksi yang sama.
 
 ---
 
-## §C. REGISTRY LENGKAP (hasil audit kode — tidak ada yang terlewat)
+## §C. REGISTRY (dikoreksi v3)
 
-### C.1 PostgreSQL — inventaris tabel → target
-| Tabel | Kelas | Schema target | Writer resmi (Single Writer) |
+### C.1 PostgreSQL — 18 tabel (+2 baru)
+| Tabel | Kelas | Schema target | Catatan v3 |
 |---|---|---|---|
-| users | B | identity | AuthRepository/UserRepository |
-| sessions | B | identity | SessionRepository |
-| devices | B | identity | DeviceRepository |
-| verification_tokens | B(+E mirror) | identity | VerificationRepository |
-| notification_preferences | B | identity | (repo prefs) |
-| login_attempts ⚠️(baru terdeteksi) | C/E | ops | LoginAttemptRepository (retensi 90d) |
-| credit_transactions | **A** | money | CreditRepository (via dbMoney) |
-| credit_vouchers | **A** | money | VoucherRepository (via dbMoney) |
-| ai_agents | B | trading | AgentRepository |
-| symbols / stream_symbols / ohlc_symbols | F | trading | Symbol/OhlcSymbol/StreamSymbolRepository |
-| news_articles | F | content | NewsRepository |
-| calendar_events | F | content | CalendarRepository (+Seeder/Sync writer via repo) |
-| chat_sessions, chat_messages | F+C | content | ChatRepository / MessageRepository ⚠️audit-dedup T0.9 |
-| admin_actions, activity_logs | C | ops | AdminActionRepo / ActivityLogRepo |
-| worker_states | C/D | ops | WorkerStateRepository (API relay baca Redis) |
-| usage_daily (BARU) | D/A-derived | ops | AnalyticsAggregator saja |
-| money.ledger_entries (BARU, Fase 5) | **A** | money | LedgerRepository saja |
+| users | B | identity | ⚠️ tanpa updated_at/soft-delete; google_id butuh UNIQUE; hard-delete = K27 |
+| sessions | B | identity | token SHA-256 ✓; idx user_id+expires_at (K17) |
+| devices | B | identity | idx user_id (K17); purge >180d (K18) |
+| verification_tokens | B/E-mirror | identity | idx (user_id,type),(expires_at) (K17) |
+| notification_preferences | B | identity | ok |
+| failed_login_attempts *(bukan "login_attempts")* | C | ops | idx (email,created_at) sudah ✓; tambah created_at polos utk range-delete |
+| **credit_transactions** | **A** | money | 🚨 nol index + CASCADE (K1) → idx (user_id,created_at) di Fase 1 |
+| **credit_vouchers** | **A** | money | idx filter/sort (is_redeemed,created_at,amount,redeemed_at); purge expired>90d (K18) |
+| ai_agents | B | trading | 🚨 api_key plaintext (K6) |
+| symbols / stream_symbols / ohlc_symbols | F | trading | ⚠️ kolom mapping vendor terduplikasi antar tabel → putuskan SSOT (task kecil T4.6b) |
+| news_articles | F | content | GIN(tags)+trgm headline/summary (K17); purge >18bln (K18); kolom `datetime` bigint — rename saat partisi |
+| calendar_events | F | content | ⚠️ datetime_utc/local varchar(40) → timestamptz saat Fase 4; nilai indikator double = OK (bukan uang); purge < Y−1 (K18) |
+| chat_sessions ❌tidak ada / chat_messages | F+C | content | session_id string longgar tanpa parent table (dokumentasikan sebagai opaque grouping atau buat tabel — keputusan T4.6c); partisi bulanan; K17 index INCLUDE tokens |
+| messages | C | ops→content | ✅ soft-delete contoh baik; reply_to tanpa self-FK; thread_id tanpa threads table (dokumentasi) |
+| admin_actions / activity_logs | C | ops | 🚨 CASCADE (K2); target_id idx; purge/archive (K18) |
+| worker_states | C/D | ops | bounded ✓; status free-text cast (enum task T4.6d) |
+| usage_daily 🆕 | D/A-derived | ops | writer tunggal aggregator |
+| money.ledger_entries 🆕 (Fase 5) | **A** | money | append-only grant-locked |
 
-### C.2 Redis — key existing → target namespace/tier/TTL
-| Existing | Tier | Namespace baru | TTL | Task |
-|---|---|---|---|---|
-| auth:captcha:{id} | R1 | b:{env}:auth:captcha:{id} | 300s | T9 |
-| auth:oauth_code:{code} | R1 | b:{env}:auth:oauth:{code} | 300s | T9 |
-| auth:stream_ticket:{t} | R1 | b:{env}:auth:ticket:{t} | 60s | T9 |
-| market cache (RedisMarketCacheStore) | R0 | b:{env}:market:price:{SYM} | 5–60s | T7 |
-| analytics counters | R0/R2 | b:{env}:ops:gauges / :analytics | overwrite/60s | T10 |
-| rate-limit (in-memory) | R1 | b:{env}:rl:{scope}:{id} | window | T8 |
-| worker cmd bus channel | R2 | b:{env}:wcmd:{workerId} | n/a pub/sub | T7 (rename saat sentuh) |
-| news seen-window (in-memory relay) | R2 | b:{env}:news:seen | 48h | T14 |
-| idempotency (baru Fase 5) | R1 | b:{env}:idem:{scope}:{key} | 24h | T19 |
-| gauges/history (baru) | R0 | b:{env}:ops:gauges / :gauges:hist | –/7d | T10 |
+### C.2 Redis — katalog final (7 famili, semua di 1 logical DB ⚠️)
+| Key/channel | TTL | Tier baru | Catatan v3 |
+|---|---|---|---|
+| market:prices:all (hash) | ❌ NONE | R0 | K19/K20: pecah per-symbol EX120 ATAU timestamp-filter + UNLINK stale; ticker 1s→adaptif |
+| market:ohlc:{SYM}:{tf} | ✓ rollover | R0 | hanya 'd1' yang pernah ditulis |
+| auth:captcha:{id} | 300s | R1 | rename ns baru |
+| auth:oauth_code:{code} | 300s | R1 | **DEAD** (store tak pernah dikonstruksi) → wire ke Google flow asli atau hapus (T0.5) |
+| auth:stream_ticket:{t} | 60s | R1 | ok |
+| worker:command:{id} / worker:report:{id} | pub/sub | R2 | report channel **tanpa subscriber** (dead surface, T0.5) |
+| 🆕 rl:{scope}:{id} | window | R1 | T2.2 |
+| 🆕 ops:gauges / :analytics / :gauges:hist | –/60s/7d | R0 | T3.1 |
+| 🆕 cache:news:page1, cache:calendar:* , cache:symbols | 30s/1h/5m | R0 | T3.2 |
+| 🆕 auth:sessdigest:{hash} → userId (opsional) | 60s | R1 | T3.4 |
+| 🆕 news:seen | 48h | R2 | ganti Set in-memory (juga fix K-unbounded) |
+| 🆕 idem:{scope}:{key} | 24h | R1 | T5.2 |
 
-### C.3 Duplikasi/redundansi yang WAJIB diaudit di T0.9 (jangan dibawa ke masa depan)
-- `ChatRepository` vs `MessageRepository` — apakah dua pintu untuk tabel sama?
-- `GetInbox/GetSentMessages/GetThread` messaging use-cases vs chat repos — overlap query?
-- `verification_tokens` PG vs mirror Redis — pastikan satu writer.
-- Barrel `use-cases/index` — export ganda nama sama?
+### C.3 Dedup verdict (CLOSED)
+`chat_messages` (AI logs, driver analytics) vs `messages` (inbox user-to-user, punya soft-delete) — beda port/konsumen/tabel. **Jangan digabung.** Dokumentasikan istilah: "chat"=AI, "message"=internal mail.
 
 ---
 
-## §D. TASK CARDS (format: Goal · DependsOn · Files · Apply · Verify · Rollback)
+## §D. TASK CARDS (urut eksekusi; format Goal·Depends·Files·Apply·Verify·Rollback)
 
-### FASE 0 — BASELINE (tanpa risiko, wajib pertama)
-**T0.1 pg_stat_statements ON**
-Files: `apps/api/src/plugins/container.plugin.ts`(init SQL), ops doc.
-Apply: `CREATE EXTENSION IF NOT EXISTS pg_stat_statements;` + preload lib di instance; buat view top-10.
-Verify: query view mengembalikan baris. Rollback: DROP EXTENSION.
+### FASE 0 — BASELINE
+- **T0.1** pg_stat_statements ON + view top-10. Verify: view berisi baris. RB: DROP EXTENSION.
+- **T0.2** table-sizes.sql → baseline-sizes.txt.
+- **T0.3** Golden snapshots JSON (metrics, analytics, news page1, calendar month) + util compareGolden.
+- **T0.4** 🆕 Repair migration chain: regenerate baseline agar snapshot meta lengkap (squash untuk deploy baru), samakan db-name drizzle.config vs migrate.ts, keluarkan kredensial embed → env, tambah CI `drizzle-kit generate --dry-run` anti-drift. Verify: dry-run kosong diff. RB: revert commit.
+- **T0.5** 🆕 Dead-method/file cleanup: `updateCredits`,`updateStatus`,`getHistory`,`findRecentByUserId`,`SessionRepo.findById`,`DeviceRepo.deleteByUserId`; putuskan `RedisOAuthCodeStore` (wire Google asli vs hapus) & `subscribeReports` (wire panel vs hapus); `EventDispatcher/ChatLoggingHandler` console.error→pino. Verify: grep residual kosong + test hijau. RB: revert.
+- **T0.9** Dedup audit → CLOSED (verdict §C.3). Sisa: putuskan chat_sessions/messages-threads & symbols-SSOT di T4.6b/c.
 
-**T0.2 Size report**
-Apply: skrip `docs/ops/table-sizes.sql` (pg_total_relation_size semua tabel).
-Verify: output tersimpan `docs/ops/baseline-sizes.txt`. Rollback: –.
+### FASE 1 — INDEX, AGREGAT, AKURASI
+- **T1.1 INDEX PASS (CONCURRENTLY)** — daftar lengkap K17: sessions(user_id),(expires_at); devices(user_id); users(google_id UNIQUE),(tier),(created_at),(last_active); verification_tokens(user_id,type),(expires_at); credit_transactions(user_id,created_at)🚨prioritas; credit_vouchers(is_redeemed),(created_at),(amount),(redeemed_at); admin_actions(target_id); failed_login(created_at); news GIN(tags)+pg_trgm(headline,summary). Verify: EXPLAIN agregat & getHistory memakai index. RB: DROP CONCURRENTLY.
+- **T1.2** `usage_daily` + backfill idempotent + refresh harian cleanup/aggregator.
+- **T1.3/T1.4** Dual-run analytics (flag USE_USAGE_DAILY) → parity 3 hari → switch + buang agregat token lama dari hot path.
+- **T1.5** 🆕 Akurasi billing: parse `usage` dari chunk akhir SSE/response non-stream provider; fallback estimasi ×1.1 safety. Flag `BILLING_SOURCE=estimate|provider`. Verify: golden charge bandingkan. RB: flag estimate.
+- **T1.6** 🆕 dbPool real stats: pool.totalCount/idleCount → SystemMetrics (buang hard-coded 1/0).
 
-**T0.3 Golden snapshots**
-Files: `docs/ops/golden/*.json`.
-Apply: simpan hasil JSON `getSystemMetrics()`, `getUserAnalytics()`, news page-1, calendar month saat ini (label tanggal). Buat test parity util `compareGolden()` (deep-equal numeric tolerance 0).
-Verify: test parity hijau vs dirinya sendiri. Rollback: hapus folder.
+### FASE 2 — REDIS HYGIENE + KUOTA
+- **T2.1** `redis-keys.ts` typed builders (semua §C.2, prefix `b:{env}:`) + ESLint no-restricted-imports/syntax; refactor 3 modul store.
+- **T2.2** Rate limiter → custom store @fastify/rate-limit (INCR+PEXPIRE, R1); fail-open→memory+warn; flag RATELIMIT_BACKEND.
+- **T2.3** Rename auth keys dual-read window.
+- **T2.4** 🆕 Market price staleness: getAllPrices/getPrice filter `timestamp` (data sudah punya); cleanup-worker UNLINK field symbol yang hilang dari stream_symbols; (opsional penuh) pecah hash→per-symbol key EX120.
+- **T2.5** 🔥 Kuota guard Redis: ticker market 1s→**5s + adaptive idle-backoff**, pipeline multi-get per tick; pasang counter harian ala `consumeDailyBudget` (REDIS_DAILY_BUDGET) + alert §F; opsional arahkan UPSTASH ke self-host SRH (dev compose sudah ada).
+Verify: hitung ops/hari dari log budget < 70% tier. Rollback: interval lama.
 
-**T0.9 Dedup audit**
-Apply: baca kedua repo chat/message + barrels; tulis temuan di dokumen ini §C.3 (ya/tidak merge). **Tidak ada perubahan kode di task ini.**
+### FASE 2.5 — WORKER HARDENING (semua K7–K11)
+- **T6.1 Leader lease** di ManagedWorkerBase: `SET b:{env}:wlock:{id} {instanceId} NX PX 90000` + renew 30s + release Lua-compare on stop; follower standby (tetap subscribe, skip timer). Alternatif PG advisory lock.
+- **T6.2** ws-worker: pindahkan cek isPaused SETELAH branch ping/pong; scheduleReconnect hormati paused; doPause set flag reconnect-aware.
+- **T6.3** Seeder: marker `last_seed_ok_at` (worker_states.lastReportAt atau KV) — skip fetchSchedule bila < N jam.
+- **T6.4** Budget guard mencakup joinWithAnnouncementsAndPredictions & handleStreamEvent (alokasi 40 refresh / 60 join-SSE).
+- **T6.5** Dispatch chain serialization (`dispatchChain.then(...)`) + guard `if(this.timer)return` di tiap doStart + recordReport tolak timpa status bila last_command_at lebih baru.
+- **T6.6** Jitter cron rollover (offset 0/3/7 mnt) + isRunning guards: refreshRecentValues, syncIfMonthMissing, seedCurrentMonthIfMissing, seedStartupYears, runCleanup, syncD1Baselines.
+- **T6.7** Shutdown grace: expose activeTick promise; main.ts race(allTicks, 10s) sebelum exit.
+Verify per task: unit + dual-process smoke (jalankan 2 worker lokal, pastikan hanya 1 leader). RB: per-commit revert.
 
-### FASE 1 — INDEX & AGREGAT (mengurangi beban, belum pindah sumber)
-**T1.1 Index agregat (CONCURRENTLY)**
-Apply: 3 statement `CREATE INDEX CONCURRENTLY` (chat_messages(created_at) INCLUDE tokens; users(created_at); sessions partial aktif).
-Verify: `\di` + EXPLAIN agregat metrics memakai index. Rollback: DROP INDEX CONCURRENTLY.
-
-**T1.2 `usage_daily` + backfill**
-Apply: tabel + unique(date, agent_id) + script backfill idempotent `ON CONFLICT DO UPDATE`; jadwalkan refresh harian di cleanup-worker.
-Verify: `SELECT SUM(in+out) FROM usage_daily` == SUM dari chat_messages (parity SQL). Rollback: DROP TABLE (belum dipakai baca).
-
-**T1.3 Dual-run analytics**
-Apply: `getUserAnalytics` tambahan cabang flag `USE_USAGE_DAILY` membaca usage_daily; log diff hasil lama/baru (info) selama ≥3 hari.
-Verify: log diff kosong 3 hari berturut. Rollback: flag tetap lama.
-
-**T1.4 Switch + cleanup**
-Apply: default flag → baru; hapus query agregat token lama dari hot path (pindah ke fungsi audit-only).
-Verify: golden T0.3 masih cocok; latency p95 turun. Rollback: balik flag.
-
-### FASE 2 — REDIS HYGIENE (registry dulu, baru isi)
-**T2.1 `redis-keys.ts`**
-Files: `packages/infra/src/persistence/redis/redis-keys.ts` + ESLint restriction.
-Apply: builder semua key §C.2; refactor 3 store auth + market cache memakai builder (perilaku identik).
-Verify: FE/BE test + grep tidak ada literal key lama di call-site. Rollback: revert commit.
-
-**T2.2 Rate limiter → Redis (R1)**
-Apply: plugin limit baca backend flag `RATELIMIT_BACKEND=memory|redis`; redis = INCR+EXPIRE via builder `rl:`. Fail-open terdokumentasi (Redis down → memory fallback + warn).
-Verify: dua instance proses berbagi counter (test integrasi lokal). Rollback: flag memory.
-
-**T2.3 Rename auth keys (dual-read)**
-Apply: baca key lama dulu, jika null baca baru; tulis selalu baru; setelah 1 rilis hapus baca-lama.
-Verify: smoke captcha/ticket/oauth. Rollback: balik urutan baca.
-
-### FASE 3 — OPS PIPELINE (dashboard tanpa hajar PG)
-**T3.1 Ops Aggregator**
-Apply: interval 60s + leader-lock `b:{env}:ops:lock` (SET NX EX 55) → hitung metrics+analytics sekali → tulis hash `ops:gauges` + ZSET history 7d; SSE ticker & GET endpoints baca Redis (flag `OPS_SOURCE=pg|redis`, default pg sampai parity 24h).
-Verify: parity vs golden ±tolerance; flush R0 → dashboard tetap hidup (fallback baca PG sekali + warn).
-Rollback: flag pg.
-
-**T3.2 Cache offloads**
-Apply: news page-1 (30s), calendar month (1h), symbol catalog (5m) — invalidasi otomatis oleh seeder/sync (panggil `cache.bump()` builder).
-Verify: second-load < 5ms tanpa query PG (log). Rollback: TTL 1s (efek nonaktif).
-
-**T3.3 Worker heartbeat Redis + maintenance read Redis**
-Apply: SET EX 90s per worker; halaman maintenance baca Redis, fallback PG.
-Verify: stop worker → status stale hilang ≤90s. Rollback: baca PG lagi.
+### FASE 3 — OPS PIPELINE & CACHE (tetap, plus)
+- **T3.1** Ops Aggregator 60s → gauges (flag OPS_SOURCE, parity vs golden 24h) + **fix K: analytics subselect OR index-hostile → rewrite IN-list/join saat pivot**.
+- **T3.2** Cache offloads (news/calendar/symbols) + invalidasi bump().
+- **T3.3** Heartbeat worker Redis + maintenance read Redis.
+- **T3.4** (optional) Auth hot-pair cache 60s keyed session-digest — invalidate pada revoke/reset/change-password/logoutAll.
 
 ### FASE 4 — STRUKTUR PG
-**T4.1 SET SCHEMA massal** — per tabel: `LOCK TIMEOUT 5s; ALTER TABLE … SET SCHEMA …;` + update pgTable qualified names + regenerate drizzle SQL migration (review manual!). Urutan: content→trading→identity→ops→money(kosong dulu).
-Verify: tsc + drizzle migrate di staging copy + smoke semua route. Rollback: ALTER balik (skrip down disimpan per tabel).
-**T4.2 Roles & grants** — buat 4 role, grant minimum, revoke PUBLIC; kredensial per service via env.
-Verify: svc_worker gagal SELECT money.*. Rollback: grant sementara luas + catat.
-**T4.3 Partisi bulanan** chat_messages/activity_logs/admin_actions: buat parent partitioned + attach tabel lama sebagai partisi pertama (pola standard, downtime per tabel ≈ detik-jmenit).
-Verify: insert lintas batas bulat OK. Rollback: detach + unpartition.
-**T4.4 pgbouncer** transaction mode; pool app→bouncer; ukuran total ≤ max_connections−headroom.
-Verify: 40 simulasi koneksi stabil. Rollback: URL langsung.
+- **T4.0** 🆕 Integrity money/audit dini (boleh masuk Fase 4 awal): FK ledger/audit CASCADE→SET NULL; users hard-delete→soft-delete/ban-only (hapus route delete fisik admin); trigger/blocker UPDATE-DELETE pada credit_transactions (append-only enforcement).
+- **T4.1** SET SCHEMA massal (identity/money/trading/content/ops) + qualified pgTable + regenerate migration review manual.
+- **T4.2** Roles/grants least-privilege (money_svc tunggal penulis money).
+- **T4.3** Partisi bulanan chat_messages/activity_logs/admin_actions (+news saat retensi aktif).
+- **T4.4** pgbouncer transaction pooling.
+- **T4.5** 🆕 Retensi lengkap via SystemCleanupUseCase: devices>180d, activity_logs>90d(archive dulu), news>18bln, calendar<startOf(Y−1), vouchers expired>90d, chat_messages per-user configurable.
+- **T4.6** 🆕 Sweep N+1 & konsistensi: broadcast→multi-row INSERT tx; batch-revoke→DELETE ANY(:ids); change-password→deleteByUserId; agent set-default→partial unique index (single statement); calendar upsertOne terima patch hasil compute; putuskan chat_sessions/threads & symbols vendor-column SSOT; enum/CHECK untuk status/tier/importance/action; updated_at trigger utk users/sessions/devices/messages/vouchers; calendar varchar→timestamptz; messages.reply_to self-FK.
 
-### FASE 5 — MONEY READINESS
-**T5.1 `DATABASE_URL_MONEY` + dual-pool** (Credit/Voucher repo → pool money). Verify: voucher redeem flow e2e lokal. Rollback: env kosong = fallback app-pool (kode tetap support).
-**T5.2 Ledger + idempotency**: tabel ledger append-only + middleware Idempotency-Key; backfill ledger dari credit_transactions (sum parity wajib == saldo users). Verify: parity + replay request 2× efek 1×. Rollback: fitur uang baru dimatikan flag; data lama utuh.
-**T5.3 Backup MONEY hourly-WAL + script drill restore** (`docs/ops/drill-money.md`). Verify: restore ke server lokal, checksum saldo == produksi snapshot.
+### FASE 5 — MONEY SPLIT & LEDGER
+- **T5.0a** 🚨 Fix clobber: exclude credits/reservedCredits dari generic `update()` (whitelist kolom DTO).
+- **T5.0b** 🚨 `reserved_until` + sweeper release expired holds (interval cleanup) + release-on-shutdown hook.
+- **T5.0c** 🚨 `adjustCreditsWithAudit(adminId,userId,delta,ctx)` satu tx (balance+audit); `-1`→typed InsufficientBalanceError (402/409), buang sentinel.
+- **T5.1** DATABASE_URL_MONEY + dual-pool (Credit/Voucher→money pool).
+- **T5.2** Ledger double-entry + backfill parity (sum ledger == Σ users.credits) + **Idempotency-Key middleware** (scope: redeem, chat/stream, chat, create-voucher, login session-create dedupe).
+- **T5.3** Backup hourly-WAL money + drill restore script.
+- **T5.4** 🆕 api_key encryption at rest (AES-GCM, key dari env) + mask di admin response + rotasi key lama.
 
 ---
 
-## §E. GRAF DEPENDENSI (urutan aman)
+## §E. GRAF DEPENDENSI
 ```
-T0.1→T0.2→T0.3→T0.9
-        └──────────────▶ T1.1→T1.2→T1.3→T1.4
-T2.1→T2.2→T2.3 ──────────▶ T3.1→T3.2→T3.3
-T1.4 & T3.x selesai ──────▶ T4.1→T4.2→T4.3→T4.4 ─▶ T5.1→T5.2→T5.3
+T0.1→T0.2→T0.3→T0.4→T0.5→T0.9(closed)
+                     ├─▶ T1.1→T1.2→T1.3→T1.4→T1.5→T1.6
+T2.1→T2.2→T2.3→T2.4→T2.5 ────────────────┐
+                                          ├─▶ T4.0→T4.1→T4.2→T4.3→T4.4→T4.5→T4.6
+T6.1..T6.7 (parallel dgn T1/T2) ──────────┘        └─▶ T5.0abc→T5.1→T5.2→T5.3→T5.4
 ```
-Paralel aman: jalur T2.* dapat berjalan bersama T1.* (beda domain), asal satu commit per task.
 
-## §F. MONITORING & ALERTING (ditambahkan saat T0/T3)
-- PG: koneksi terpakai >80% max; p95 query metrics >100ms; seq_scan naik >20%/hari pada tabel inti; disk >75%.
-- Redis: memory >75%, evicted_keys >0/min (R0), error rate REST >1%, kuota harian Upstash >70% budget (pola sama seperti FXMACRO budget).
-- App: `stage=DB_INGEST` muncul ≥3×/jam (news), SSE client drop spike.
+## §F. MONITORING & ALERTING
+PG: conn>80% max · metrics p95>100ms · seq_scan naik>20%/hari · disk>75%. Redis: mem>75% · evicted>0/min · REST err>1% · **budget harian >70%** (R0/R1 terpisah). App: stage=DB_INGEST≥3/jam · leader-lock flapping · SSE drop spike · reserved_credits total >X tanpa settle 1 jam.
 
-## §G. SECURITY
-- TLS ke PG (sslmode require-minimum); Upstash token per-tier (rotasi kuartalan); ACL user Redis per aplikasi bila self-host; secret hanya env server; audit setiap perubahan grant (simpan SQL di `docs/ops/grants/`).
+## §G. SECURITY TAMBAHAN (v3)
+TLS PG sslmode minimum · token Upstash per-tier + rotasi kuartalan · ACL user Redis per app (self-host) · TRUST_PROXY CIDR eksplisit + startup warning · secret payment hanya server-side · semua grant changes tersimpan `docs/ops/grants/`.
 
-## §H. ENV VAR BARU (ringkas)
-`USE_USAGE_DAILY`, `OPS_SOURCE`, `RATELIMIT_BACKEND`, `DATABASE_URL_MONEY`, `REDIS_TIER_URLS(optional)`, `FINNHUB_TIMEOUT_MS`(sudah), `NEWS_RELAY_INTERVAL_MS`.
+## §H. ENV VAR BARU
+USE_USAGE_DAILY · OPS_SOURCE · BILLING_SOURCE · RATELIMIT_BACKEND · DATABASE_URL_MONEY · FINNHUB_TIMEOUT_MS(sudah) · NEWS_RELAY_INTERVAL_MS · REDIS_DAILY_BUDGET · WORKER_LEASE_TTL_MS · MARKET_TICKER_INTERVAL_MS · CALENDAR_SEED_MIN_GAP_HOURS.
 
-## §I. YANG SENGAJA TIDAK DIUBAH (cegah scope-creep)
-Arsitektur hexagonal, pembagian worker, pola SSE yang sudah benar, kalender/market flow. Plan ini HANYA menyentuh persistence & cache layer.
+## §I. YANG SENGAJA TIDAK DIUBAH
+Hexagonal architecture · pembagian 6 worker · pola SSE & relay DB · reserve/settle/release primitives (sudah benar — hanya butuh sweeper & akurasi) · redeemAtomically (best-in-class) · pembagian chat vs messages.
 
-## §J. DoD GLOBAL
-1. Semua task card ✔ dengan gate hijau per commit.
-2. Dashboard 30 menit idle-safe = 0 full-scan agregat (bukti pg_stat_statements).
-3. FLUSH R0 tidak mengubah perilaku (fallback teruji).
-4. Parity log bersih 3 hari sebelum tiap switch.
-5. Restore drill MONEY sukses terdokumentasi.
+## §J. DoD GLOBAL (v3)
+1. Semua task ✔ gate hijau per commit. 2. Dashboard 30m idle = **0** full-scan agregat (bukti pg_stat_statements). 3. FLUSH R0 aman (fallback teruji). 4. Dual-process worker smoke: hanya 1 leader, command 1× eksekusi. 5. Redis ops/hari < budget (dashboard angka). 6. Parity bersih 3 hari tiap switch. 7. **Nol plaintext secret di DB** (cek information_schema + sample rows). 8. Restore drill money sukses; sum(ledger)==saldo. 9. Kill -9 mid-stream → reserved_credits dipulihkan oleh sweeper ≤ intervalnya.
