@@ -33,6 +33,7 @@ import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-c
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { formatFinancialNumber } from '@/shared/utils';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
+import { PageHeader } from '@/shared/presentation/ui/page-header';
 import type { WorkerAction } from '@operations/domain/entities/BackgroundWorker';
 
 export function MaintenanceContainer() {
@@ -92,31 +93,23 @@ export function MaintenanceContainer() {
   };
 
   return (
-    <div className="space-y-6 font-mono">
-      {/* Top Header Bar */}
-      <div className="border border-border bg-surface p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Wrench className="w-4 h-4 text-accent" />
-            <h1 className="text-sm font-bold tracking-wider text-accent uppercase">
-              FLEET MAINTENANCE & SYSTEM HYGIENE
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Purge expired sessions, clean temporary telemetry artifacts, and control daemon workers
-          </p>
-        </div>
-
-        <button
-          onClick={() => refetchWorkers()}
-          disabled={isWorkersLoading || isWorkersRefetching}
-          className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
-          title="Refresh Background Daemons"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isWorkersRefetching ? 'animate-spin' : ''}`} />
-          <span>REFRESH DAEMONS</span>
-        </button>
-      </div>
+    <div className="space-y-3 font-mono">
+      <PageHeader
+        title="FLEET MAINTENANCE & SYSTEM HYGIENE"
+        icon={Wrench}
+        subtitle="Purge expired sessions, clean temporary telemetry artifacts, and control daemon workers"
+        actions={
+          <button
+            onClick={() => refetchWorkers()}
+            disabled={isWorkersLoading || isWorkersRefetching}
+            className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+            title="Refresh Background Daemons"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isWorkersRefetching ? 'animate-spin' : ''}`} />
+            <span>REFRESH DAEMONS</span>
+          </button>
+        }
+      />
 
       {/* Background Daemons Grid */}
       <div className="border border-border bg-surface p-5 space-y-4">

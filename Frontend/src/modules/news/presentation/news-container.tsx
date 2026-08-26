@@ -24,6 +24,8 @@ import {
 } from '@/modules/news/application/queries/use-news';
 import { NewsCard } from './news-card';
 import { NewsListTable } from './news-list-table';
+import { PageHeader } from '@/shared/presentation/ui/page-header';
+import { FilterBar } from '@/shared/presentation/ui/filter-bar';
 import { PaginationBar } from '@/shared/presentation/ui/pagination-bar';
 
 import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-confirm-dialog';
@@ -191,45 +193,37 @@ export function NewsContainer() {
   };
 
   return (
-    <div className="space-y-6 font-mono">
-      {/* Top Header Bar */}
-      <div className="border border-border bg-surface p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Newspaper className="w-4 h-4 text-accent" />
-            <h1 className="text-sm font-bold tracking-wider text-accent uppercase">
-              INSTITUTIONAL FINANCIAL NEWS & HEADLINES
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Real-time macroeconomic feeds, forex market commentary, and cryptocurrency intelligence
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => refetch()}
-            disabled={isNewsLoading || isNewsRefetching}
-            className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
-            title="Refresh news feed"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isNewsRefetching ? 'animate-spin' : ''}`} />
-            <span>REFRESH</span>
-          </button>
-          <button
-            onClick={handlePollNow}
-            disabled={pollMutation.isPending}
-            className="flex items-center gap-1.5 border border-accent/40 bg-accent/10 hover:bg-accent hover:text-black text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
-            title="Force immediate Finnhub API sync"
-          >
-            <Flame className={`w-3.5 h-3.5 ${pollMutation.isPending ? 'animate-pulse' : ''}`} />
-            <span>{pollMutation.isPending ? 'POLLING...' : 'FORCE NEWS SYNC'}</span>
-          </button>
-        </div>
-      </div>
+    <div className="space-y-3 font-mono">
+      <PageHeader
+        title="INSTITUTIONAL FINANCIAL NEWS & HEADLINES"
+        icon={Newspaper}
+        subtitle="Real-time macroeconomic feeds, forex market commentary, and cryptocurrency intelligence"
+        actions={
+          <>
+            <button
+              onClick={() => refetch()}
+              disabled={isNewsLoading || isNewsRefetching}
+              className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+              title="Refresh news feed"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isNewsRefetching ? 'animate-spin' : ''}`} />
+              <span>REFRESH</span>
+            </button>
+            <button
+              onClick={handlePollNow}
+              disabled={pollMutation.isPending}
+              className="flex items-center gap-1.5 border border-accent/40 bg-accent/10 hover:bg-accent hover:text-black text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+              title="Force immediate Finnhub API sync"
+            >
+              <Flame className={`w-3.5 h-3.5 ${pollMutation.isPending ? 'animate-pulse' : ''}`} />
+              <span>{pollMutation.isPending ? 'POLLING...' : 'FORCE NEWS SYNC'}</span>
+            </button>
+          </>
+        }
+      />
 
       {/* Filter, Search & View Controls Bar */}
-      <div className="border border-border bg-black p-3 space-y-3">
+      <FilterBar className="space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           {/* Category Tabs */}
           <div className="flex flex-wrap items-center gap-1.5">
@@ -344,7 +338,7 @@ export function NewsContainer() {
             ARTICLES
           </div>
         </div>
-      </div>
+      </FilterBar>
 
       {/* Batch Action Toolbar (When articles are selected) */}
       {selectedIds.size > 0 && (

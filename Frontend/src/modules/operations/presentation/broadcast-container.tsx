@@ -26,6 +26,7 @@ import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-confirm-dialog';
 import { formatFinancialNumber } from '@/shared/utils';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
+import { PageHeader } from '@/shared/presentation/ui/page-header';
 import type { User } from '@identity/domain/entities/User';
 
 export function BroadcastContainer() {
@@ -128,22 +129,12 @@ export function BroadcastContainer() {
       : undefined;
 
   return (
-    <div className="space-y-6 font-mono">
-      {/* Top Header Bar */}
-      <div className="border border-border bg-surface p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Radio className="w-4 h-4 text-accent" />
-            <h1 className="text-sm font-bold tracking-wider text-accent uppercase">
-              HIGH-PRIORITY SYSTEM BROADCAST
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Dispatch operational alerts, scheduled maintenance bulletins, or compliance notices to
-            traders
-          </p>
-        </div>
-      </div>
+    <div className="space-y-3 font-mono">
+      <PageHeader
+        title="HIGH-PRIORITY SYSTEM BROADCAST"
+        icon={Radio}
+        subtitle="Dispatch operational alerts, scheduled maintenance bulletins, or compliance notices to traders"
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2 Cols: Form Input */}

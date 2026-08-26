@@ -7,6 +7,8 @@ import {
   downloadAuditLogsExport
 } from '@/modules/operations/application/queries/use-audit-logs';
 import { AuditTable } from './audit-table';
+import { PageHeader } from '@/shared/presentation/ui/page-header';
+import { FilterBar } from '@/shared/presentation/ui/filter-bar';
 import { JsonTreeViewer } from './json-tree-viewer';
 import { PaginationBar } from '@/shared/presentation/ui/pagination-bar';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
@@ -56,52 +58,44 @@ export function AuditLogsContainer() {
   };
 
   return (
-    <div className="space-y-4 font-mono">
-      {/* Top Header Bar */}
-      <div className="border border-border bg-surface p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <ShieldAlert className="w-4 h-4 text-accent" />
-            <h1 className="text-sm font-bold tracking-wider text-accent uppercase">
-              SECURITY AUDIT LOGS & TRACEABILITY
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Immutable operational audit trail, privileged events, and actor telemetry
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => refetch()}
-            disabled={isLoading || isRefetching}
-            className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
-            title="Refresh Audit Logs"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
-            <span>REFRESH</span>
-          </button>
-          <button
-            onClick={() => handleExport('csv')}
-            disabled={isExporting}
-            className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>EXPORT CSV</span>
-          </button>
-          <button
-            onClick={() => handleExport('json')}
-            disabled={isExporting}
-            className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>EXPORT JSON</span>
-          </button>
-        </div>
-      </div>
+    <div className="space-y-3 font-mono">
+      <PageHeader
+        title="SECURITY AUDIT LOGS & TRACEABILITY"
+        icon={ShieldAlert}
+        subtitle="Immutable operational audit trail, privileged events, and actor telemetry"
+        actions={
+          <>
+            <button
+              onClick={() => refetch()}
+              disabled={isLoading || isRefetching}
+              className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+              title="Refresh Audit Logs"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
+              <span>REFRESH</span>
+            </button>
+            <button
+              onClick={() => handleExport('csv')}
+              disabled={isExporting}
+              className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>EXPORT CSV</span>
+            </button>
+            <button
+              onClick={() => handleExport('json')}
+              disabled={isExporting}
+              className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>EXPORT JSON</span>
+            </button>
+          </>
+        }
+      />
 
       {/* Filter Bar */}
-      <div className="border border-border bg-black p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <FilterBar className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
             <Filter className="w-3 h-3 text-accent" />
@@ -128,7 +122,7 @@ export function AuditLogsContainer() {
           <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong>{' '}
           LOGGED EVENTS
         </div>
-      </div>
+      </FilterBar>
 
       {/* Audit Log Table Pure View */}
       <AuditTable

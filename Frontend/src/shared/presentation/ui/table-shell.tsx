@@ -11,6 +11,8 @@ export interface TableColumn {
   /** Full custom header node (e.g. a select-all checkbox) — wins over label. */
   header?: React.ReactNode;
   align?: ColumnAlign;
+  /** Extra th utility classes (widths, nowrap, …). */
+  className?: string;
 }
 
 export interface TableShellProps {
@@ -93,7 +95,10 @@ export function TableShell({
         <thead className={stickyHeader ? 'sticky top-0 z-10' : undefined}>
           <tr className="border-b border-border bg-black/80 text-[10px] uppercase tracking-wider text-muted-foreground">
             {columns.map((column) => (
-              <th key={column.key} className={`p-3 ${ALIGN_CLASS[column.align ?? 'left']}`}>
+              <th
+                key={column.key}
+                className={`p-3 ${ALIGN_CLASS[column.align ?? 'left']} ${column.className ?? ''}`}
+              >
                 {column.header ?? column.label}
               </th>
             ))}
