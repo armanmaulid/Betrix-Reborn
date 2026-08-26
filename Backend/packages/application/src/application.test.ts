@@ -949,7 +949,8 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
 
     it('BroadcastMessageUseCase sends message to all active users', async () => {
       const mockMessageRepo = {
-        save: vi.fn().mockResolvedValue({})
+        save: vi.fn().mockResolvedValue({}),
+        saveMany: vi.fn().mockResolvedValue(1)
       };
       const mockAdminActionRepo = {
         save: vi.fn().mockResolvedValue({})
@@ -968,7 +969,7 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
 
       expect(result.success).toBe(true);
       expect(result.recipientsCount).toBe(1); // 1 active non-admin user
-      expect(mockMessageRepo.save).toHaveBeenCalled();
+      expect(mockMessageRepo.saveMany).toHaveBeenCalled();
     });
 
     it('CreateAgentUseCase, ListAgentsUseCase, and SetDefaultAgentUseCase manage dynamic database AI agents', async () => {

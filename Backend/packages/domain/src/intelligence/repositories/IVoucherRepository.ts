@@ -35,6 +35,8 @@ export interface IVoucherRepository {
     action: string
   ): Promise<AtomicRedeemResult>;
   revoke(voucherId: string): Promise<boolean>;
+  /** T4.6 — batch revoke in a single statement; returns count actually revoked. */
+  revokeMany(ids: string[]): Promise<number>;
   findAll(
     pagination: PaginationParams,
     filter?: VoucherFilter,

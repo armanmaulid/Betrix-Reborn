@@ -1,7 +1,9 @@
-import { pgTable, uuid, varchar, integer, boolean, timestamp, index } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { pgTable, uuid, varchar, integer, boolean, timestamp, index, check } from 'drizzle-orm/pg-core';
+import { money as moneySchema } from './schemas.js';
 import { users } from './identity.schema.js';
 
-export const creditTransactions = pgTable(
+export const creditTransactions = moneySchema.table(
   'credit_transactions',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -15,7 +17,7 @@ export const creditTransactions = pgTable(
   (t) => [index('credit_transactions_user_created_idx').on(t.userId, t.createdAt)]
 );
 
-export const creditVouchers = pgTable(
+export const creditVouchers = moneySchema.table(
   'credit_vouchers',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -32,6 +34,7 @@ export const creditVouchers = pgTable(
     index('credit_vouchers_is_redeemed_idx').on(t.isRedeemed),
     index('credit_vouchers_created_at_idx').on(t.createdAt),
     index('credit_vouchers_amount_idx').on(t.amount),
-    index('credit_vouchers_redeemed_at_idx').on(t.redeemedAt)
+    index('credit_vouchers_redeemed_at_idx').on(t.redeemedAt),
+    check('voucher_amount_positive_check', sql`${t.amount} > 0`)
   ]
 );

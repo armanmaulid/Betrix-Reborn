@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { Nullable, PaginatedResult, PaginationParams } from '@betrix/core';
 import {
   AtomicRedeemResult,
@@ -116,6 +116,17 @@ export class DrizzleVoucherRepository implements IVoucherRepository {
       .returning({ id: creditVouchers.id });
 
     return result.length > 0;
+  }
+
+  /** T4.6 — single-statement batch revoke replaces the N+1 loop. */
+  async revokeMany(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    const result = await this.db
+      .update(creditVouchers)
+      .set({ isRedeemed: true, redeemedAt: new Date() })
+      .where(and(inArray(creditVouchers.id, ids), eq(creditVouchers.isRedeemed, false)))
+      .returning({ id: creditVouchers.id });
+    return result.length;
   }
 
   async findAll(

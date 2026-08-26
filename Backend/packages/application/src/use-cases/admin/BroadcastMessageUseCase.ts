@@ -36,7 +36,8 @@ export class BroadcastMessageUseCase {
 
     const threadId = randomUUID();
 
-    for (const toUserId of targetIds) {
+    // T4.6 — single multi-row INSERT replaces the N+1 loop.
+    const messages = targetIds.map((toUserId) => {
       const msg = new Message({
         id: randomUUID(),
         fromUserId: adminId,
@@ -46,13 +47,11 @@ export class BroadcastMessageUseCase {
         threadId,
         createdAt: new Date()
       });
+      this.notifier?.broadcastToUser(toUserId, 'message:broadcast', msg.toJSON());
+      return msg;
+    });
 
-      await this.messageRepo.save(msg);
-
-      if (this.notifier) {
-        this.notifier.broadcastToUser(toUserId, 'message:broadcast', msg.toJSON());
-      }
-    }
+    await this.messageRepo.saveMany(messages);
 
     const action = new AdminAction({
       id: randomUUID(),

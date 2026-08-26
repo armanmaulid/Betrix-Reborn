@@ -1,0 +1,41 @@
+-- T4.3 — Partition template for high-volume tables (monthly range partitions).
+-- ⚠️ HIGH RISK: requires maintenance window. Test on staging first!
+-- Run per-table: chat_messages, activity_logs, admin_actions, news_articles
+--
+-- Pattern: create partitioned shadow → copy data → swap names.
+-- Drizzle schema does NOT change (same columns) — only PG-level structure.
+
+-- Example for chat_messages:
+-- 1. Rename original
+-- ALTER TABLE "content"."chat_messages" RENAME TO chat_messages_old;
+--
+-- 2. Create partitioned parent with same shape
+-- CREATE TABLE "content"."chat_messages" (
+--   LIKE "content"."chat_messages_old" INCLUDING ALL
+-- ) PARTITION BY RANGE (created_at);
+--
+-- 3. Create monthly partitions for the retention window
+-- DO $$
+-- DECLARE
+--   start_date DATE := date_trunc('month', NOW() - interval '3 months');
+--   end_date DATE := start_date + interval '1 month';
+-- BEGIN
+--   FOR i IN 1..6 LOOP
+--     EXECUTE format(
+--       'CREATE TABLE IF NOT EXISTS %I PARTITION OF "content"."chat_messages" FOR VALUES FROM (%L) TO (%L)',
+--       'chat_messages_' || to_char(start_date, 'YYYY_MM'), start_date, end_date
+--     );
+--     start_date = end_date; end_date = end_date + interval '1 month';
+--   END LOOP;
+-- END $$;
+--
+-- 4. Copy data from old table
+-- INSERT INTO "content"."chat_messages" SELECT * FROM "content"."chat_messages_old";
+--
+-- 5. Verify count matches, then drop old
+-- DROP TABLE "content"."chat_messages_old";
+--
+-- 6. Schedule a monthly job to create future partitions (pg_cron or app-level)
+
+-- Same pattern applies to activity_logs, admin_actions, news_articles.
+-- Retention: drop partitions older than N months instead of DELETE (O(1)).

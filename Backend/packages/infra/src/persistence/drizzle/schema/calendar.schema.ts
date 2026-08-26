@@ -1,4 +1,5 @@
 import {
+  pgSchema,
   pgTable,
   varchar,
   text,
@@ -9,6 +10,7 @@ import {
   index,
   unique
 } from 'drizzle-orm/pg-core';
+import { content as contentSchema } from './schemas.js';
 
 /**
  * Economic calendar events sourced from FXMacroData (see FxMacroDataClient).
@@ -17,7 +19,7 @@ import {
  * the SSE stream (`/v1/stream/events`) map directly onto existing rows without
  * a separate lookup table.
  */
-export const calendarEvents = pgTable(
+export const calendarEvents = contentSchema.table(
   'calendar_events',
   {
     id: varchar('id', { length: 255 }).primaryKey(),

@@ -1,4 +1,7 @@
+import { sql } from 'drizzle-orm';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
+  pgSchema,
   pgTable,
   uuid,
   varchar,
@@ -6,11 +9,13 @@ import {
   boolean,
   integer,
   timestamp,
-  index
+  index,
+  check
 } from 'drizzle-orm/pg-core';
+import { trading as tradingSchema, content as contentSchema } from './schemas.js';
 import { users } from './identity.schema.js';
 
-export const aiAgents = pgTable('ai_agents', {
+export const aiAgents = tradingSchema.table('ai_agents', {
   id: varchar('id', { length: 100 }).primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   modelName: varchar('model_name', { length: 255 }).notNull(),
@@ -31,7 +36,7 @@ export const aiAgents = pgTable('ai_agents', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 });
 
-export const chatMessages = pgTable(
+export const chatMessages = contentSchema.table(
   'chat_messages',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -51,6 +56,7 @@ export const chatMessages = pgTable(
   (t) => [
     index('chat_messages_user_created_idx').on(t.userId, t.createdAt),
     index('chat_messages_session_user_idx').on(t.sessionId, t.userId),
-    index('chat_messages_created_idx').on(t.createdAt)
+    index('chat_messages_created_idx').on(t.createdAt),
+    check('chat_tokens_nonneg_check', sql`${t.inputTokens} >= 0 AND ${t.outputTokens} >= 0`)
   ]
 );

@@ -32,12 +32,14 @@ export class DeleteAdminUserUseCase {
       );
     }
 
-    const deleted = await this.userRepo.delete(targetUserId);
+    // T4.0 — users are NEVER physically deleted. Ban + revoke sessions is
+    // the irreversible action; the row remains for audit and money history.
+    await this.userRepo.updateStatus(targetUserId, 'banned');
 
     const action = new AdminAction({
       id: randomUUID(),
       adminId,
-      action: 'DELETE_USER',
+      action: 'BAN_USER',
       targetType: 'user',
       targetId: targetUserId,
       details: { email: user.email, name: user.name },
@@ -48,6 +50,6 @@ export class DeleteAdminUserUseCase {
 
     await this.adminActionRepo.save(action);
 
-    return { success: deleted };
+    return { success: true };
   }
 }

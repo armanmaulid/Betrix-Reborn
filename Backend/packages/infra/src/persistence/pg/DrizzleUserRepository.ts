@@ -115,6 +115,16 @@ export class DrizzleUserRepository implements IUserRepository {
     return deleted.length > 0;
   }
 
+  /** T4.0 — ban-only user lifecycle; physical delete is never exposed. */
+  async updateStatus(id: string, status: 'active' | 'suspended' | 'banned'): Promise<boolean> {
+    const updated = await this.db
+      .update(users)
+      .set({ status })
+      .where(eq(users.id, id))
+      .returning({ id: users.id });
+    return updated.length > 0;
+  }
+
   async findAll(
     pagination: PaginationParams,
     search?: string,

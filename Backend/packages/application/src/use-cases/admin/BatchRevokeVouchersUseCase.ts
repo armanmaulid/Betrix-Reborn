@@ -16,16 +16,14 @@ export class BatchRevokeVouchersUseCase {
     voucherIds: string[],
     context?: { ip?: string; userAgent?: string }
   ): Promise<{ revoked: number; failed: string[] }> {
+    // T4.6 — single-statement batch revoke replaces the N+1 loop.
     let revoked = 0;
     const failed: string[] = [];
-
-    for (const id of voucherIds) {
-      const ok = await this.voucherRepo.revoke(id).catch(() => false);
-      if (ok) {
-        revoked++;
-      } else {
-        failed.push(id);
-      }
+    try {
+      revoked = await this.voucherRepo.revokeMany(voucherIds);
+    } catch {
+      // Unexpected error — treat all as failed.
+      failed.push(...voucherIds);
     }
 
     const action = new AdminAction({

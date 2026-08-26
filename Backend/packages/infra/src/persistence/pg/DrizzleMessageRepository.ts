@@ -48,6 +48,28 @@ export class DrizzleMessageRepository implements IMessageRepository {
     return this.mapMessageToDomain(inserted[0]!);
   }
 
+  /** T4.6 — single multi-row INSERT for broadcast fan-out. */
+  async saveMany(msgs: Message[]): Promise<number> {
+    if (msgs.length === 0) return 0;
+    const inserted = await this.db
+      .insert(messages)
+      .values(
+        msgs.map((msg) => ({
+          id: msg.id || undefined,
+          fromUserId: msg.fromUserId,
+          toUserId: msg.toUserId,
+          subject: msg.subject,
+          body: msg.body,
+          threadId: msg.threadId,
+          replyToMessageId: msg.replyToMessageId,
+          readAt: null,
+          createdAt: msg.createdAt
+        }))
+      )
+      .returning({ id: messages.id });
+    return inserted.length;
+  }
+
   async findById(id: string): Promise<Nullable<Message>> {
     const result = await this.db.select().from(messages).where(eq(messages.id, id)).limit(1);
     return result[0] ? this.mapMessageToDomain(result[0]) : null;

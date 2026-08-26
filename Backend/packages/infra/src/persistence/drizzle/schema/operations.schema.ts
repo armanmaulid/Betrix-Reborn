@@ -1,4 +1,5 @@
 import {
+  pgSchema,
   pgTable,
   uuid,
   varchar,
@@ -11,9 +12,10 @@ import {
   index,
   primaryKey
 } from 'drizzle-orm/pg-core';
+import { ops as opsSchema } from './schemas.js';
 import { users } from './identity.schema.js';
 
-export const messages = pgTable(
+export const messages = opsSchema.table(
   'messages',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -38,7 +40,7 @@ export const messages = pgTable(
   ]
 );
 
-export const activityLogs = pgTable(
+export const activityLogs = opsSchema.table(
   'activity_logs',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -54,7 +56,7 @@ export const activityLogs = pgTable(
   (t) => [index('activity_logs_user_created_idx').on(t.userId, t.createdAt)]
 );
 
-export const adminActions = pgTable(
+export const adminActions = opsSchema.table(
   'admin_actions',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -82,7 +84,7 @@ export const adminActions = pgTable(
  * `apps/worker` (on health report). Redis pub/sub is only the real-time
  * transport between the two processes — this table is the source of truth.
  */
-export const workerStates = pgTable('worker_states', {
+export const workerStates = opsSchema.table('worker_states', {
   workerId: varchar('worker_id', { length: 100 }).primaryKey(),
   status: varchar('status', { length: 20 }).notNull().default('running'),
   lastCommand: varchar('last_command', { length: 20 }),
@@ -100,7 +102,7 @@ export const workerStates = pgTable('worker_states', {
  * worker's hourly tick (rolling window) and read by the admin analytics
  * endpoint when USE_USAGE_DAILY=true, so dashboards never scan chat_messages.
  */
-export const usageDaily = pgTable(
+export const usageDaily = opsSchema.table(
   'usage_daily',
   {
     date: date('date').notNull(),

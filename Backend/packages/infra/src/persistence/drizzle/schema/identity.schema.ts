@@ -1,4 +1,6 @@
+import { sql } from 'drizzle-orm';
 import {
+  pgSchema,
   pgTable,
   uuid,
   varchar,
@@ -7,10 +9,12 @@ import {
   integer,
   timestamp,
   index,
-  uniqueIndex
+  uniqueIndex,
+  check,
 } from 'drizzle-orm/pg-core';
+import { identity as identitySchema } from './schemas.js';
 
-export const users = pgTable(
+export const users = identitySchema.table(
   'users',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -37,11 +41,12 @@ export const users = pgTable(
     uniqueIndex('users_google_id_unique').on(t.googleId),
     index('users_tier_idx').on(t.tier),
     index('users_created_at_idx').on(t.createdAt),
-    index('users_last_active_idx').on(t.lastActive)
+    index('users_last_active_idx').on(t.lastActive),
+    check('users_status_check', sql`${t.status} IN ('active','suspended','banned')`)
   ]
 );
 
-export const sessions = pgTable(
+export const sessions = identitySchema.table(
   'sessions',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -58,7 +63,7 @@ export const sessions = pgTable(
   (t) => [index('sessions_user_idx').on(t.userId), index('sessions_expires_at_idx').on(t.expiresAt)]
 );
 
-export const devices = pgTable(
+export const devices = identitySchema.table(
   'devices',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -72,7 +77,7 @@ export const devices = pgTable(
   (t) => [index('devices_user_idx').on(t.userId)]
 );
 
-export const failedLoginAttempts = pgTable(
+export const failedLoginAttempts = identitySchema.table(
   'failed_login_attempts',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -86,7 +91,7 @@ export const failedLoginAttempts = pgTable(
   ]
 );
 
-export const verificationTokens = pgTable(
+export const verificationTokens = identitySchema.table(
   'verification_tokens',
   {
     id: uuid('id').defaultRandom().primaryKey(),
@@ -104,7 +109,7 @@ export const verificationTokens = pgTable(
   ]
 );
 
-export const notificationPreferences = pgTable('notification_preferences', {
+export const notificationPreferences = identitySchema.table('notification_preferences', {
   userId: uuid('user_id')
     .references(() => users.id, { onDelete: 'cascade' })
     .primaryKey(),

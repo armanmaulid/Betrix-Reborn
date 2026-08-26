@@ -1,6 +1,7 @@
 import { pgTable, varchar, text, bigint, timestamp, index } from 'drizzle-orm/pg-core';
+import { content as contentSchema } from './schemas.js';
 
-export const newsArticles = pgTable(
+export const newsArticles = contentSchema.table(
   'news_articles',
   {
     id: varchar('id', { length: 255 }).primaryKey(),

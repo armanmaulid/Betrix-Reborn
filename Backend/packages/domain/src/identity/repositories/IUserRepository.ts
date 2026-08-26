@@ -9,6 +9,7 @@ export interface IUserRepository {
   save(user: User): Promise<User>;
   update(user: User): Promise<User>;
   delete(id: string): Promise<boolean>;
+  updateStatus(id: string, status: 'active' | 'suspended' | 'banned'): Promise<boolean>;
   findAll(
     pagination: PaginationParams,
     search?: string,
