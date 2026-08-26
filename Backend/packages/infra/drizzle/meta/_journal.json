@@ -85,6 +85,20 @@
       "when": 1787724881203,
       "tag": "0011_mushy_iron_monger",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787760924759,
+      "tag": "0012_schema_separation",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787760924760,
+      "tag": "0013_reserved_until",
+      "breakpoints": true
     }
   ]
 }
