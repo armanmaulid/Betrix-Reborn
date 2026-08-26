@@ -10,6 +10,8 @@ import {
   DrizzleLoginAttemptRepository,
   DrizzleWorkerStateRepository,
   DrizzleAnalyticsRepository,
+  DrizzleStreamSymbolRepository,
+  RedisMarketCacheStore,
   RedisWorkerCommandBus
 } from '@betrix/infra';
 import { SystemCleanupUseCase } from '@betrix/application';
@@ -31,6 +33,8 @@ export class CleanupWorker extends ManagedWorkerBase implements IManagedWorker {
   private pool: ReturnType<typeof createPgPool>;
   private cleanupUseCase: SystemCleanupUseCase;
   private analyticsRepo: DrizzleAnalyticsRepository;
+  private streamSymbolRepo: DrizzleStreamSymbolRepository;
+  private marketStore: RedisMarketCacheStore;
   private processedCount = 0;
   private errorCount = 0;
   private lastError: string | null = null;
@@ -54,6 +58,10 @@ export class CleanupWorker extends ManagedWorkerBase implements IManagedWorker {
     this.analyticsRepo = new DrizzleAnalyticsRepository(db);
 
     this.cleanupUseCase = new SystemCleanupUseCase(sessionRepo, verificationRepo, loginAttemptRepo);
+
+    // T2.4 — owns market price-hash pruning (stale/deactivated symbols).
+    this.streamSymbolRepo = new DrizzleStreamSymbolRepository(db);
+    this.marketStore = new RedisMarketCacheStore(createRedisClient());
   }
 
   public async start(): Promise<void> {
@@ -97,6 +105,11 @@ export class CleanupWorker extends ManagedWorkerBase implements IManagedWorker {
       // T1.2 — keep usage_daily warm so analytics never scans chat_messages.
       const rolled = await this.analyticsRepo.upsertRecentUsageDaily(3);
       if (rolled > 0) logger.info(`[USAGE ROLLUP] ${rolled} day/agent row(s) refreshed.`);
+
+      // T2.4 — prune price hash fields for symbols no longer active.
+      const activeSymbols = await this.streamSymbolRepo.findActive();
+      const pruned = await this.marketStore.prunePrices(activeSymbols.map((s) => s.symbol));
+      if (pruned > 0) logger.info(`[MARKET PRUNE] Removed ${pruned} stale price field(s).`);
     } catch (err: any) {
       this.errorCount += 1;
       this.lastError = err.message;

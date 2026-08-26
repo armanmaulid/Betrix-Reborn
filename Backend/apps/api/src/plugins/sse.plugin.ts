@@ -1,6 +1,9 @@
 import { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
+import pino from 'pino';
 import { PriceTick, NewsArticle } from '@betrix/domain';
+
+const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
 export interface SseClient {
   id: string;
@@ -19,11 +22,18 @@ export interface OpsSnapshot {
 export class SseHub {
   private clients = new Map<string, SseClient>();
   private heartbeatTimer: NodeJS.Timeout | null = null;
-  private marketTickerTimer: NodeJS.Timeout | null = null;
+  private marketTimer: NodeJS.Timeout | null = null;
+  private marketDelayMs = Number(process.env.MARKET_TICKER_INTERVAL_MS) || 5000;
+  private static readonly MARKET_MAX_DELAY_MS = 30_000;
   private lastPriceSnapshot = new Map<string, number>();
   private priceFetcher: (() => Promise<PriceTick[]>) | null = null;
   private opsTickerTimer: NodeJS.Timeout | null = null;
   private opsFetcher: (() => Promise<OpsSnapshot>) | null = null;
+
+  /** T2.5 — daily Upstash command budget for the SSE tickers (fail-safe). */
+  private redisBudgetUsedToday = 0;
+  private budgetDayUtc = new Date().getUTCDate();
+  private budgetWarnedAt = 0;
 
   constructor() {
     this.startHeartbeat();
@@ -173,9 +183,9 @@ export class SseHub {
       this.heartbeatTimer = null;
     }
 
-    if (this.marketTickerTimer) {
-      clearInterval(this.marketTickerTimer);
-      this.marketTickerTimer = null;
+    if (this.marketTimer) {
+      clearTimeout(this.marketTimer);
+      this.marketTimer = null;
     }
 
     if (this.opsTickerTimer) {
@@ -244,35 +254,83 @@ export class SseHub {
     }, 25000); // 25s heartbeat
   }
 
+  /**
+   * T2.5 — adaptive market ticker replacing the fixed 1s setInterval that
+   * alone burned ~86k Upstash ops/day (≈8.7× the free tier).
+   *  - Base cadence MARKET_TICKER_INTERVAL_MS (5s), idle backoff ×2 up to 30s,
+   *    instant reset to base on any real change or fresh client attach.
+   *  - Every HGETALL consumes from REDIS_DAILY_BUDGET; exhausted → skip ticks
+   *    with an hourly warning instead of hammering the provider.
+   */
+  private consumeRedisBudget(calls = 1): boolean {
+    const todayUtc = new Date().getUTCDate();
+    if (todayUtc !== this.budgetDayUtc) {
+      this.budgetDayUtc = todayUtc;
+      this.redisBudgetUsedToday = 0;
+      this.budgetWarnedAt = 0;
+    }
+    const budget = Number(process.env.REDIS_DAILY_BUDGET) || 6000;
+    if (this.redisBudgetUsedToday + calls > budget) return false;
+    this.redisBudgetUsedToday += calls;
+    return true;
+  }
+
   private startMarketTicker(): void {
-    if (this.marketTickerTimer) return;
+    if (this.marketTimer) return;
+    this.scheduleMarketTick();
+  }
 
-    this.marketTickerTimer = setInterval(async () => {
-      if (!this.priceFetcher || this.clients.size === 0) return;
+  private scheduleMarketTick(delayMs = this.marketDelayMs): void {
+    if (this.marketTimer) return;
+    this.marketTimer = setTimeout(() => {
+      this.marketTimer = null;
+      void this.runMarketTick();
+    }, delayMs);
+  }
 
-      let hasMarketClient = false;
-      for (const client of this.clients.values()) {
-        if (client.channel === 'market') {
-          hasMarketClient = true;
-          break;
+  private async runMarketTick(): Promise<void> {
+    if (!this.priceFetcher || !this.hasClientsFor('market')) {
+      // Idle — retry at base cadence so a newly attached client is served fast.
+      this.marketDelayMs = Number(process.env.MARKET_TICKER_INTERVAL_MS) || 5000;
+      this.scheduleMarketTick();
+      return;
+    }
+
+    if (!this.consumeRedisBudget(1)) {
+      if (Date.now() - this.budgetWarnedAt > 3_600_000) {
+        this.budgetWarnedAt = Date.now();
+        logger.warn(
+          `[MARKET TICKER] Daily Redis budget exhausted (${process.env.REDIS_DAILY_BUDGET || 6000}) — pausing price pushes until UTC midnight.`
+        );
+      }
+      this.scheduleMarketTick(60_000);
+      return;
+    }
+
+    let changed = 0;
+    try {
+      const prices = await this.priceFetcher();
+      for (const tick of prices) {
+        const sym = tick.symbol.toUpperCase();
+        const prevBid = this.lastPriceSnapshot.get(sym);
+        if (prevBid !== tick.bid) {
+          this.lastPriceSnapshot.set(sym, tick.bid);
+          this.broadcastMarketTick(tick);
+          changed += 1;
         }
       }
-      if (!hasMarketClient) return;
+    } catch {
+      // Ignore background polling errors
+    }
 
-      try {
-        const prices = await this.priceFetcher();
-        for (const tick of prices) {
-          const sym = tick.symbol.toUpperCase();
-          const prevBid = this.lastPriceSnapshot.get(sym);
-          if (prevBid !== tick.bid) {
-            this.lastPriceSnapshot.set(sym, tick.bid);
-            this.broadcastMarketTick(tick);
-          }
-        }
-      } catch {
-        // Ignore background polling errors
-      }
-    }, 1000);
+    // Adaptive cadence: quiet market backs off ×2 (≤30s); any change snaps
+    // straight back to base so traders never wait during activity.
+    this.marketDelayMs =
+      changed > 0
+        ? Number(process.env.MARKET_TICKER_INTERVAL_MS) || 5000
+        : Math.min(this.marketDelayMs * 2, SseHub.MARKET_MAX_DELAY_MS);
+
+    this.scheduleMarketTick();
   }
 }
 

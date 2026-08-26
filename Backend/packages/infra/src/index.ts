@@ -30,6 +30,7 @@ export {
   RedisMarketCacheStore as RedisMarketDataRepository
 } from './persistence/redis/RedisMarketDataRepository.js';
 export * from './persistence/redis/RedisEphemeralStores.js';
+export * from './persistence/redis/redis-keys.js';
 
 // External Adapters
 export * from './external/finnhub/FinnhubRealtimeClient.js';

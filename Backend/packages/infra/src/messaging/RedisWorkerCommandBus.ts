@@ -1,5 +1,6 @@
 import type { Redis } from '@upstash/redis';
 import type { WorkerAction, WorkerStatus } from '@betrix/domain';
+import { redisKeys } from '../persistence/redis/redis-keys.js';
 
 /**
  * Command published by `apps/api` (WorkerManagerService) whenever an admin
@@ -24,11 +25,11 @@ export interface WorkerReportMessage {
 }
 
 function commandChannel(workerId: string): string {
-  return `worker:command:${workerId}`;
+  return redisKeys.workerCommandChannel(workerId);
 }
 
 function reportChannel(workerId: string): string {
-  return `worker:report:${workerId}`;
+  return redisKeys.workerReportChannel(workerId);
 }
 
 /**

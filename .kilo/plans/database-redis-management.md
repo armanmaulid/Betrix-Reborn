@@ -126,7 +126,18 @@ Status eksekusi:
 Detail task card:
 - **T1.1 INDEX PASS (CONCURRENTLY)** — daftar lengkap K17: sessions(user_id),(expires_at); devices(user_id); users(google_id UNIQUE),(tier),(created_at),(last_active); verification_tokens(user_id,type),(expires_at); credit_transactions(user_id,created_at)🚨prioritas; credit_vouchers(is_redeemed),(created_at),(amount),(redeemed_at); admin_actions(target_id); failed_login(created_at); news GIN(tags)+pg_trgm(headline,summary). Verify: EXPLAIN agregat & getHistory memakai index. RB: DROP CONCURRENTLY.
 
-### FASE 2 — REDIS HYGIENE + KUOTA
+### FASE 2 — REDIS HYGIENE + KUOTA ✅ SELESAI 2026-08-26
+Status eksekusi:
+- [x] T2.1 ✔ `redis-keys.ts` registry (namespace `b:{env}:*`, tier R0/R1/R2) + refactor RedisEphemeralStores / MarketCacheStore / WorkerCommandBus + **guard script** `scripts/guard-redis-keys.mjs` (root script `guard:redis-keys`) — scan bersih.
+- [x] T2.2 ✔ Rate limiter → custom store @fastify/rate-limit (INCR+EXPIRE via rl:global); fail-open counter 0 saat error + warn throttle 5 menit; flag RATELIMIT_BACKEND=redis|memory.
+- [x] T2.3 ✔ Dual-read window auth keys (captcha & stream_ticket): baca baru → fallback legacy GETDEL; tulis selalu baru. Hapus fallback setelah 1 rilis.
+- [x] T2.4 ✔ Staleness guard PRICE_STALE_MS=120s di getPrice/getAllPrices + prunePrices(activeSymbols) dipanggil cleanup-worker tiap jam.
+- [x] T2.5 ✔ Ticker adaptif: base MARKET_TICKER_INTERVAL_MS=5s, idle backoff ×2 ≤30s reset instan saat ada tick; REDIS_DAILY_BUDGET=6000/hari UTC-reset, skip + warn per jam saat habis.
+- GATE: BE tsc 7/7 · eslint 0 error · prettier · unit 6+44+2+28 · guard clean ✓
+> Rollback: per-task revert; RATELIMIT_BACKEND=memory & MARKET_TICKER_INTERVAL_MS=1000 mengembalikan perilaku lama tanpa deploy ulang kode.
+
+---
+Detail task card (arsitektur):
 - **T2.1** `redis-keys.ts` typed builders (semua §C.2, prefix `b:{env}:`) + ESLint no-restricted-imports/syntax; refactor 3 modul store.
 - **T2.2** Rate limiter → custom store @fastify/rate-limit (INCR+PEXPIRE, R1); fail-open→memory+warn; flag RATELIMIT_BACKEND.
 - **T2.3** Rename auth keys dual-read window.

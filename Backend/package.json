@@ -17,7 +17,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "turbo db:generate",
-    "db:migrate": "turbo db:migrate"
+    "db:migrate": "turbo db:migrate",
+    "guard:redis-keys": "node scripts/guard-redis-keys.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

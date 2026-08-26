@@ -138,5 +138,11 @@ export const env = {
 
   // Billing token source: 'provider' prefers real upstream usage numbers when
   // the AI gateway reports them; 'estimate' forces the legacy chars/4 model.
-  BILLING_SOURCE: process.env.BILLING_SOURCE || 'provider'
+  BILLING_SOURCE: process.env.BILLING_SOURCE || 'provider',
+
+  // Fase 2 — Redis hygiene & quota (plan §D Fase 2 / T2.5):
+  RATELIMIT_BACKEND: process.env.RATELIMIT_BACKEND || 'redis',
+  MARKET_TICKER_INTERVAL_MS: Number(process.env.MARKET_TICKER_INTERVAL_MS) || 5000,
+  REDIS_DAILY_BUDGET: Number(process.env.REDIS_DAILY_BUDGET) || 6000,
+  PRICE_STALE_MS: Number(process.env.PRICE_STALE_MS) || 120000
 };
