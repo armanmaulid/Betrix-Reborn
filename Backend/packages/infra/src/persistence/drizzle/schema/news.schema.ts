@@ -16,6 +16,7 @@ export const newsArticles = pgTable(
   },
   (t) => [
     index('news_articles_datetime_idx').on(t.datetime),
-    index('news_articles_category_datetime_idx').on(t.category, t.datetime)
+    index('news_articles_category_datetime_idx').on(t.category, t.datetime),
+    index('news_articles_tags_gin_idx').using('gin', t.tags)
   ]
 );

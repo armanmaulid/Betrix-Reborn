@@ -1,4 +1,5 @@
 import { desc, eq, sql, and, or } from 'drizzle-orm';
+import { env } from '@betrix/config';
 import {
   IAdminActionRepository,
   IActivityLogRepository,
@@ -22,6 +23,7 @@ import {
   users,
   chatMessages,
   sessions,
+  usageDaily,
   workerStates
 } from '../drizzle/schema.js';
 
@@ -165,8 +167,35 @@ export class DrizzleActivityLogRepository implements IActivityLogRepository {
 export class DrizzleAnalyticsRepository implements IAnalyticsRepository {
   constructor(
     private readonly db: DrizzleDb,
-    private readonly redis?: any
+    private readonly redis?: any,
+    /** Live pool sampler — replaces the hard-coded 1/0 dashboard lie (T1.6). */
+    private readonly pgPool?: { totalCount: number; idleCount: number }
   ) {}
+
+  /**
+   * T1.2 — rolling re-aggregation of chat_messages into usage_daily.
+   * Idempotent via ON CONFLICT; the hourly cleanup worker calls this with a
+   * small window so the cost stays proportional to recent traffic only.
+   */
+  async upsertRecentUsageDaily(daysBack = 3): Promise<number> {
+    const result = await this.db.execute(sql`
+      insert into usage_daily (date, agent_id, chats, input_tokens, output_tokens)
+      select
+        to_char(date_trunc('day', ${chatMessages.createdAt} at time zone 'utc'), 'YYYY-MM-DD')::date,
+        ${chatMessages.modelUsed},
+        count(*),
+        sum(${chatMessages.inputTokens}),
+        sum(${chatMessages.outputTokens})
+      from ${chatMessages}
+      where ${chatMessages.createdAt} >= now() - (${daysBack}::text || ' days')::interval
+      group by 1, 2
+      on conflict (date, agent_id) do update set
+        chats = excluded.chats,
+        input_tokens = excluded.input_tokens,
+        output_tokens = excluded.output_tokens
+    `);
+    return result?.rowCount ?? 0;
+  }
 
   async getSystemMetrics(): Promise<SystemMetrics> {
     let redisStatus = 'healthy';
@@ -198,8 +227,8 @@ export class DrizzleAnalyticsRepository implements IAnalyticsRepository {
       activeSessions: sessionCount[0]?.count || 0,
       totalChats: chatStats[0]?.totalChats || 0,
       totalTokensUsed: chatStats[0]?.totalTokens || 0,
-      dbPoolActive: 1,
-      dbPoolIdle: 0,
+      dbPoolActive: this.pgPool ? this.pgPool.totalCount - this.pgPool.idleCount : 1,
+      dbPoolIdle: this.pgPool ? this.pgPool.idleCount : 0,
       uptimeSeconds: Math.floor(process.uptime()),
       redisStatus,
       redisLatencyMs
@@ -273,10 +302,37 @@ export class DrizzleAnalyticsRepository implements IAnalyticsRepository {
     ]);
 
     // Token Usage Time-Series based on period.
-    // No initializer: the if/else chain below is exhaustive and always assigns.
+    // T1.3/T1.4: when USE_USAGE_DAILY=true the series comes from the
+    // pre-aggregated usage_daily table; the legacy chat_messages GROUP BY is
+    // still executed for parity logging until the switch is proven stable.
+    const useDaily = env.USE_USAGE_DAILY === true;
     let tokenUsageRows: { date: string; tokens: number }[];
 
-    if (period === 'weekly') {
+    if (useDaily && period !== 'custom' && period !== 'all') {
+      const days = period === 'weekly' ? 84 : period === 'monthly' ? 365 : 14;
+      const bucket =
+        period === 'weekly'
+          ? sql<string>`to_char(date_trunc('week', ${usageDaily.date}::timestamptz), 'YYYY-MM-DD')`
+          : period === 'monthly'
+            ? sql<string>`to_char(date_trunc('month', ${usageDaily.date}::timestamptz), 'YYYY-MM')`
+            : sql<string>`to_char(${usageDaily.date}::timestamptz, 'YYYY-MM-DD')`;
+      const bucketExpr =
+        period === 'weekly'
+          ? sql`date_trunc('week', ${usageDaily.date}::timestamptz)`
+          : period === 'monthly'
+            ? sql`date_trunc('month', ${usageDaily.date}::timestamptz)`
+            : sql`${usageDaily.date}`;
+
+      tokenUsageRows = await this.db
+        .select({
+          date: bucket,
+          tokens: sql<number>`cast(coalesce(sum(${usageDaily.inputTokens} + ${usageDaily.outputTokens}), 0) as integer)`
+        })
+        .from(usageDaily)
+        .where(sql`${usageDaily.date} >= current_date - ${days}::int`)
+        .groupBy(bucketExpr)
+        .orderBy(sql`${bucketExpr} asc`);
+    } else if (period === 'weekly') {
       tokenUsageRows = await this.db
         .select({
           date: sql<string>`to_char(date_trunc('week', ${chatMessages.createdAt}), 'YYYY-MM-DD')`,

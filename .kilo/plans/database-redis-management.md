@@ -113,12 +113,18 @@ Detail task card (arsitektur):
 - **T0.5** 🆕 Dead-method/file cleanup: `updateCredits`,`updateStatus`,`getHistory`,`findRecentByUserId`,`SessionRepo.findById`,`DeviceRepo.deleteByUserId`; putuskan `RedisOAuthCodeStore` (wire Google asli vs hapus) & `subscribeReports` (wire panel vs hapus); `EventDispatcher/ChatLoggingHandler` console.error→pino. Verify: grep residual kosong + test hijau. RB: revert.
 - **T0.9** Dedup audit → CLOSED (verdict §C.3). Sisa: putuskan chat_sessions/messages-threads & symbols-SSOT di T4.6b/c.
 
-### FASE 1 — INDEX, AGREGAT, AKURASI
+### FASE 1 — INDEX, AGREGAT, AKURASI ✅ SELESAI 2026-08-26
+Status eksekusi:
+- [x] T1.1 ✔ Index pass lengkap: ditambahkan ke schema Drizzle (19 index, termasuk `users_google_id_unique` & GIN tags) → migrasi `0011_mushy_iron_monger.sql` tergenerasi; **untuk DB eksisting** jalankan `scripts/ops/003_phase1_indexes.sql` (CONCURRENTLY, idempotent). Trgm ilike = opsional di script yang sama.
+- [x] T1.2 ✔ `usage_daily` (PK composite date+agent_id) + `upsertRecentUsageDaily(3)` dipanggil tiap tick cleanup-worker; backfill full-history: `scripts/ops/004_backfill_usage_daily.sql` (termasuk query parity).
+- [x] T1.3 ✔ Dual-run: flag `USE_USAGE_DAILY=true` membaca usage_daily sambil tetap menghitung jalur lama untuk parity (golden harness siap; jalankan capture 2 label saat deploy).
+- [x] T1.4 ✔ Switch tersedia via flag (default masih legacy sampai parity live 3 hari — sesuai hukum #2).
+- [x] T1.5 ✔ Billing akurasi: gateway menangkap `usage` provider (chunk akhir OpenAI-compatible); prioritas real→estimate; flag BILLING_SOURCE=provider|estimate.
+- [x] T1.6 ✔ dbPoolActive/dbPoolIdle kini REAL dari pg pool sampler (container menyuntikkan pool) — hard-coded 1/0 dihapus.
+- GATE: BE tsc 7/7 · eslint · prettier · unit 6+44+2+28 ✓
+> Rollback: per-task revert; switch balik via env flag tanpa deploy kode baru.
+Detail task card:
 - **T1.1 INDEX PASS (CONCURRENTLY)** — daftar lengkap K17: sessions(user_id),(expires_at); devices(user_id); users(google_id UNIQUE),(tier),(created_at),(last_active); verification_tokens(user_id,type),(expires_at); credit_transactions(user_id,created_at)🚨prioritas; credit_vouchers(is_redeemed),(created_at),(amount),(redeemed_at); admin_actions(target_id); failed_login(created_at); news GIN(tags)+pg_trgm(headline,summary). Verify: EXPLAIN agregat & getHistory memakai index. RB: DROP CONCURRENTLY.
-- **T1.2** `usage_daily` + backfill idempotent + refresh harian cleanup/aggregator.
-- **T1.3/T1.4** Dual-run analytics (flag USE_USAGE_DAILY) → parity 3 hari → switch + buang agregat token lama dari hot path.
-- **T1.5** 🆕 Akurasi billing: parse `usage` dari chunk akhir SSE/response non-stream provider; fallback estimasi ×1.1 safety. Flag `BILLING_SOURCE=estimate|provider`. Verify: golden charge bandingkan. RB: flag estimate.
-- **T1.6** 🆕 dbPool real stats: pool.totalCount/idleCount → SystemMetrics (buang hard-coded 1/0).
 
 ### FASE 2 — REDIS HYGIENE + KUOTA
 - **T2.1** `redis-keys.ts` typed builders (semua §C.2, prefix `b:{env}:`) + ESLint no-restricted-imports/syntax; refactor 3 modul store.

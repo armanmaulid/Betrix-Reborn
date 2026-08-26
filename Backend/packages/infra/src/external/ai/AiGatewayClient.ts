@@ -111,6 +111,7 @@ export class AiGatewayClient implements IAiGateway {
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
       let fullContent = '';
+      let providerUsage: { inputTokens?: number; outputTokens?: number } | undefined;
 
       const router = ThinkingFilter.createStreamRouter({
         onThink: (chunk) => callbacks.onThink?.(chunk),
@@ -133,6 +134,22 @@ export class AiGatewayClient implements IAiGateway {
           if (trimmed.startsWith('data: ')) {
             try {
               const parsed = JSON.parse(trimmed.substring(6));
+
+              // T1.5 — capture real upstream usage when the provider sends it
+              // (final OpenAI-compatible chunk carries `usage` with empty
+              // choices). Preferred over the chars/4 estimate for billing.
+              const u = parsed.usage;
+              if (
+                u &&
+                (Number.isFinite(Number(u.prompt_tokens)) ||
+                  Number.isFinite(Number(u.completion_tokens)))
+              ) {
+                providerUsage = {
+                  inputTokens: Number(u.prompt_tokens),
+                  outputTokens: Number(u.completion_tokens)
+                };
+              }
+
               const delta = parsed.choices?.[0]?.delta;
               if (delta?.reasoning_content) {
                 callbacks.onThink?.(delta.reasoning_content);
@@ -150,8 +167,17 @@ export class AiGatewayClient implements IAiGateway {
 
       router.flush();
       const latencyMs = Date.now() - startTime;
-      const inputTokens = Math.ceil(JSON.stringify(request.messages).length / 4);
-      const outputTokens = Math.ceil(fullContent.length / 4);
+
+      // T1.5 — prefer REAL upstream usage for billing; fall back to the
+      // chars/4 estimate only when the provider did not report usage, or when
+      // BILLING_SOURCE=estimate is forced.
+      const estimatedInput = Math.ceil(JSON.stringify(request.messages).length / 4);
+      const estimatedOutput = Math.ceil(fullContent.length / 4);
+      const preferProvider = (process.env.BILLING_SOURCE || 'provider') !== 'estimate';
+      const realInput = providerUsage?.inputTokens;
+      const realOutput = providerUsage?.outputTokens;
+      const inputTokens = preferProvider && realInput ? realInput : estimatedInput;
+      const outputTokens = preferProvider && realOutput ? realOutput : estimatedOutput;
 
       callbacks.onDone?.({ inputTokens, outputTokens, latencyMs });
     } catch (err: any) {

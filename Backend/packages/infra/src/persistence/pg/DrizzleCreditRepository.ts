@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { ICreditRepository, CreditTransaction } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { creditTransactions, users } from '../drizzle/schema.js';

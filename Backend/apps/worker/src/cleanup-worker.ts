@@ -9,6 +9,7 @@ import {
   DrizzleVerificationRepository,
   DrizzleLoginAttemptRepository,
   DrizzleWorkerStateRepository,
+  DrizzleAnalyticsRepository,
   RedisWorkerCommandBus
 } from '@betrix/infra';
 import { SystemCleanupUseCase } from '@betrix/application';
@@ -29,6 +30,7 @@ export class CleanupWorker extends ManagedWorkerBase implements IManagedWorker {
   private isPaused = false;
   private pool: ReturnType<typeof createPgPool>;
   private cleanupUseCase: SystemCleanupUseCase;
+  private analyticsRepo: DrizzleAnalyticsRepository;
   private processedCount = 0;
   private errorCount = 0;
   private lastError: string | null = null;
@@ -48,6 +50,8 @@ export class CleanupWorker extends ManagedWorkerBase implements IManagedWorker {
     const sessionRepo = new DrizzleSessionRepository(db);
     const verificationRepo = new DrizzleVerificationRepository(db);
     const loginAttemptRepo = new DrizzleLoginAttemptRepository(db);
+    // T1.2 — owns the usage_daily rollup (rolling window upsert each tick).
+    this.analyticsRepo = new DrizzleAnalyticsRepository(db);
 
     this.cleanupUseCase = new SystemCleanupUseCase(sessionRepo, verificationRepo, loginAttemptRepo);
   }
@@ -89,6 +93,10 @@ export class CleanupWorker extends ManagedWorkerBase implements IManagedWorker {
       logger.info(
         `[CLEANUP COMPLETED] Expired Sessions Purged: ${result.expiredSessionsDeleted}, Expired Tokens Purged: ${result.expiredTokensDeleted}, Old Login Attempts Purged: ${result.oldLoginAttemptsDeleted}`
       );
+
+      // T1.2 — keep usage_daily warm so analytics never scans chat_messages.
+      const rolled = await this.analyticsRepo.upsertRecentUsageDaily(3);
+      if (rolled > 0) logger.info(`[USAGE ROLLUP] ${rolled} day/agent row(s) refreshed.`);
     } catch (err: any) {
       this.errorCount += 1;
       this.lastError = err.message;

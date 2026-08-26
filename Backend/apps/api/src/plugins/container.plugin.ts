@@ -293,7 +293,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const messageRepo = new DrizzleMessageRepository(db);
   const adminActionRepo = new DrizzleAdminActionRepository(db);
   const activityLogRepo = new DrizzleActivityLogRepository(db);
-  const analyticsRepo = new DrizzleAnalyticsRepository(db, redis);
+  const analyticsRepo = new DrizzleAnalyticsRepository(db, redis, pgPool);
   const usageRepo = new DrizzleUsageRepository(db);
   const verificationRepo = new DrizzleVerificationRepository(db);
   const loginAttemptRepo = new DrizzleLoginAttemptRepository(db);

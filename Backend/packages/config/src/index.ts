@@ -130,5 +130,13 @@ export const env = {
   CALENDAR_REFRESH_LOOKBACK_HOURS: Number(process.env.CALENDAR_REFRESH_LOOKBACK_HOURS) || 72,
   CALENDAR_REFRESH_AHEAD_HOURS: Number(process.env.CALENDAR_REFRESH_AHEAD_HOURS) || 24,
   CALENDAR_REFRESH_MAX_CODES_PER_PASS: Number(process.env.CALENDAR_REFRESH_MAX_CODES_PER_PASS) || 8,
-  FXMACRODATA_DAILY_CALL_BUDGET: Number(process.env.FXMACRODATA_DAILY_CALL_BUDGET) || 60
+  FXMACRODATA_DAILY_CALL_BUDGET: Number(process.env.FXMACRODATA_DAILY_CALL_BUDGET) || 60,
+
+  // Fase 1 (DB/Redis plan): read admin analytics token series from the
+  // pre-aggregated usage_daily rollup instead of scanning chat_messages.
+  USE_USAGE_DAILY: process.env.USE_USAGE_DAILY === 'true',
+
+  // Billing token source: 'provider' prefers real upstream usage numbers when
+  // the AI gateway reports them; 'estimate' forces the legacy chars/4 model.
+  BILLING_SOURCE: process.env.BILLING_SOURCE || 'provider'
 };

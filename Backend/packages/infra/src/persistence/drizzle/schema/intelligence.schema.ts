@@ -50,6 +50,7 @@ export const chatMessages = pgTable(
   },
   (t) => [
     index('chat_messages_user_created_idx').on(t.userId, t.createdAt),
-    index('chat_messages_session_user_idx').on(t.sessionId, t.userId)
+    index('chat_messages_session_user_idx').on(t.sessionId, t.userId),
+    index('chat_messages_created_idx').on(t.createdAt)
   ]
 );

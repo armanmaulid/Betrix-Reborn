@@ -5,8 +5,11 @@ import {
   text,
   jsonb,
   timestamp,
+  integer,
+  date,
+  bigint,
   index,
-  integer
+  primaryKey
 } from 'drizzle-orm/pg-core';
 import { users } from './identity.schema.js';
 
@@ -66,7 +69,10 @@ export const adminActions = pgTable(
     userAgent: text('user_agent'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
   },
-  (t) => [index('admin_actions_action_created_idx').on(t.action, t.createdAt)]
+  (t) => [
+    index('admin_actions_action_created_idx').on(t.action, t.createdAt),
+    index('admin_actions_target_idx').on(t.targetId)
+  ]
 );
 
 /**
@@ -88,3 +94,23 @@ export const workerStates = pgTable('worker_states', {
   lastError: text('last_error'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 });
+
+/**
+ * Pre-aggregated daily AI usage rollup ({@class D}) — written by the cleanup
+ * worker's hourly tick (rolling window) and read by the admin analytics
+ * endpoint when USE_USAGE_DAILY=true, so dashboards never scan chat_messages.
+ */
+export const usageDaily = pgTable(
+  'usage_daily',
+  {
+    date: date('date').notNull(),
+    agentId: varchar('agent_id', { length: 100 }).notNull(),
+    chats: integer('chats').default(0).notNull(),
+    inputTokens: bigint('input_tokens', { mode: 'number' }).default(0).notNull(),
+    outputTokens: bigint('output_tokens', { mode: 'number' }).default(0).notNull()
+  },
+  (t) => [
+    primaryKey({ columns: [t.date, t.agentId] }),
+    index('usage_daily_agent_idx').on(t.agentId)
+  ]
+);
