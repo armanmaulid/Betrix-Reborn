@@ -7,7 +7,9 @@ export type ColumnAlign = 'left' | 'right' | 'center';
 export interface TableColumn {
   key: string;
   /** Rendered UPPERCASE-styled automatically — pass normal words. */
-  label: string;
+  label?: string;
+  /** Full custom header node (e.g. a select-all checkbox) — wins over label. */
+  header?: React.ReactNode;
   align?: ColumnAlign;
 }
 
@@ -92,7 +94,7 @@ export function TableShell({
           <tr className="border-b border-border bg-black/80 text-[10px] uppercase tracking-wider text-muted-foreground">
             {columns.map((column) => (
               <th key={column.key} className={`p-3 ${ALIGN_CLASS[column.align ?? 'left']}`}>
-                {column.label}
+                {column.header ?? column.label}
               </th>
             ))}
           </tr>

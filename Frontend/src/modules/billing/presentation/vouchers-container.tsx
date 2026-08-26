@@ -8,6 +8,8 @@ import {
   useBatchRevokeVouchersMutation
 } from '@/modules/billing/application/queries/use-vouchers';
 import { VoucherTable } from './voucher-table';
+import { PageHeader } from '@/shared/presentation/ui/page-header';
+import { FilterBar } from '@/shared/presentation/ui/filter-bar';
 import { CreateVoucherDialog } from './create-voucher-dialog';
 import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-confirm-dialog';
 import { PaginationBar } from '@/shared/presentation/ui/pagination-bar';
@@ -109,43 +111,35 @@ export function VouchersContainer() {
   };
 
   return (
-    <div className="space-y-4 font-mono">
-      {/* Top Header Bar */}
-      <div className="border border-border bg-surface p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Ticket className="w-4 h-4 text-accent" />
-            <h1 className="text-sm font-bold tracking-wider text-accent uppercase">
-              PROMOTIONAL CREDIT VOUCHERS
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Issue token vouchers, monitor redemptions, and revoke promotional codes
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => refetch()}
-            disabled={isLoading || isRefetching}
-            className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
-            title="Refresh Vouchers List"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
-            <span>REFRESH</span>
-          </button>
-          <button
-            onClick={() => setIsCreateOpen(true)}
-            className="flex items-center gap-1.5 border border-accent/40 bg-accent/10 hover:bg-accent hover:text-black text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
-          >
-            <PlusCircle className="w-3.5 h-3.5" />
-            <span>GENERATE VOUCHER</span>
-          </button>
-        </div>
-      </div>
+    <div className="space-y-3 font-mono">
+      <PageHeader
+        title="PROMOTIONAL CREDIT VOUCHERS"
+        icon={Ticket}
+        subtitle="Issue token vouchers, monitor redemptions, and revoke promotional codes"
+        actions={
+          <>
+            <button
+              onClick={() => refetch()}
+              disabled={isLoading || isRefetching}
+              className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+              title="Refresh Vouchers List"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
+              <span>REFRESH</span>
+            </button>
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="flex items-center gap-1.5 border border-accent/40 bg-accent/10 hover:bg-accent hover:text-black text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>GENERATE VOUCHER</span>
+            </button>
+          </>
+        }
+      />
 
       {/* Filter Bar */}
-      <div className="border border-border bg-black p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <FilterBar className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
             <Filter className="w-3 h-3 text-accent" />
@@ -201,7 +195,7 @@ export function VouchersContainer() {
           <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong>{' '}
           VOUCHERS
         </div>
-      </div>
+      </FilterBar>
 
       {/* Batch Action Bar */}
       {selectedIds.size > 0 && (

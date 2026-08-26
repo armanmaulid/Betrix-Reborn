@@ -7,6 +7,8 @@ import {
   useDeleteUserMutation
 } from '@/modules/identity/application/queries/use-users';
 import { UserTable } from './user-table';
+import { PageHeader } from '@/shared/presentation/ui/page-header';
+import { FilterBar } from '@/shared/presentation/ui/filter-bar';
 import { CreateUserDialog } from './create-user-dialog';
 import { UpdateUserDialog } from './update-user-dialog';
 import { ResetPasswordDialog } from './reset-password-dialog';
@@ -69,43 +71,35 @@ export function UsersContainer() {
   };
 
   return (
-    <div className="space-y-4 font-mono">
-      {/* Top Header Bar */}
-      <div className="border border-border bg-surface p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Users className="w-4 h-4 text-accent" />
-            <h1 className="text-sm font-bold tracking-wider text-accent uppercase">
-              REGISTERED TRADERS & SYSTEM ACCOUNTS
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Institutional trader registry, role privileges, tier allocations, and session audits
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => refetch()}
-            disabled={isLoading || isRefetching}
-            className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
-            title="Refresh Users List"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
-            <span>REFRESH</span>
-          </button>
-          <button
-            onClick={() => setIsCreateOpen(true)}
-            className="flex items-center gap-1.5 border border-accent/40 bg-accent/10 hover:bg-accent hover:text-black text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>PROVISION TRADER</span>
-          </button>
-        </div>
-      </div>
+    <div className="space-y-3 font-mono">
+      <PageHeader
+        title="REGISTERED TRADERS & SYSTEM ACCOUNTS"
+        icon={Users}
+        subtitle="Institutional trader registry, role privileges, tier allocations, and session audits"
+        actions={
+          <>
+            <button
+              onClick={() => refetch()}
+              disabled={isLoading || isRefetching}
+              className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+              title="Refresh Users List"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
+              <span>REFRESH</span>
+            </button>
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="flex items-center gap-1.5 border border-accent/40 bg-accent/10 hover:bg-accent hover:text-black text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>PROVISION TRADER</span>
+            </button>
+          </>
+        }
+      />
 
       {/* Filter / Search Bar */}
-      <div className="border border-border bg-black p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <FilterBar className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex flex-1 flex-wrap items-center gap-2">
           {/* Search Input */}
           <div className="relative min-w-[200px] flex-1 max-w-sm">
@@ -147,7 +141,7 @@ export function UsersContainer() {
           <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong>{' '}
           TRADERS
         </div>
-      </div>
+      </FilterBar>
 
       {/* User Table Pure View */}
       <UserTable
