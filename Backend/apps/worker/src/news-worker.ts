@@ -149,7 +149,13 @@ export class NewsWorker extends ManagedWorkerBase implements IManagedWorker {
     try {
       const url = `https://finnhub.io/api/v1/news?category=general&token=${this.apiKey}`;
       // Hard timeout — a hung TCP connection must not stall the news cycle.
-      const resp = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+      let resp: Response;
+      try {
+        resp = await fetch(url, { signal: AbortSignal.timeout(env.FINNHUB_TIMEOUT_MS) });
+      } catch (err: any) {
+        err.stage = 'UPSTREAM_FETCH';
+        throw err;
+      }
 
       if (!resp.ok) {
         logger.warn(`Finnhub News API returned status: ${resp.status} ${resp.statusText}`);
@@ -197,8 +203,15 @@ export class NewsWorker extends ManagedWorkerBase implements IManagedWorker {
       }
 
       if (articlesToSave.length > 0) {
-        const savedCount = await this.newsRepo.saveMany(articlesToSave);
+        let savedCount = 0;
+        try {
+          savedCount = await this.newsRepo.saveMany(articlesToSave);
+        } catch (err: any) {
+          err.stage = 'DB_INGEST';
+          throw err;
+        }
         this.processedCount += savedCount;
+
         if (savedCount > 0) {
           logger.info(
             `[NEWS INGESTION] Successfully ingested ${savedCount} new unique market news articles.`
@@ -208,7 +221,10 @@ export class NewsWorker extends ManagedWorkerBase implements IManagedWorker {
     } catch (err: any) {
       this.errorCount += 1;
       this.lastError = err.message;
-      logger.error({ err: err.message }, 'Failed to fetch or ingest news from Finnhub');
+      logger.error(
+        { err: err.message, stage: err.stage ?? 'UNKNOWN' },
+        'Finnhub news pipeline failed'
+      );
     } finally {
       this.isRunning = false;
     }

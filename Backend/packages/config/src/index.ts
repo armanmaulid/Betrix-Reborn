@@ -104,6 +104,7 @@ export const env = {
   RATE_LIMIT_WINDOW_MS: Number(process.env.RATE_LIMIT_WINDOW_MS) || 60000,
   TRUST_PROXY: process.env.TRUST_PROXY === 'true',
   FINNHUB_API_KEY: process.env.FINNHUB_API_KEY || '',
+  FINNHUB_TIMEOUT_MS: Number(process.env.FINNHUB_TIMEOUT_MS) || 10000,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   AI_BASE_URL: process.env.AI_BASE_URL || 'http://localhost:20128/v1',
   AI_API_KEY: process.env.AI_API_KEY || '',

@@ -48,10 +48,14 @@ export async function createServer() {
   // 2. Register API Routes
   await app.register(v1Routes, { prefix: '/api/v1' });
 
-  // Compact per-request log line (replaces Fastify's verbose 8-line default)
+  // Compact per-request log line (replaces Fastify's verbose 8-line default).
+  // Successful requests log at DEBUG so default INFO runs stay readable —
+  // failures stay loud regardless of level.
   app.addHook('onResponse', (request, reply) => {
-    request.log.info(
-      { status: reply.statusCode, ms: reply.elapsedTime },
+    const statusCode = reply.statusCode;
+    const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'debug';
+    request.log[level](
+      { status: statusCode, ms: reply.elapsedTime },
       `${request.method} ${request.url}`
     );
   });

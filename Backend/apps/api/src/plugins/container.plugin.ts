@@ -330,6 +330,40 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
     }
   };
 
+  // Relay freshly-ingested news rows to browser SSE subscribers
+  // ('stream/news'). Reads OUR OWN database every 15s and broadcasts only
+  // never-seen ids, so the worker stays the single Finnhub consumer while the
+  // API process owns all browser connections.
+  const seenNewsIds = new Set<string>();
+  let seenNewsPrimed = false;
+  const newsRelayTimer = setInterval(async () => {
+    if (!fastify.sseHub.hasClientsFor('news')) return;
+
+    try {
+      const latest = await newsRepo.findRecent(25);
+
+      // First pass after boot primes the seen-set so historical rows are not
+      // blasted as "breaking news" to whoever connects later.
+      if (!seenNewsPrimed) {
+        for (const article of latest) seenNewsIds.add(article.id);
+        seenNewsPrimed = true;
+        return;
+      }
+
+      const fresh = latest.filter((article) => !seenNewsIds.has(article.id));
+      for (const article of fresh.reverse()) {
+        seenNewsIds.add(article.id);
+        fastify.sseHub.broadcastNews(article.toJSON ? article.toJSON() : article);
+      }
+    } catch {
+      // DB hiccup — next tick retries silently.
+    }
+  }, 15_000);
+
+  fastify.addHook('onClose', async () => {
+    clearInterval(newsRelayTimer);
+  });
+
   // 4. Application Services
   const authService = new AuthService(sessionRepo, deviceRepo, userRepo);
   const captchaService = new CaptchaService(captchaStore);

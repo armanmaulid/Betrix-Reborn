@@ -198,6 +198,14 @@ export class SseHub {
     return this.clients.size;
   }
 
+  /** True when at least one client sits on the given channel (ticker gating). */
+  public hasClientsFor(channel: 'market' | 'news' | 'ops'): boolean {
+    for (const client of this.clients.values()) {
+      if (client.channel === channel) return true;
+    }
+    return false;
+  }
+
   private sendEvent(client: SseClient, event: string, data: unknown): void {
     try {
       const dataStr = typeof data === 'string' ? data : JSON.stringify(data);
