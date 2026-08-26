@@ -1,17 +1,10 @@
 import { PaginatedResult, PaginationParams, Nullable } from '@betrix/core';
-import {
-  INewsRepository,
-  INewsProvider,
-  INotifier,
-  NewsArticle,
-  NewsTagging
-} from '@betrix/domain';
+import { INewsRepository, INewsProvider, NewsArticle, NewsTagging } from '@betrix/domain';
 
 export class NewsService {
   constructor(
     private readonly newsRepo: INewsRepository,
-    private readonly newsProvider: INewsProvider,
-    private readonly notifier?: INotifier
+    private readonly newsProvider: INewsProvider
   ) {}
 
   public async fetchAndStoreNews(category: string = 'general'): Promise<NewsArticle[]> {
@@ -35,13 +28,6 @@ export class NewsService {
     });
 
     await this.newsRepo.saveMany(taggedArticles);
-
-    // Broadcast new articles via SSE notifier if provided
-    if (this.notifier) {
-      for (const article of taggedArticles) {
-        this.notifier.broadcastGlobal('news', 'news:item', article.toJSON());
-      }
-    }
 
     return taggedArticles;
   }

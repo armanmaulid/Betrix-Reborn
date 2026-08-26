@@ -368,7 +368,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const authService = new AuthService(sessionRepo, deviceRepo, userRepo);
   const captchaService = new CaptchaService(captchaStore);
   const marketDataService = new MarketDataService(symbolRepo, marketDataRepo, historicalProvider);
-  const newsService = new NewsService(newsRepo, newsProvider, notifier);
+  const newsService = new NewsService(newsRepo, newsProvider);
   const contextInjectionService = new ContextInjectionService(marketDataService, newsService);
 
   // SSOT wiring: worker_states in Postgres is what apps/worker reads on boot,
