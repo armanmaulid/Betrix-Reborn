@@ -9,6 +9,8 @@ import {
   useDeleteStreamSymbolMutation
 } from '@/modules/market/application/queries/use-market-data';
 import { StreamSymbolTable } from './stream-symbol-table';
+import { PageHeader } from '@/shared/presentation/ui/page-header';
+import { FilterBar } from '@/shared/presentation/ui/filter-bar';
 import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-confirm-dialog';
 import { SymbolModal, type SymbolFormData } from './symbol-modal';
 import { PaginationBar } from '@/shared/presentation/ui/pagination-bar';
@@ -112,48 +114,39 @@ export function StreamSymbolsContainer() {
   };
 
   return (
-    <div className="space-y-4 font-mono">
-      {/* Top Header Bar */}
-      <div className="border border-border bg-surface p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Radio
-              className={`w-4 h-4 ${isConnected ? 'text-positive' : 'text-negative animate-pulse'}`}
-            />
-            <h1 className="text-sm font-bold tracking-wider text-accent uppercase">
-              FINNHUB REAL-TIME STREAM SYMBOLS
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Configure dynamic upstream ticker mappings for zero-latency Finnhub WebSocket ingestion
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => refetchSymbols()}
-            disabled={isSymbolsLoading || isSymbolsRefetching}
-            className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
-            title="Refresh stream symbols"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSymbolsRefetching ? 'animate-spin' : ''}`} />
-            <span>REFRESH</span>
-          </button>
-          <button
-            onClick={() => {
-              setSelectedSymbolForEdit(null);
-              setIsAddOpen(true);
-            }}
-            className="flex items-center gap-1.5 border border-accent/40 bg-accent/10 hover:bg-accent hover:text-black text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>ADD STREAM SYMBOL</span>
-          </button>
-        </div>
-      </div>
+    <div className="space-y-3 font-mono">
+      <PageHeader
+        title="FINNHUB REAL-TIME STREAM SYMBOLS"
+        icon={Radio}
+        iconClassName={isConnected ? 'text-positive' : 'text-negative animate-pulse'}
+        subtitle="Configure dynamic upstream ticker mappings for zero-latency Finnhub WebSocket ingestion"
+        actions={
+          <>
+            <button
+              onClick={() => refetchSymbols()}
+              disabled={isSymbolsLoading || isSymbolsRefetching}
+              className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+              title="Refresh stream symbols"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSymbolsRefetching ? 'animate-spin' : ''}`} />
+              <span>REFRESH</span>
+            </button>
+            <button
+              onClick={() => {
+                setSelectedSymbolForEdit(null);
+                setIsAddOpen(true);
+              }}
+              className="flex items-center gap-1.5 border border-accent/40 bg-accent/10 hover:bg-accent hover:text-black text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>ADD STREAM SYMBOL</span>
+            </button>
+          </>
+        }
+      />
 
       {/* Filter / Search Bar */}
-      <div className="border border-border bg-black p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <FilterBar className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 flex-1">
           <div className="relative min-w-[200px] flex-1 max-w-xs">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -194,7 +187,7 @@ export function StreamSymbolsContainer() {
           <strong className="text-foreground tabular-nums">{formatFinancialNumber(total)}</strong>{' '}
           SYMBOLS
         </div>
-      </div>
+      </FilterBar>
 
       {/* Stream Symbol Table */}
       <StreamSymbolTable
