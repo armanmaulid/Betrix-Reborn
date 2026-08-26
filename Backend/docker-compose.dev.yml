@@ -11,7 +11,7 @@ services:
     volumes:
       - pgdata_reborn:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U betrix']
+      test: ['CMD-SHELL', 'pg_isready -U betrix -d betrix_reborn']
       interval: 5s
       timeout: 5s
       retries: 5
