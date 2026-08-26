@@ -1,5 +1,6 @@
 import { desc, eq, sql, and, or } from 'drizzle-orm';
 import { env } from '@betrix/config';
+import { redisKeys } from '../redis/redis-keys.js';
 import {
   IAdminActionRepository,
   IActivityLogRepository,
@@ -233,6 +234,80 @@ export class DrizzleAnalyticsRepository implements IAnalyticsRepository {
       redisStatus,
       redisLatencyMs
     };
+  }
+
+  /**
+   * T3.1 — dashboard reads gauges from Redis (written by the 60s leader-lock
+   * aggregator). Live per-process/connection signals (uptime, pool, redis
+   * ping) stay real; on any cache problem it self-heals via full compute.
+   */
+  async getCachedSystemMetrics(): Promise<SystemMetrics> {
+    const fallback = async () => {
+      const m = await this.getSystemMetrics();
+      await this.writeGauges(m);
+      return m;
+    };
+
+    try {
+      if (!this.redis) return fallback();
+      const raw = await this.redis.get(redisKeys.opsGauges());
+      if (!raw) return fallback();
+
+      const cached = typeof raw === 'string' ? JSON.parse(raw) : raw;
+
+      let redisStatus = 'healthy';
+      let redisLatencyMs = 0;
+      try {
+        const start = Date.now();
+        await this.redis.ping();
+        redisLatencyMs = Date.now() - start;
+      } catch (err: any) {
+        redisStatus = `unhealthy: ${err?.message || 'timeout'}`;
+      }
+
+      return {
+        ...cached,
+        dbPoolActive: this.pgPool ? this.pgPool.totalCount - this.pgPool.idleCount : 1,
+        dbPoolIdle: this.pgPool ? this.pgPool.idleCount : 0,
+        uptimeSeconds: Math.floor(process.uptime()),
+        redisStatus,
+        redisLatencyMs
+      } as SystemMetrics;
+    } catch {
+      return fallback();
+    }
+  }
+
+  async writeGauges(metrics: SystemMetrics): Promise<void> {
+    if (!this.redis) return;
+    try {
+      await this.redis.set(redisKeys.opsGauges(), JSON.stringify(metrics), { ex: 120 });
+    } catch {
+      // Cache write failure is non-fatal.
+    }
+  }
+
+  async getUserAnalyticsCached(options?: AnalyticsQueryOptions): Promise<UserAnalytics | null> {
+    // Only the default daily snapshot is cached; period/custom variants are
+    // admin-driven and rare enough to stay live.
+    const isDefault = !options || (!options.startDate && !options.endDate);
+    if (!isDefault || !this.redis) return null;
+    try {
+      const raw = await this.redis.get(redisKeys.opsAnalyticsCache());
+      if (!raw) return null;
+      return typeof raw === 'string' ? JSON.parse(raw) : (raw as UserAnalytics);
+    } catch {
+      return null;
+    }
+  }
+
+  async writeAnalyticsCache(analytics: UserAnalytics): Promise<void> {
+    if (!this.redis) return;
+    try {
+      await this.redis.set(redisKeys.opsAnalyticsCache(), JSON.stringify(analytics), { ex: 90 });
+    } catch {
+      // Non-fatal.
+    }
   }
 
   async getUserAnalytics(options?: AnalyticsQueryOptions): Promise<UserAnalytics> {

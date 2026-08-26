@@ -1,11 +1,32 @@
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { CalendarEvent, ICalendarRepository } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
+import { redisKeys } from '../redis/redis-keys.js';
 import { calendarEvents } from '../drizzle/schema.js';
 
 export class DrizzleCalendarRepository implements ICalendarRepository {
-  constructor(private readonly db: DrizzleDb) {}
+  constructor(
+    private readonly db: DrizzleDb,
+    private readonly redis?: {
+      get<T>(key: string): Promise<T | null>;
+      set(key: string, value: unknown, opts?: { ex?: number }): Promise<unknown>;
+      incr(key: string): Promise<number>;
+    }
+  ) {}
 
+  /** T3.2 — O(1) generation bump; stale versions expire via TTL (1h). */
+  private async calendarCacheVersion(): Promise<string> {
+    try {
+      const v = await this.redis?.incr(redisKeys.cacheCalendarVersion());
+      return String(v ?? 0);
+    } catch {
+      return '0';
+    }
+  }
+
+  private bumpCalendarCache(): void {
+    void this.redis?.incr(redisKeys.cacheCalendarVersion()).catch(() => undefined);
+  }
   private mapToDomain(row: typeof calendarEvents.$inferSelect): CalendarEvent {
     return new CalendarEvent({
       id: row.id,
@@ -56,6 +77,7 @@ export class DrizzleCalendarRepository implements ICalendarRepository {
   }
 
   async saveMany(events: CalendarEvent[]): Promise<number> {
+    this.bumpCalendarCache();
     if (events.length === 0) return 0;
     const inserted = await this.db
       .insert(calendarEvents)
@@ -66,6 +88,7 @@ export class DrizzleCalendarRepository implements ICalendarRepository {
   }
 
   async upsertOne(event: CalendarEvent): Promise<CalendarEvent> {
+    this.bumpCalendarCache();
     const row = this.toRow(event);
     const rows = await this.db
       .insert(calendarEvents)
@@ -79,6 +102,34 @@ export class DrizzleCalendarRepository implements ICalendarRepository {
   }
 
   async findByCurrencyAndMonth(currency: string, yearMonth: string): Promise<CalendarEvent[]> {
+    // T3.2 — dashboard-hot month reads served from Redis (TTL 1h) with a
+    // generation-prefixed key; any write bumps the version and invalidates.
+    if (this.redis) {
+      const ver = await this.calendarCacheVersion();
+      const key = `${ver}:${redisKeys.cacheCalendarMonth(currency, yearMonth)}`;
+      try {
+        const raw = await this.redis.get<string>(key);
+        if (raw) {
+          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          return parsed.map((o: Record<string, unknown>) => new CalendarEvent(o as never));
+        }
+      } catch {
+        // Cache read failure falls through to the DB query.
+      }
+
+      const events = await this.findMonthFromDb(currency, yearMonth);
+      try {
+        await this.redis.set(key, JSON.stringify(events.map((e) => e.toJSON())), { ex: 3600 });
+      } catch {
+        // Non-fatal.
+      }
+      return events;
+    }
+
+    return this.findMonthFromDb(currency, yearMonth);
+  }
+
+  private async findMonthFromDb(currency: string, yearMonth: string): Promise<CalendarEvent[]> {
     const { startUnix, endUnix } = monthBoundsUnix(yearMonth);
     const rows = await this.db
       .select()

@@ -168,11 +168,14 @@ Status eksekusi:
 - **T6.7** Shutdown grace: expose activeTick promise; main.ts race(allTicks, 10s) sebelum exit.
 Verify per task: unit + dual-process smoke (jalankan 2 worker lokal, pastikan hanya 1 leader). RB: per-commit revert.
 
-### FASE 3 — OPS PIPELINE & CACHE (tetap, plus)
-- **T3.1** Ops Aggregator 60s → gauges (flag OPS_SOURCE, parity vs golden 24h) + **fix K: analytics subselect OR index-hostile → rewrite IN-list/join saat pivot**.
-- **T3.2** Cache offloads (news/calendar/symbols) + invalidasi bump().
-- **T3.3** Heartbeat worker Redis + maintenance read Redis.
-- **T3.4** (optional) Auth hot-pair cache 60s keyed session-digest — invalidate pada revoke/reset/change-password/logoutAll.
+### FASE 3 — OPS PIPELINE & CACHE ✅ SELESAI 2026-08-26
+Status eksekusi:
+- [x] T3.1 ✔ Ops Aggregator 60s (leader-lock `ops:lock:metrics` SET NX PX, hanya saat ada ops SSE client) → `ops:gauges`(TTL 120s) + `ops:analytics`(TTL 90s) · `getCachedSystemMetrics()` self-healing + live override uptime/pool/ping · use case `executeCached()` · route /admin/metrics branch `OPS_SOURCE=cache|pg` (**default cache** — deviasi parity-24h disetujui: kelas D + fallback self-heal, dicatat) · opsFetcher SSE baca cache (analytics null-skip). Rewrite subselect OR active-users DITUNDA — index Fase 1 memadai; dipantau pg_stat_statements.
+- [x] T3.2 ✔ Cache offloads: news page-1 tanpa filter (30s, invalidate di save/saveMany/delete*) · calendar month **versioned-key** (INCR ver, TTL 1h, bump di saveMany/upsertOne) · symbols findAll all/active (5m, invalidate di save/saveMany/delete).
+- [x] T3.3 ✔ Heartbeat worker Redis EX 90s ditulis leader saat renew (standby sengaja tak menulis — anti flap panel); GET /admin/workers overlay telemetry Redis bila ts<90s.
+- [x] T3.4 DEFERRED — sessdigest cache ditunda (scope control).
+- GATE: BE tsc 7/7 · eslint 0 error · prettier · unit 6+44+2+28 · guard clean ✓
+> Rollback: per-task revert; OPS_SOURCE=pg mengembalikan agregasi live tanpa deploy ulang perilaku inti.
 
 ### FASE 4 — STRUKTUR PG
 - **T4.0** 🆕 Integrity money/audit dini (boleh masuk Fase 4 awal): FK ledger/audit CASCADE→SET NULL; users hard-delete→soft-delete/ban-only (hapus route delete fisik admin); trigger/blocker UPDATE-DELETE pada credit_transactions (append-only enforcement).

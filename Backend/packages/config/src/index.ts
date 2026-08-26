@@ -147,6 +147,11 @@ export const env = {
   // Fase 2.5 — leader lease for worker singleton enforcement (T6.1).
   WORKER_LEASE_TTL_MS: Number(process.env.WORKER_LEASE_TTL_MS) || 90000,
 
+  // Fase 3 — ops pipeline (T3.1): 'cache' reads Redis gauges written by the
+  // aggregator; 'pg' forces live aggregates (parity mode).
+  OPS_SOURCE: process.env.OPS_SOURCE || 'cache',
+  OPS_AGGREGATOR_INTERVAL_MS: Number(process.env.OPS_AGGREGATOR_INTERVAL_MS) || 60000,
+
   // Fase 2 — Redis hygiene & quota (plan §D Fase 2 / T2.5):
   RATELIMIT_BACKEND: process.env.RATELIMIT_BACKEND || 'redis',
   MARKET_TICKER_INTERVAL_MS: Number(process.env.MARKET_TICKER_INTERVAL_MS) || 5000,

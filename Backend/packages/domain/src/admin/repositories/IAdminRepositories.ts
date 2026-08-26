@@ -70,6 +70,14 @@ export interface IActivityLogRepository {
 export interface IAnalyticsRepository {
   getSystemMetrics(): Promise<SystemMetrics>;
   getUserAnalytics(options?: AnalyticsQueryOptions): Promise<UserAnalytics>;
+  /** T3.1 — read gauges written by the ops aggregator; compute+write on miss. */
+  getCachedSystemMetrics(): Promise<SystemMetrics>;
+  /** T3.1 — aggregator output sink (Redis gauges, TTL 120s). */
+  writeGauges(metrics: SystemMetrics): Promise<void>;
+  /** T3.1 — default-period analytics snapshot from cache; null on miss. */
+  getUserAnalyticsCached(options?: AnalyticsQueryOptions): Promise<UserAnalytics | null>;
+  /** T3.1 — aggregator output sink for the default-period analytics (TTL 90s). */
+  writeAnalyticsCache(analytics: UserAnalytics): Promise<void>;
 }
 
 export interface IUsageRepository {

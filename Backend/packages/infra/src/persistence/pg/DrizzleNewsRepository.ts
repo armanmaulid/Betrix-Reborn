@@ -8,9 +8,25 @@ import {
 } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { newsArticles } from '../drizzle/schema.js';
+import { redisKeys } from '../redis/redis-keys.js';
+
+/** Minimal structural Redis client (Upstash-compatible) for cache offloads. */
+interface KvLike {
+  get<T>(key: string): Promise<T | null>;
+  set(key: string, value: unknown, opts?: { ex?: number }): Promise<unknown>;
+  del(...keys: string[]): Promise<unknown>;
+}
 
 export class DrizzleNewsRepository implements INewsRepository {
-  constructor(private readonly db: DrizzleDb) {}
+  constructor(
+    private readonly db: DrizzleDb,
+    private readonly redis?: KvLike
+  ) {}
+
+  /** T3.2 — news list writes invalidate the shared page-1 cache. */
+  private invalidatePageCache(): void {
+    void this.redis?.del(redisKeys.cacheNewsPage1()).catch(() => undefined);
+  }
 
   private mapToDomain(row: typeof newsArticles.$inferSelect): NewsArticle {
     return new NewsArticle({
@@ -28,6 +44,7 @@ export class DrizzleNewsRepository implements INewsRepository {
   }
 
   async save(article: NewsArticle): Promise<NewsArticle | null> {
+    this.invalidatePageCache();
     const inserted = await this.db
       .insert(newsArticles)
       .values({
@@ -50,6 +67,7 @@ export class DrizzleNewsRepository implements INewsRepository {
 
   async saveMany(articles: NewsArticle[]): Promise<number> {
     if (articles.length === 0) return 0;
+    this.invalidatePageCache();
     const inserted = await this.db
       .insert(newsArticles)
       .values(
@@ -120,6 +138,18 @@ export class DrizzleNewsRepository implements INewsRepository {
     search?: string,
     sortOrder: 'asc' | 'desc' = 'desc'
   ): Promise<PaginatedResult<NewsArticle>> {
+    // T3.2 — read-through for the unfiltered first page (30s): hottest read.
+    const canReadCache =
+      !!this.redis && pagination.page === 1 && !category && !tag && !search && sortOrder === 'desc';
+    if (canReadCache) {
+      try {
+        const raw = await this.redis!.get<string>(redisKeys.cacheNewsPage1());
+        if (raw) return typeof raw === 'string' ? JSON.parse(raw) : raw;
+      } catch {
+        // Cache read failure falls through to the DB query.
+      }
+    }
+
     const offset = (pagination.page - 1) * pagination.limit;
     const conditions = [];
     if (category) conditions.push(eq(newsArticles.category, category));
@@ -152,16 +182,30 @@ export class DrizzleNewsRepository implements INewsRepository {
     ]);
 
     const total = countResult[0]?.count || 0;
-    return {
+    const result = {
       data: rows.map((r) => this.mapToDomain(r)),
       total,
       page: pagination.page,
       limit: pagination.limit,
       totalPages: Math.ceil(total / pagination.limit)
     };
+
+    // T3.2 — cache only the unfiltered first page (30s) — the hottest read.
+    const canCache =
+      this.redis && pagination.page === 1 && !category && !tag && !search && sortOrder === 'desc';
+    if (canCache) {
+      try {
+        await this.redis.set(redisKeys.cacheNewsPage1(), JSON.stringify(result), { ex: 30 });
+      } catch {
+        // Cache write failure is non-fatal.
+      }
+    }
+
+    return result;
   }
 
   async deleteById(id: string): Promise<boolean> {
+    this.invalidatePageCache();
     const result = await this.db
       .delete(newsArticles)
       .where(eq(newsArticles.id, id))
@@ -170,6 +214,7 @@ export class DrizzleNewsRepository implements INewsRepository {
   }
 
   async deleteMany(ids: string[]): Promise<number> {
+    this.invalidatePageCache();
     if (!ids || ids.length === 0) return 0;
     const result = await this.db
       .delete(newsArticles)

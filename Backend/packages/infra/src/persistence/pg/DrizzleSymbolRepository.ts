@@ -1,11 +1,25 @@
 import { eq } from 'drizzle-orm';
 import { ISymbolRepository, Symbol, Nullable } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
+import { redisKeys } from '../redis/redis-keys.js';
 import { symbols } from '../drizzle/schema.js';
 
 export class DrizzleSymbolRepository implements ISymbolRepository {
-  constructor(private readonly db: DrizzleDb) {}
+  constructor(
+    private readonly db: DrizzleDb,
+    private readonly redis?: {
+      get<T>(key: string): Promise<T | null>;
+      set(key: string, value: unknown, opts?: { ex?: number }): Promise<unknown>;
+      del(...keys: string[]): Promise<unknown>;
+    }
+  ) {}
 
+  /** T3.2 — catalog writes invalidate the 5m read cache. */
+  private invalidateSymbolCache(): void {
+    void this.redis
+      ?.del(redisKeys.cacheSymbols(), `${redisKeys.cacheSymbols()}:active`)
+      .catch(() => undefined);
+  }
   private mapToDomain(row: typeof symbols.$inferSelect): Symbol {
     return new Symbol({
       symbol: row.symbol,
@@ -21,6 +35,33 @@ export class DrizzleSymbolRepository implements ISymbolRepository {
   }
 
   async findAll(activeOnly: boolean = false): Promise<Symbol[]> {
+    // T3.2 — catalog is write-rare/read-often (dashboard + ws reconcile):
+    // 5-minute cache offloads the repeated read entirely.
+    if (this.redis) {
+      const key = `${redisKeys.cacheSymbols()}:${activeOnly ? 'active' : 'all'}`;
+      try {
+        const raw = await this.redis.get<string>(key);
+        if (raw) {
+          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          return parsed.map((o: Record<string, unknown>) => new Symbol(o as never));
+        }
+      } catch {
+        // Cache read failure falls through to the DB query.
+      }
+
+      const symbols = await this.findAllFromDb(activeOnly);
+      try {
+        await this.redis.set(key, JSON.stringify(symbols.map((s) => s.toJSON())), { ex: 300 });
+      } catch {
+        // Non-fatal.
+      }
+      return symbols;
+    }
+
+    return this.findAllFromDb(activeOnly);
+  }
+
+  private async findAllFromDb(activeOnly: boolean = false): Promise<Symbol[]> {
     const query = activeOnly
       ? this.db.select().from(symbols).where(eq(symbols.isActive, true))
       : this.db.select().from(symbols);
@@ -50,6 +91,7 @@ export class DrizzleSymbolRepository implements ISymbolRepository {
   }
 
   async save(symbol: Symbol): Promise<Symbol> {
+    this.invalidateSymbolCache();
     const inserted = await this.db
       .insert(symbols)
       .values({
@@ -81,6 +123,7 @@ export class DrizzleSymbolRepository implements ISymbolRepository {
   }
 
   async saveMany(symbolsList: Symbol[]): Promise<number> {
+    this.invalidateSymbolCache();
     if (symbolsList.length === 0) return 0;
 
     const chunkSize = 100;
@@ -122,6 +165,7 @@ export class DrizzleSymbolRepository implements ISymbolRepository {
   }
 
   async delete(symbol: string): Promise<boolean> {
+    this.invalidateSymbolCache();
     const deleted = await this.db
       .delete(symbols)
       .where(eq(symbols.symbol, symbol.toUpperCase()))

@@ -18,6 +18,8 @@ export const redisKeys = {
   marketOhlc: (symbol: string, tf: string) =>
     `b:${ENV}:market:ohlc:${symbol.toUpperCase()}:${tf.toLowerCase()}`,
   cacheNewsPage1: () => `b:${ENV}:cache:news:page1`,
+  cacheCalendarVersion: () => `b:${ENV}:cache:calendar:ver`,
+  opsMarker: (name: string) => `b:${ENV}:ops:marker:${name}`,
   cacheCalendarMonth: (currency: string, yearMonth: string) =>
     `b:${ENV}:cache:calendar:${currency.toUpperCase()}:${yearMonth}`,
   cacheSymbols: () => `b:${ENV}:cache:symbols`,
@@ -40,5 +42,7 @@ export const redisKeys = {
   newsSeen: () => `b:${ENV}:news:seen`,
   workerCommandChannel: (workerId: string) => `b:${ENV}:wcmd:${workerId}`,
   workerReportChannel: (workerId: string) => `b:${ENV}:wrep:${workerId}`,
-  workerLease: (workerId: string) => `b:${ENV}:wlock:${workerId}`
+  workerLease: (workerId: string) => `b:${ENV}:wlock:${workerId}`,
+  /** T3.3 — live telemetry heartbeat written by workers, read by /workers. */
+  workerHeartbeat: (workerId: string) => `b:${ENV}:wstate:${workerId}`
 };

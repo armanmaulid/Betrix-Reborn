@@ -29,6 +29,7 @@ import {
   DrizzleAiAgentRepository,
   DrizzleWorkerStateRepository,
   RedisWorkerCommandBus,
+  redisKeys,
   DrizzleCalendarRepository,
   DukascopyHistoryClient,
   FinnhubNewsAdapter,
@@ -286,10 +287,10 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const deviceRepo = new DrizzleDeviceRepository(db);
   const chatRepo = new DrizzleChatRepository(db);
   const creditRepo = new DrizzleCreditRepository(db);
-  const symbolRepo = new DrizzleSymbolRepository(db);
+  const symbolRepo = new DrizzleSymbolRepository(db, redis);
   const streamSymbolRepo = new DrizzleStreamSymbolRepository(db);
   const ohlcSymbolRepo = new DrizzleOhlcSymbolRepository(db);
-  const newsRepo = new DrizzleNewsRepository(db);
+  const newsRepo = new DrizzleNewsRepository(db, redis);
   const messageRepo = new DrizzleMessageRepository(db);
   const adminActionRepo = new DrizzleAdminActionRepository(db);
   const activityLogRepo = new DrizzleActivityLogRepository(db);
@@ -405,6 +406,33 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   );
   chatLoggingHandler.register(eventDispatcher);
 
+  // T3.1 — Ops Aggregator: every 60s (only while an admin dashboard has an
+  // open 'ops' SSE stream), the leader-replica computes metrics+analytics and
+  // writes them to Redis gauges. Dashboards then read Redis — chat_messages
+  // is never scanned by request traffic.
+  if (env.NODE_ENV !== 'test' && !process.env.VITEST) {
+    const aggMs = env.OPS_AGGREGATOR_INTERVAL_MS || 60_000;
+    const aggTimer = setInterval(async () => {
+      try {
+        if (!fastify.sseHub?.hasClientsFor('ops')) return;
+        const lockKey = redisKeys.opsLock('metrics');
+        const got = await redis.set(lockKey, String(Date.now()), {
+          nx: true,
+          px: Math.ceil(aggMs * 0.9)
+        });
+        if (got !== 'OK') return; // another replica is aggregating
+
+        const m = await getSystemMetricsUseCase.execute();
+        await analyticsRepo.writeGauges(m);
+        const a = await getAnalyticsUseCase.execute();
+        await analyticsRepo.writeAnalyticsCache(a);
+      } catch (err: any) {
+        fastify.log.warn({ err: err.message }, '[OPS AGGREGATOR] snapshot failed');
+      }
+    }, aggMs);
+    fastify.addHook('onClose', async () => clearInterval(aggTimer));
+  }
+
   // 6. Use Cases
   const isDevMode = env.NODE_ENV === 'development' || env.NODE_ENV === 'test';
 
@@ -516,7 +544,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const storeNewsUseCase = new StoreNewsUseCase(newsRepo);
   const getNewsUseCase = new GetNewsUseCase(newsService);
 
-  const calendarRepo = new DrizzleCalendarRepository(db);
+  const calendarRepo = new DrizzleCalendarRepository(db, redis);
   const getCalendarUseCase = new GetCalendarUseCase(calendarRepo);
 
   const getInboxUseCase = new GetInboxUseCase(messageRepo);
@@ -561,10 +589,17 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   // while an admin dashboard is actively listening on the 'ops' channel.
   if (fastify.sseHub && env.NODE_ENV !== 'test' && !process.env.VITEST) {
     fastify.sseHub.setOpsFetcher(async () => {
-      const [metrics, analytics] = await Promise.all([
-        getSystemMetricsUseCase.execute(),
-        getAnalyticsUseCase.execute()
-      ]);
+      // T3.1 — OPS_SOURCE=cache (default) reads Redis gauges/analytics written
+      // by the 60s aggregator; 'pg' forces live compute for parity checks.
+      const source = env.OPS_SOURCE || 'cache';
+      const metrics =
+        source === 'cache'
+          ? await analyticsRepo.getCachedSystemMetrics()
+          : await getSystemMetricsUseCase.execute();
+      const analytics =
+        source === 'cache'
+          ? await analyticsRepo.getUserAnalyticsCached()
+          : await getAnalyticsUseCase.execute();
       return { metrics, analytics };
     });
   }

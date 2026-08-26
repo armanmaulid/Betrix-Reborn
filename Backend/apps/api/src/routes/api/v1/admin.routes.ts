@@ -1,4 +1,6 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
+import { env } from '@betrix/config';
+import { createRedisClient, redisKeys } from '@betrix/infra';
 import {
   AdminUsersQuerySchema,
   UpdateAdminUserSchema,
@@ -28,6 +30,38 @@ import { Type } from '@sinclair/typebox';
 
 export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
   const { useCases } = fastify.container;
+
+  // T3.3 — live worker telemetry heartbeats (Redis, TTL 90s). Read-only here:
+  // writers are the worker processes themselves via ManagedWorkerBase.
+  const wStateRedis = createRedisClient();
+  interface HeartbeatOverlayable {
+    workerId: string;
+    processedCount?: number;
+    errorCount?: number;
+    lastError?: string | null;
+    lastReportAt?: Date;
+  }
+  const overlayLiveHeartbeats = async <T extends HeartbeatOverlayable>(rows: T[]) =>
+    Promise.all(
+      rows.map(async (row) => {
+        try {
+          const raw = await wStateRedis.get<string>(redisKeys.workerHeartbeat(row.workerId));
+          if (!raw) return row;
+          const hb = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          const ts = Number(hb?.ts) || 0;
+          if (!ts || Date.now() - ts >= 90_000) return row;
+          return {
+            ...row,
+            processedCount: hb.processedCount ?? row.processedCount,
+            errorCount: hb.errorCount ?? row.errorCount,
+            lastError: hb.lastError ?? row.lastError,
+            lastReportAt: new Date(ts)
+          };
+        } catch {
+          return row;
+        }
+      })
+    );
 
   // Protect all /admin/* routes with Admin RBAC guard
   fastify.addHook('preHandler', fastify.requireAdmin);
@@ -469,7 +503,13 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const metrics = await useCases.getSystemMetricsUseCase.execute();
+      // T3.1 — OPS_SOURCE=cache (default) reads the 60s aggregator gauges;
+      // 'pg' forces a live aggregate for parity checks.
+      const source = env.OPS_SOURCE || 'cache';
+      const metrics =
+        source === 'cache'
+          ? await useCases.getSystemMetricsUseCase.executeCached()
+          : await useCases.getSystemMetricsUseCase.execute();
       return reply.send({
         success: true,
         data: metrics
@@ -774,9 +814,12 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const workers = await useCases.listWorkersUseCase.execute();
+      // T3.3 — overlay live Redis heartbeats so counters/errors reflect the
+      // last seconds instead of the last command report.
+      const data = await overlayLiveHeartbeats(workers as never[]);
       return reply.send({
         success: true,
-        data: workers
+        data
       });
     }
   );

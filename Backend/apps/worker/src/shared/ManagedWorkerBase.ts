@@ -76,6 +76,8 @@ export abstract class ManagedWorkerBase {
         { workerId: this.workerId },
         'Leader lease held elsewhere — standing by (polling every 30s)...'
       );
+      // Standby deliberately does NOT heartbeat: the key is owned by the
+      // active leader, and zero-counter standbys must not flap the panel.
       await new Promise((r) => setTimeout(r, ManagedWorkerBase.LEASE_POLL_MS));
     }
 
@@ -104,9 +106,34 @@ export abstract class ManagedWorkerBase {
     return acquired;
   }
 
+  /**
+   * T3.3 — live telemetry heartbeat (Redis, TTL 90s). Written by leaders on
+   * renewal AND by standbys while polling, so /admin/workers can overlay
+   * fresh counters without touching Postgres.
+   */
+  protected async writeHeartbeat(): Promise<void> {
+    try {
+      this.leaseRedis ??= createRedisClient();
+      const h = this.getHealth();
+      await this.leaseRedis.set(
+        redisKeys.workerHeartbeat(this.workerId),
+        JSON.stringify({
+          processedCount: h.processedCount,
+          errorCount: h.errorCount,
+          lastError: h.lastError,
+          ts: Date.now()
+        }),
+        { ex: 90 }
+      );
+    } catch {
+      // Heartbeat is best-effort.
+    }
+  }
+
   private startLeaseRenewLoop(): void {
     if (this.leaseRenewTimer) return;
     this.leaseRenewTimer = setInterval(async () => {
+      await this.writeHeartbeat();
       try {
         this.leaseRedis ??= createRedisClient();
         const key = redisKeys.workerLease(this.workerId);

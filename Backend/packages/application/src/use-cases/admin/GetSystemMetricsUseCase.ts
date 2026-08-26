@@ -6,4 +6,9 @@ export class GetSystemMetricsUseCase {
   public async execute(): Promise<SystemMetrics> {
     return this.analyticsRepo.getSystemMetrics();
   }
+
+  /** T3.1 — Redis-backed gauges; self-heals by computing+writing on miss. */
+  public async executeCached(): Promise<SystemMetrics> {
+    return this.analyticsRepo.getCachedSystemMetrics();
+  }
 }
