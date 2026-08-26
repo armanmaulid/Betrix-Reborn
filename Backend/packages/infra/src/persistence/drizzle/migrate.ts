@@ -12,10 +12,14 @@ dotenv.config({ path: path.resolve(__dirname, '../../../../../.env'), quiet: tru
 dotenv.config({ quiet: true });
 
 export async function runMigrations(connectionString?: string) {
-  const conn =
-    connectionString ||
-    process.env.DATABASE_URL ||
-    'postgresql://betrix:betrixpass@localhost:5432/betrix_reborn';
+  // T0.4: no embedded dev credentials — the URL must come from the caller or
+  // the environment, exactly like every other production entrypoint.
+  const conn = connectionString || process.env.DATABASE_URL;
+  if (!conn) {
+    throw new Error(
+      'DATABASE_URL is required to run migrations. Export it (or pass connectionString) and retry.'
+    );
+  }
   console.log(`Connecting to: ${conn.replace(/:[^:@]+@/, ':****@')}`);
   const pool = createPgPool(conn, 1);
   const db = createDrizzleClient(pool);

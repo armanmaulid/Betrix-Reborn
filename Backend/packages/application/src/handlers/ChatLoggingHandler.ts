@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import pino from 'pino';
 import {
   IChatRepository,
   ICreditRepository,
@@ -8,11 +9,25 @@ import {
   EventDispatcher
 } from '@betrix/domain';
 
+/** Minimal structural logger so this package stays free of config/env deps. */
+export interface HandlerLogger {
+  error(obj: unknown, msg?: string): void;
+}
+
+const fallbackLogger: HandlerLogger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  transport:
+    process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
+      ? { target: 'pino-pretty', options: { colorize: true } }
+      : undefined
+});
+
 export class ChatLoggingHandler {
   constructor(
     private readonly chatRepo: IChatRepository,
     private readonly creditRepo: ICreditRepository,
-    private readonly activityLogRepo?: IActivityLogRepository
+    private readonly activityLogRepo?: IActivityLogRepository,
+    private readonly logger: HandlerLogger = fallbackLogger
   ) {}
 
   public register(dispatcher: EventDispatcher): void {
@@ -56,7 +71,10 @@ export class ChatLoggingHandler {
         });
       }
     } catch (err: any) {
-      console.error('[ChatLoggingHandler] Error processing streamed chat log:', err);
+      this.logger.error(
+        { err: err.message, sessionId: event.sessionId },
+        '[ChatLoggingHandler] Error processing streamed chat log'
+      );
     }
   }
 }

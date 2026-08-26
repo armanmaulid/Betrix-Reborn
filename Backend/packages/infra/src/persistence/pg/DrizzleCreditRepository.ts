@@ -150,15 +150,4 @@ export class DrizzleCreditRepository implements ICreditRepository {
       return updated[0]?.credits ?? row.credits - charge;
     });
   }
-
-  async getHistory(userId: string, limit: number = 50): Promise<CreditTransaction[]> {
-    const rows = await this.db
-      .select()
-      .from(creditTransactions)
-      .where(eq(creditTransactions.userId, userId))
-      .orderBy(desc(creditTransactions.createdAt))
-      .limit(limit);
-
-    return rows.map((r) => this.mapToDomain(r));
-  }
 }

@@ -107,15 +107,4 @@ export class DrizzleChatRepository implements IChatRepository {
 
     return deleted.length;
   }
-
-  async findRecentByUserId(userId: string, limit: number = 50): Promise<ChatMessage[]> {
-    const rows = await this.db
-      .select()
-      .from(chatMessages)
-      .where(eq(chatMessages.userId, userId))
-      .orderBy(desc(chatMessages.createdAt))
-      .limit(limit);
-
-    return rows.map((r) => this.mapToDomain(r));
-  }
 }

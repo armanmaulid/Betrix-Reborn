@@ -76,29 +76,4 @@ export class RedisWorkerCommandBus {
   public async publishReport(workerId: string, message: WorkerReportMessage): Promise<void> {
     await this.redis.publish(reportChannel(workerId), JSON.stringify(message));
   }
-
-  /**
-   * Called from `apps/api`, optional — lets the admin panel receive live
-   * status pushes instead of relying solely on the 5s poll in `useWorkersQuery`.
-   * Postgres (`worker_states`) remains what `GET /admin/workers` reads from;
-   * this is purely a UX enhancement layered on top.
-   */
-  public subscribeReports(
-    workerId: string,
-    onReport: (message: WorkerReportMessage) => void | Promise<void>
-  ): () => void {
-    const subscriber = this.redis.subscribe(reportChannel(workerId));
-    subscriber.on('message', ({ message }) => {
-      try {
-        const parsed: WorkerReportMessage =
-          typeof message === 'string' ? JSON.parse(message) : message;
-        void onReport(parsed);
-      } catch {
-        // Malformed report payload — ignore.
-      }
-    });
-    return () => {
-      void subscriber.unsubscribe();
-    };
-  }
 }

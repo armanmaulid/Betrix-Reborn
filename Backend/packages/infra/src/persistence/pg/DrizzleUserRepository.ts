@@ -115,20 +115,6 @@ export class DrizzleUserRepository implements IUserRepository {
     return deleted.length > 0;
   }
 
-  async updateCredits(id: string, newCredits: number): Promise<boolean> {
-    const updated = await this.db
-      .update(users)
-      .set({ credits: newCredits })
-      .where(eq(users.id, id))
-      .returning();
-    return updated.length > 0;
-  }
-
-  async updateStatus(id: string, status: 'active' | 'suspended' | 'banned'): Promise<boolean> {
-    const updated = await this.db.update(users).set({ status }).where(eq(users.id, id)).returning();
-    return updated.length > 0;
-  }
-
   async findAll(
     pagination: PaginationParams,
     search?: string,

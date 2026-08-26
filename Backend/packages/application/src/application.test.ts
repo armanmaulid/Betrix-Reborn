@@ -1140,8 +1140,7 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
         update: vi.fn().mockImplementation((u: any) => {
           savedUser = u;
           return Promise.resolve(u);
-        }),
-        updateCredits: vi.fn().mockResolvedValue(true)
+        })
       };
 
       const localMockAdminActionRepo = {

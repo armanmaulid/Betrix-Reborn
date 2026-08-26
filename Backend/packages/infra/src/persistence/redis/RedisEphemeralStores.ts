@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis';
-import { ICaptchaStore, IOAuthCodeStore, IStreamTicketStore, Nullable } from '@betrix/domain';
+import { ICaptchaStore, IStreamTicketStore, Nullable } from '@betrix/domain';
 
 /**
  * Atomic single-use consume: GETDEL removes the key and returns its value in
@@ -26,22 +26,6 @@ export class RedisCaptchaStore implements ICaptchaStore {
 
   async getAndDelete(challengeId: string): Promise<Nullable<string>> {
     return consumeAtomic(this.redis, `${RedisCaptchaStore.PREFIX}${challengeId}`);
-  }
-}
-
-export class RedisOAuthCodeStore implements IOAuthCodeStore {
-  private static readonly PREFIX = 'auth:oauth_code:';
-
-  constructor(private readonly redis: Redis) {}
-
-  async save(code: string, userId: string, ttlSeconds: number = 300): Promise<void> {
-    await this.redis.set(`${RedisOAuthCodeStore.PREFIX}${code}`, userId, {
-      ex: ttlSeconds
-    });
-  }
-
-  async getAndDelete(code: string): Promise<Nullable<string>> {
-    return consumeAtomic(this.redis, `${RedisOAuthCodeStore.PREFIX}${code}`);
   }
 }
 

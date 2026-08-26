@@ -94,7 +94,18 @@
 
 ## §D. TASK CARDS (urut eksekusi; format Goal·Depends·Files·Apply·Verify·Rollback)
 
-### FASE 0 — BASELINE
+### FASE 0 — BASELINE ✅ SELESAI 2026-08-26
+Status eksekusi (detail task di bawah):
+- [x] T0.1 ✔ `Backend/scripts/ops/001_enable_pg_stat_statements.sql` siap — eksekusi butuh PG live (sandbox tanpa infra); termasuk langkah preload `shared_preload_libraries`.
+- [x] T0.2 ✔ `scripts/ops/002_table_baseline.sql` siap (sizes + index inventory).
+- [x] T0.3 ✔ Harness golden: `scripts/ops/capture-golden.sh` + `diff-json.mjs` (toleransi numerik) — snapshot asli diambil saat pertama deploy dengan DB hidup.
+- [x] T0.4 ✔ `drizzle-kit check` = Everything's fine ✓ · kredensial embed dibuang dari drizzle.config.ts & migrate.ts (DATABASE_URL dari env) · script db:check/db:generate di @betrix/infra · snapshot meta 0008/0009 absen tapi check lolos & future generate aman.
+- [x] T0.5 ✔ Dead cleanup tereksekusi penuh + test disesuaikan + logger injection (EventDispatcher onError & ChatLoggingHandler logger menggantikan console.error).
+- [x] GATE: BE tsc 7/7 · eslint · prettier · unit 6+44+2+28 ✓
+> Rollback: revert commit fase-0. Lingkungan: node_modules/dist Backend sempat ter-bersihkan GC sandbox — dipulihkan via pnpm install bersih + rebuild 5 lib.
+
+---
+Detail task card (arsitektur):
 - **T0.1** pg_stat_statements ON + view top-10. Verify: view berisi baris. RB: DROP EXTENSION.
 - **T0.2** table-sizes.sql → baseline-sizes.txt.
 - **T0.3** Golden snapshots JSON (metrics, analytics, news page1, calendar month) + util compareGolden.

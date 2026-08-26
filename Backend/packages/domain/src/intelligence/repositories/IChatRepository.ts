@@ -8,5 +8,4 @@ export interface IChatRepository {
   /** Last N messages of a session in chronological order — AI context window. */
   findRecentBySessionId(sessionId: string, userId: string, limit: number): Promise<ChatMessage[]>;
   deleteSession(sessionId: string, userId: string): Promise<number>;
-  findRecentByUserId(userId: string, limit?: number): Promise<ChatMessage[]>;
 }

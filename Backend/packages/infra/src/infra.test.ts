@@ -54,11 +54,9 @@ describe('Infrastructure - PostgreSQL Repositories', () => {
     expect(found).not.toBeNull();
     expect(found?.id).toBe(saved.id);
 
-    const updated = await userRepo.updateCredits(saved.id, 200);
-    expect(updated).toBe(true);
-
-    const afterUpdate = await userRepo.findById(saved.id);
-    expect(afterUpdate?.credits).toBe(200);
+    // NOTE: balance mutation is owned exclusively by CreditRepository
+    // (reserve/settle/add/deduct) — UserRepository intentionally has no
+    // updateCredits/updateStatus surface anymore.
 
     // Cleanup
     await userRepo.delete(saved.id);

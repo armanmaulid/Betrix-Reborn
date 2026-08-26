@@ -18,10 +18,11 @@
     }
   },
   "scripts": {
+    "db:check": "drizzle-kit check",
+    "db:generate": "drizzle-kit generate",
     "build": "tsc",
     "test": "vitest run --exclude '**/dist/**' --passWithNoTests",
     "lint": "tsc --noEmit",
-    "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/persistence/drizzle/migrate.ts"
   },
   "dependencies": {

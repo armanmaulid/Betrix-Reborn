@@ -21,7 +21,8 @@
     "@betrix/config": "workspace:*",
     "@betrix/core": "workspace:*",
     "@betrix/domain": "workspace:*",
-    "@sinclair/typebox": "^0.34.52"
+    "@sinclair/typebox": "^0.34.52",
+    "pino": "^9.14.0"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

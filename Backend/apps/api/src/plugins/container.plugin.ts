@@ -394,8 +394,15 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   }
 
   // 5. Event Dispatcher & Handlers
-  const eventDispatcher = new EventDispatcher();
-  const chatLoggingHandler = new ChatLoggingHandler(chatRepo, creditRepo);
+  const eventDispatcher = new EventDispatcher((eventName, err) => {
+    fastify.log.error({ err, eventName }, 'Event handler failed');
+  });
+  const chatLoggingHandler = new ChatLoggingHandler(
+    chatRepo,
+    creditRepo,
+    activityLogRepo,
+    fastify.log.child({ handler: 'ChatLoggingHandler' })
+  );
   chatLoggingHandler.register(eventDispatcher);
 
   // 6. Use Cases

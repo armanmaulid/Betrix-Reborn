@@ -5,7 +5,6 @@ export interface ICreditRepository {
   getBalance(userId: string): Promise<number>;
   deductCredits(userId: string, amount: number, action: string): Promise<number>;
   addCredits(userId: string, amount: number, action: string): Promise<number>;
-  getHistory(userId: string, limit?: number): Promise<CreditTransaction[]>;
   /**
    * Atomically reserve credits before an expensive operation.
    * Fails (returns false) if available = credits - reservedCredits < amount.
