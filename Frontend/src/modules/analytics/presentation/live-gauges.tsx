@@ -25,6 +25,8 @@ interface LiveGaugesProps {
   isLoading?: boolean;
   isError?: boolean;
   intervalMs?: number;
+  /** True when data arrives via the ops SSE stream instead of polling. */
+  isStreaming?: boolean;
 }
 
 export function LiveGauges({
@@ -32,7 +34,8 @@ export function LiveGauges({
   deltas,
   isLoading,
   isError,
-  intervalMs = 15000
+  intervalMs = 15000,
+  isStreaming = false
 }: LiveGaugesProps) {
   if (isLoading && !metrics) {
     return (
@@ -99,9 +102,13 @@ export function LiveGauges({
       <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground uppercase tracking-wider">
         <span className="flex items-center gap-1.5 text-accent font-bold">
           <span className="h-2 w-2 rounded-full bg-accent animate-pulse"></span>
-          [LIVE GAUGES // {intervalSeconds}S POLLING INTERVAL]
+          {isStreaming
+            ? '[LIVE GAUGES // SSE PUSH]'
+            : `[LIVE GAUGES // ${intervalSeconds}S POLLING INTERVAL]`}
         </span>
-        <span className="text-[10px] text-muted-foreground">AUTO-REFRESH ACTIVE</span>
+        <span className="text-[10px] text-muted-foreground">
+          {isStreaming ? 'SERVER PUSH ACTIVE' : 'AUTO-REFRESH ACTIVE'}
+        </span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 font-mono">

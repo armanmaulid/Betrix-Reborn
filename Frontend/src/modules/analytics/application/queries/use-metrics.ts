@@ -6,7 +6,12 @@ import { analyticsRepository } from '@analytics/infrastructure/repositories/Http
 import { analyticsKeys } from '@analytics/application/analytics.keys';
 import type { SystemMetrics } from '@analytics/domain/entities/SystemMetrics';
 
-export function useSystemMetrics(refetchInterval: number = 15000) {
+/**
+ * Metrics now arrive via the ops SSE stream (use-ops-stream writes straight
+ * into this query's cache), so polling defaults OFF. The parameter stays for
+ * manual opt-in / tests.
+ */
+export function useSystemMetrics(refetchInterval: number | false = false) {
   const previousRef = useRef<SystemMetrics | null>(null);
 
   const query = useQuery<SystemMetrics>({

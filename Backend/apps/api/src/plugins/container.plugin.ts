@@ -515,6 +515,18 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const batchRevokeVouchersUseCase = new BatchRevokeVouchersUseCase(voucherRepo, adminActionRepo);
   const getSystemMetricsUseCase = new GetSystemMetricsUseCase(analyticsRepo);
   const getAnalyticsUseCase = new GetAnalyticsUseCase(analyticsRepo);
+
+  // Wire dashboard ops snapshot pusher into SseHub. The fetcher only executes
+  // while an admin dashboard is actively listening on the 'ops' channel.
+  if (fastify.sseHub && env.NODE_ENV !== 'test' && !process.env.VITEST) {
+    fastify.sseHub.setOpsFetcher(async () => {
+      const [metrics, analytics] = await Promise.all([
+        getSystemMetricsUseCase.execute(),
+        getAnalyticsUseCase.execute()
+      ]);
+      return { metrics, analytics };
+    });
+  }
   const getAuditLogsUseCase = new GetAuditLogsUseCase(adminActionRepo, userRepo);
   const exportAuditLogsUseCase = new ExportAuditLogsUseCase(adminActionRepo);
   const broadcastMessageUseCase = new BroadcastMessageUseCase(

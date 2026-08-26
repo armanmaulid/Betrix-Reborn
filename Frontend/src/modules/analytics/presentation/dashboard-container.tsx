@@ -11,6 +11,7 @@ import { Cpu, Terminal, RefreshCw } from 'lucide-react';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
 import { PageHeader } from '@/shared/presentation/ui/page-header';
+import { useOpsStream } from '@analytics/application/queries/use-ops-stream';
 
 export function DashboardContainer() {
   usePageTitle('SYSTEM OVERVIEW');
@@ -55,6 +56,9 @@ export function DashboardContainer() {
     }
   };
 
+  // Live push channel — replaces the old 15s metrics polling entirely.
+  const { connected: isMetricsStreaming } = useOpsStream();
+
   return (
     <div className="space-y-3 font-mono">
       <PageHeader
@@ -93,6 +97,7 @@ export function DashboardContainer() {
         deltas={deltas}
         isLoading={isMetricsLoading}
         isError={isMetricsError}
+        isStreaming={isMetricsStreaming}
       />
 
       {/* 2. Interval Analytics Summary Cards */}
@@ -105,9 +110,10 @@ export function DashboardContainer() {
       />
 
       {/* 3. Deep Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Token Usage Over Time (2 Cols) */}
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        {/* Token Usage Over Time (2 Cols) — min-w-0 stops Recharts from
+            blowing the grid track wider than its share of the row. */}
+        <div className="lg:col-span-2 min-w-0">
           <TokenUsageChart
             data={analytics?.dailyTokenUsage || []}
             period={tokenPeriod}
@@ -117,7 +123,7 @@ export function DashboardContainer() {
         </div>
 
         {/* Top Models Distribution (1 Col) */}
-        <div>
+        <div className="min-w-0">
           <TopModelsChart data={analytics?.topModels || []} isLoading={isAnalyticsLoading} />
         </div>
       </div>

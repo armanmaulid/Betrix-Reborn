@@ -32,6 +32,26 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
   // Protect all /admin/* routes with Admin RBAC guard
   fastify.addHook('preHandler', fastify.requireAdmin);
 
+  // 0b. GET /admin/metrics/stream — live ops SSE for the executive dashboard.
+  // Same Admin RBAC guard as every /admin/* route; the Next.js BFF proxies and
+  // streams this endpoint server-side (cookie -> Authorization injection).
+  fastify.get(
+    '/metrics/stream',
+    {
+      schema: {
+        tags: ['Admin'],
+        summary: 'Live dashboard metrics & analytics stream (SSE)',
+        description:
+          'Pushes a full { metrics, analytics } snapshot every ~10s. Replaces client polling — the frontend writes frames straight into its query cache.'
+      }
+    },
+    async (request, reply) => {
+      const userId = request.user.userId;
+      const clientId = `ops-${userId}-${Date.now()}`;
+      fastify.sseHub.addClient(clientId, userId, 'ops', request, reply);
+    }
+  );
+
   // 0. POST /admin/users — Create a user directly from the admin panel
   fastify.post(
     '/users',

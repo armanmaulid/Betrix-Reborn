@@ -5,10 +5,15 @@ import { PriceTick, NewsArticle } from '@betrix/domain';
 export interface SseClient {
   id: string;
   userId: string;
-  channel: 'market' | 'news';
+  channel: 'market' | 'news' | 'ops';
   reply: FastifyReply;
   symbols?: Set<string>;
   connectedAt: Date;
+}
+
+export interface OpsSnapshot {
+  metrics: unknown;
+  analytics: unknown;
 }
 
 export class SseHub {
@@ -17,6 +22,8 @@ export class SseHub {
   private marketTickerTimer: NodeJS.Timeout | null = null;
   private lastPriceSnapshot = new Map<string, number>();
   private priceFetcher: (() => Promise<PriceTick[]>) | null = null;
+  private opsTickerTimer: NodeJS.Timeout | null = null;
+  private opsFetcher: (() => Promise<OpsSnapshot>) | null = null;
 
   constructor() {
     this.startHeartbeat();
@@ -27,10 +34,52 @@ export class SseHub {
     this.startMarketTicker();
   }
 
+  /**
+   * Ops ticker (dashboard): pushes a full metrics+analytics snapshot to every
+   * connected admin 'ops' client on a fixed interval. The fetcher only runs
+   * while at least one ops client is attached — zero DB load when no
+   * dashboard is open.
+   */
+  public setOpsFetcher(fetcher: () => Promise<OpsSnapshot>): void {
+    this.opsFetcher = fetcher;
+    this.startOpsTicker();
+  }
+
+  private startOpsTicker(): void {
+    if (this.opsTickerTimer) return;
+
+    this.opsTickerTimer = setInterval(async () => {
+      if (!this.opsFetcher || this.clients.size === 0) return;
+
+      let hasOpsClient = false;
+      for (const client of this.clients.values()) {
+        if (client.channel === 'ops') {
+          hasOpsClient = true;
+          break;
+        }
+      }
+      if (!hasOpsClient) return;
+
+      try {
+        const snapshot = await this.opsFetcher();
+        this.broadcastOps(snapshot);
+      } catch {
+        // Ignore background snapshot errors — the next tick retries.
+      }
+    }, 10_000); // 10s push cadence (was 15s client polling, now flicker-free)
+  }
+
+  public broadcastOps(snapshot: OpsSnapshot): void {
+    for (const client of this.clients.values()) {
+      if (client.channel !== 'ops') continue;
+      this.sendEvent(client, 'ops', snapshot);
+    }
+  }
+
   public addClient(
     id: string,
     userId: string,
-    channel: 'market' | 'news',
+    channel: 'market' | 'news' | 'ops',
     request: FastifyRequest,
     reply: FastifyReply,
     symbols?: string[]
@@ -127,6 +176,11 @@ export class SseHub {
     if (this.marketTickerTimer) {
       clearInterval(this.marketTickerTimer);
       this.marketTickerTimer = null;
+    }
+
+    if (this.opsTickerTimer) {
+      clearInterval(this.opsTickerTimer);
+      this.opsTickerTimer = null;
     }
 
     for (const client of this.clients.values()) {
