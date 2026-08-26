@@ -135,6 +135,16 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
    * whatever shape the stream event happens to carry.
    */
   private async handleStreamEvent(event: FxMacroDataStreamEvent): Promise<void> {
+    // T6.4 — SSE-triggered refresh costs 2 upstream calls; respect the shared
+    // daily budget. Skipping here is safe: the periodic refresh pass will
+    // catch this event within its 72h lookback once budget resets.
+    if (!this.consumeDailyBudget(2)) {
+      logger.warn(
+        `[SSE] Daily FXMacroData budget exhausted — skipping refresh for ${event.announcement_id}.`
+      );
+      return;
+    }
+
     const currency = event.currency.toUpperCase();
     const [announcements, predictionGroups] = await Promise.all([
       this.fxMacroData.fetchAnnouncements(event.currency, event.indicator),

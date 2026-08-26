@@ -111,10 +111,6 @@ export class FinnhubWsWorker extends ManagedWorkerBase implements IManagedWorker
     });
 
     this.ws.on('message', async (rawData: WebSocket.RawData) => {
-      // pause() keeps the socket open but stops processing incoming ticks,
-      // so resume() is instant with no reconnect cost — see doPause() below.
-      if (this.isPaused) return;
-
       try {
         const message = JSON.parse(rawData.toString());
 
