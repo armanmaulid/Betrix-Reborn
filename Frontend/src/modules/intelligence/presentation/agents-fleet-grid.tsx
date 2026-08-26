@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Bot, PlusCircle, RefreshCw } from 'lucide-react';
 import { AgentCard } from './agent-card';
+import { PageHeader } from '@/shared/presentation/ui/page-header';
 import type { AiAgent } from '@intelligence/domain/entities/AiAgent';
 
 export interface AgentsFleetGridProps {
@@ -26,40 +27,31 @@ export function AgentsFleetGrid({
   onDeleteRequest
 }: AgentsFleetGridProps) {
   return (
-    <div className="space-y-6 font-mono">
-      {/* Header Bar */}
-      <div className="border border-border bg-surface p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Bot className="w-4 h-4 text-accent" />
-            <h1 className="text-sm font-bold tracking-wider text-accent uppercase">
-              AI AGENT FLEET & MODEL GOVERNANCE
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Configure inference parameters, system prompts, token pricing tiers, and system default
-            models
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onRefresh}
-            disabled={isLoading || isRefetching}
-            className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
-            title="Refresh AI Models List"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
-            <span>REFRESH</span>
-          </button>
-          <Link href="/agents/new">
-            <button className="flex items-center gap-1.5 border border-accent/40 bg-accent/10 hover:bg-accent hover:text-black text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer">
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>DEPLOY NEW MODEL</span>
+    <div className="space-y-3 font-mono">
+      <PageHeader
+        title="AI AGENT FLEET & MODEL GOVERNANCE"
+        icon={Bot}
+        subtitle="Configure inference parameters, system prompts, token pricing tiers, and system default models"
+        actions={
+          <>
+            <button
+              onClick={onRefresh}
+              disabled={isLoading || isRefetching}
+              className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+              title="Refresh AI Models List"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
+              <span>REFRESH</span>
             </button>
-          </Link>
-        </div>
-      </div>
+            <Link href="/agents/new">
+              <button className="flex items-center gap-1.5 border border-accent/40 bg-accent/10 hover:bg-accent hover:text-black text-accent px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer">
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>DEPLOY NEW MODEL</span>
+              </button>
+            </Link>
+          </>
+        }
+      />
 
       {/* Grid Content */}
       {isLoading ? (

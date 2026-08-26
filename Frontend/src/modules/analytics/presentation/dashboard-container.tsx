@@ -10,6 +10,7 @@ import { TopModelsChart } from './top-models-chart';
 import { Cpu, Terminal, RefreshCw } from 'lucide-react';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
+import { PageHeader } from '@/shared/presentation/ui/page-header';
 
 export function DashboardContainer() {
   usePageTitle('SYSTEM OVERVIEW');
@@ -55,44 +56,36 @@ export function DashboardContainer() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Operations Titlebar */}
-      <div className="border border-border bg-surface p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-mono">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Terminal className="w-4 h-4 text-accent" />
-            <h1 className="text-sm font-bold tracking-wider text-accent uppercase">
-              EXECUTIVE TELEMETRY & OPERATIONS COMMAND
-            </h1>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Real-time infrastructure capacity, token consumption metrics, and model analytics
-          </p>
-        </div>
+    <div className="space-y-3 font-mono">
+      <PageHeader
+        title="EXECUTIVE TELEMETRY & OPERATIONS COMMAND"
+        icon={Terminal}
+        subtitle="Real-time infrastructure capacity, token consumption metrics, and model analytics"
+        actions={
+          <>
+            <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 bg-black border border-border text-[11px]">
+              <Cpu className="w-3.5 h-3.5 text-accent" />
+              <span className="text-muted-foreground">CLUSTER:</span>
+              <span className="text-positive font-bold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse" />
+                OPERATIONAL
+              </span>
+            </div>
 
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 bg-black border border-border text-[11px]">
-            <Cpu className="w-3.5 h-3.5 text-accent" />
-            <span className="text-muted-foreground">CLUSTER:</span>
-            <span className="text-positive font-bold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse" />
-              OPERATIONAL
-            </span>
-          </div>
-
-          <button
-            onClick={handleSyncAll}
-            disabled={isMetricsRefetching || isAnalyticsRefetching}
-            className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
-            title="Sync all metrics"
-          >
-            <RefreshCw
-              className={`w-3.5 h-3.5 ${isMetricsRefetching || isAnalyticsRefetching ? 'animate-spin' : ''}`}
-            />
-            <span>SYNC ALL</span>
-          </button>
-        </div>
-      </div>
+            <button
+              onClick={handleSyncAll}
+              disabled={isMetricsRefetching || isAnalyticsRefetching}
+              className="flex items-center gap-1.5 border border-border bg-black hover:border-accent hover:text-accent px-3 py-1 text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50 cursor-pointer"
+              title="Sync all metrics"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${isMetricsRefetching || isAnalyticsRefetching ? 'animate-spin' : ''}`}
+              />
+              <span>SYNC ALL</span>
+            </button>
+          </>
+        }
+      />
 
       {/* 1. Live Real-time System Gauges (Top Row) */}
       <LiveGauges

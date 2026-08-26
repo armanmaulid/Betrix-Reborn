@@ -37,7 +37,7 @@ export function NewAgentContainer() {
   };
 
   return (
-    <div className="space-y-6 font-mono max-w-4xl mx-auto">
+    <div className="space-y-3 font-mono max-w-4xl mx-auto">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-4">
         <Link
@@ -49,7 +49,7 @@ export function NewAgentContainer() {
         </Link>
         <div className="flex items-center gap-2">
           <Bot className="w-4 h-4 text-accent" />
-          <h1 className="text-xs text-accent font-bold uppercase tracking-wider">
+          <h1 className="text-sm font-bold tracking-wider text-accent uppercase">
             NEW MODEL CONFIGURATION
           </h1>
         </div>
