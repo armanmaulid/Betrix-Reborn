@@ -3,6 +3,7 @@
 import React from 'react';
 import { Play, Pause, Square, RotateCw } from 'lucide-react';
 import { formatFinancialNumber, formatUptime } from '@/shared/utils';
+import { StatusBadge } from '@/shared/presentation/ui/status-badge';
 import type { BackgroundWorker, WorkerAction } from '@operations/domain/entities/BackgroundWorker';
 
 export interface WorkerDaemonCardProps {
@@ -17,11 +18,7 @@ export function WorkerDaemonCard({ worker, onControl, isControlling }: WorkerDae
       <div>
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <div className="text-xs font-bold text-foreground select-all">{worker.name}</div>
-          <span
-            className={`px-2 py-0.5 text-[9px] font-bold border uppercase ${worker.getStatusBadgeClass()}`}
-          >
-            {worker.status}
-          </span>
+          <StatusBadge status={worker.status} />
         </div>
         <div className="text-[10px] text-muted-foreground line-clamp-2">{worker.description}</div>
       </div>

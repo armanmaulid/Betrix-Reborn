@@ -6,6 +6,7 @@ import { Copy, Check, Trash2, ExternalLink } from 'lucide-react';
 import type { CreditVoucher } from '@billing/domain/entities/CreditVoucher';
 import { formatFinancialNumber } from '@/shared/utils';
 import { formatDate, formatDateTime } from '@/shared/utils/formatters';
+import { StatusBadge } from '@/shared/presentation/ui/status-badge';
 
 export interface VoucherTableProps {
   vouchers: CreditVoucher[];
@@ -117,13 +118,9 @@ export function VoucherTable({
                   {formatFinancialNumber(v.amount)} CREDITS
                 </td>
 
-                {/* Status: Encapsulated in Domain Entity */}
+                {/* Status: tone decided at the UI layer (StatusBadge) */}
                 <td className="p-3">
-                  <span
-                    className={`px-2 py-0.5 text-[9px] font-bold border uppercase ${v.getStatusBadgeClass()}`}
-                  >
-                    {v.getStatus().toUpperCase()}
-                  </span>
+                  <StatusBadge status={v.getStatus()} />
                 </td>
 
                 {/* Redeemed By */}

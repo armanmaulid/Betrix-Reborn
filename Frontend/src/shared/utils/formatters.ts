@@ -68,14 +68,3 @@ export function formatUtcNewsDate(timestamp: number | null | undefined): string 
     return 'UNKNOWN';
   }
 }
-
-export function getUserStatusBadgeClass(status: string | null | undefined): string {
-  switch (status) {
-    case 'active':
-      return 'border-positive/40 bg-positive/10 text-positive';
-    case 'suspended':
-      return 'border-accent/40 bg-accent/10 text-accent';
-    default:
-      return 'border-negative/40 bg-negative/10 text-negative';
-  }
-}

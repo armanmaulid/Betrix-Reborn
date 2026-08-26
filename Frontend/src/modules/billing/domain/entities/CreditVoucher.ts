@@ -65,15 +65,4 @@ export class CreditVoucher {
     if (this.isExpired()) return 'expired';
     return 'available';
   }
-
-  public getStatusBadgeClass(): string {
-    switch (this.getStatus()) {
-      case 'available':
-        return 'border-positive/40 bg-positive/10 text-positive';
-      case 'redeemed':
-        return 'border-border bg-black text-muted-foreground';
-      case 'expired':
-        return 'border-negative/40 bg-negative/10 text-negative';
-    }
-  }
 }

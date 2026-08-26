@@ -18,7 +18,7 @@ describe('Operations Domain: BackgroundWorker Entity', () => {
     expect(worker.isRunning()).toBe(true);
     expect(worker.isPaused()).toBe(false);
     expect(worker.hasErrors()).toBe(false);
-    expect(worker.getStatusBadgeClass()).toContain('border-positive');
+    expect(worker.status).toBe('running');
   });
 
   it('should identify paused and error states', () => {
@@ -34,6 +34,6 @@ describe('Operations Domain: BackgroundWorker Entity', () => {
 
     expect(pausedWorker.isPaused()).toBe(true);
     expect(pausedWorker.hasErrors()).toBe(true);
-    expect(pausedWorker.getStatusBadgeClass()).toContain('border-accent');
+    expect(pausedWorker.status).toBe('paused');
   });
 });

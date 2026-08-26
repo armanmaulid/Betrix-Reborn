@@ -6,6 +6,7 @@ import { Badge } from './badge';
 import { PageHeader } from './page-header';
 import { FilterBar } from './filter-bar';
 import { TableShell } from './table-shell';
+import { StatusBadge } from './status-badge';
 
 describe('Shared UI Primitives', () => {
   describe('Badge', () => {
@@ -100,6 +101,18 @@ describe('Shared UI Primitives', () => {
 
       rerender(<TableShell columns={columns} isEmpty emptyMessage="NOTHING HERE" />);
       expect(screen.getByText('NOTHING HERE')).toBeInTheDocument();
+    });
+  });
+
+  describe('StatusBadge', () => {
+    it('maps known statuses to their tone', () => {
+      render(<StatusBadge status="ACTIVE" />);
+      expect(screen.getByText('ACTIVE')).toHaveClass('text-positive');
+    });
+
+    it('falls back to neutral for unknown statuses', () => {
+      render(<StatusBadge status="WEIRD_STATE" />);
+      expect(screen.getByText('WEIRD_STATE')).toHaveClass('text-muted-foreground');
     });
   });
 });

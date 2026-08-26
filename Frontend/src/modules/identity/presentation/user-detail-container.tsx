@@ -30,7 +30,8 @@ import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-c
 import { UserTierBadge } from './user-tier-badge';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { formatFinancialNumber } from '@/shared/utils';
-import { formatDateTime, getUserStatusBadgeClass } from '@/shared/utils/formatters';
+import { formatDateTime } from '@/shared/utils/formatters';
+import { StatusBadge } from '@/shared/presentation/ui/status-badge';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
 
 export interface UserDetailContainerProps {
@@ -183,11 +184,7 @@ export function UserDetailContainer({ userId }: UserDetailContainerProps) {
                     <Shield className="w-3 h-3" /> ADMIN
                   </span>
                 )}
-                <span
-                  className={`px-2 py-0.5 text-[9px] font-bold border uppercase ${getUserStatusBadgeClass(user.status)}`}
-                >
-                  {user.status}
-                </span>
+                <StatusBadge status={user.status} />
                 {user.tier && <UserTierBadge tier={user.tier} />}
               </div>
               <div className="text-xs text-muted-foreground mt-0.5 select-all">{user.email}</div>

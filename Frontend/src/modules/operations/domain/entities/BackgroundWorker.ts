@@ -34,7 +34,6 @@ export interface BackgroundWorkerInfo {
   isRunning?: () => boolean;
   isPaused?: () => boolean;
   hasErrors?: () => boolean;
-  getStatusBadgeClass?: () => string;
 }
 
 export class BackgroundWorker {
@@ -88,18 +87,5 @@ export class BackgroundWorker {
 
   public hasErrors(): boolean {
     return this.errorCount > 0 || this.status === 'error';
-  }
-
-  public getStatusBadgeClass(): string {
-    switch (this.status) {
-      case 'running':
-        return 'border-positive/40 bg-positive/10 text-positive';
-      case 'paused':
-        return 'border-accent/40 bg-accent/10 text-accent';
-      case 'stopped':
-        return 'border-negative/40 bg-negative/10 text-negative';
-      default:
-        return 'border-border bg-black text-muted-foreground';
-    }
   }
 }

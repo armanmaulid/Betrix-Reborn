@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { CheckCircle2, XCircle, Shield, Edit2, KeyRound, Trash2, ExternalLink } from 'lucide-react';
 import { UserTierBadge } from './user-tier-badge';
 import { formatFinancialNumber } from '@/shared/utils';
-import { formatDate, getUserStatusBadgeClass } from '@/shared/utils/formatters';
+import { formatDate } from '@/shared/utils/formatters';
+import { StatusBadge } from '@/shared/presentation/ui/status-badge';
 import { useSession } from '@/shared/presentation/hooks/use-session';
 import type { User } from '@identity/domain/entities/User';
 
@@ -115,11 +116,7 @@ export function UserTable({
 
                   {/* Account Status */}
                   <td className="p-3">
-                    <span
-                      className={`px-2 py-0.5 text-[9px] font-bold border uppercase tracking-wider ${getUserStatusBadgeClass(user.status)}`}
-                    >
-                      {user.status}
-                    </span>
+                    <StatusBadge status={user.status} />
                   </td>
 
                   {/* Subscription Tier */}
