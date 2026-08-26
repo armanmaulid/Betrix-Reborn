@@ -152,6 +152,10 @@ export const env = {
   OPS_SOURCE: process.env.OPS_SOURCE || 'cache',
   OPS_AGGREGATOR_INTERVAL_MS: Number(process.env.OPS_AGGREGATOR_INTERVAL_MS) || 60000,
 
+  // Fase 5 — Money split (T5.1): dedicated connection for the money schema.
+  // Falls back to DATABASE_URL when not set (dev/single-pool mode).
+  DATABASE_URL_MONEY: process.env.DATABASE_URL_MONEY || process.env.DATABASE_URL || '',
+
   // Fase 2 — Redis hygiene & quota (plan §D Fase 2 / T2.5):
   RATELIMIT_BACKEND: process.env.RATELIMIT_BACKEND || 'redis',
   MARKET_TICKER_INTERVAL_MS: Number(process.env.MARKET_TICKER_INTERVAL_MS) || 5000,

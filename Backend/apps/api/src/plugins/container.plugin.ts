@@ -275,6 +275,12 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   // 1. Initialize DB & Cache
   const pgPool = createPgPool(env.DATABASE_URL, 20);
   const db = createDrizzleClient(pgPool);
+  // T5.1 — dedicated money pool: isolates financial transactions from app
+  // traffic. Falls back to the same URL in dev/single-pool mode.
+  const moneyPool = env.DATABASE_URL_MONEY
+    ? createPgPool(env.DATABASE_URL_MONEY, 6)
+    : null;
+  const moneyDb = moneyPool ? createDrizzleClient(moneyPool) : db;
   const redis = createRedisClient(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN);
 
   // 2. Stores & Repositories
@@ -286,7 +292,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const sessionRepo = new DrizzleSessionRepository(db);
   const deviceRepo = new DrizzleDeviceRepository(db);
   const chatRepo = new DrizzleChatRepository(db);
-  const creditRepo = new DrizzleCreditRepository(db);
+  const creditRepo = new DrizzleCreditRepository(moneyDb);
   const symbolRepo = new DrizzleSymbolRepository(db, redis);
   const streamSymbolRepo = new DrizzleStreamSymbolRepository(db);
   const ohlcSymbolRepo = new DrizzleOhlcSymbolRepository(db);
@@ -298,7 +304,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const usageRepo = new DrizzleUsageRepository(db);
   const verificationRepo = new DrizzleVerificationRepository(db);
   const loginAttemptRepo = new DrizzleLoginAttemptRepository(db);
-  const voucherRepo = new DrizzleVoucherRepository(db);
+  const voucherRepo = new DrizzleVoucherRepository(moneyDb);
   const agentRepo = new DrizzleAiAgentRepository(db);
 
   // 3. Adapters

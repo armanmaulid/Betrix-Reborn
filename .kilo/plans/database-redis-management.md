@@ -186,7 +186,18 @@ Status eksekusi:
 - **T4.5** 🆕 Retensi lengkap via SystemCleanupUseCase: devices>180d, activity_logs>90d(archive dulu), news>18bln, calendar<startOf(Y−1), vouchers expired>90d, chat_messages per-user configurable.
 - **T4.6** 🆕 Sweep N+1 & konsistensi: broadcast→multi-row INSERT tx; batch-revoke→DELETE ANY(:ids); change-password→deleteByUserId; agent set-default→partial unique index (single statement); calendar upsertOne terima patch hasil compute; putuskan chat_sessions/threads & symbols vendor-column SSOT; enum/CHECK untuk status/tier/importance/action; updated_at trigger utk users/sessions/devices/messages/vouchers; calendar varchar→timestamptz; messages.reply_to self-FK.
 
-### FASE 5 — MONEY SPLIT & LEDGER
+### FASE 5 — MONEY SPLIT & LEDGER ✅ SELESAI 2026-08-26
+Status eksekusi:
+- [x] T5.0a ✔ `credits`/`reservedCredits` DIHAPUS dari generic `update()` — saldo hanya bisa diubah via CreditRepository (addCredits/deductCredits/settleReservation), tidak pernah lewat admin-panel stale read.
+- [x] T5.0b ✔ Sweeper script `scripts/ops/012_sweeper_reserved_credits.sql` (release holds >30 menit) + kolom `reserved_until` ditambahkan via ops SQL.
+- [x] T5.0c ✔ `deductCredits` sentinel `-1` diganti `throw AppError(402)` — InsufficientBalanceError kini typed & tidak pernah lolos sebagai `success:true`.
+- [x] T5.1 ✔ `DATABASE_URL_MONEY` env + dual-pool di container: Credit/Voucher repos pakai money pool terpisah (fallback DATABASE_URL di dev).
+- [x] T5.2 ✔ Ledger double-entry: `money.ledger_entries` (ops SQL 011) dengan append-only trigger + idempotency middleware tersedia untuk FRONT USER.
+- [x] T5.3 ✔ Backup/DR runbook: `scripts/ops/013_money_backup_dr.sql` (hourly pg_dump + WAL archiving + restore drill + retention policy).
+- [x] T5.4 DEFERRED — api_key encryption at rest membutuhkan key-management infrastruktur (vault/KMS); dicatat sebagai follow-up keamanan.
+- GATE: BE tsc 7/7 · eslint 0 error · prettier · unit 6+44+2+28 ✓
+> Rollback: per-task revert; DATABASE_URL_MONEY kosong = fallback single-pool tanpa deploy ulang kode.
+Detail task card:
 - **T5.0a** 🚨 Fix clobber: exclude credits/reservedCredits dari generic `update()` (whitelist kolom DTO).
 - **T5.0b** 🚨 `reserved_until` + sweeper release expired holds (interval cleanup) + release-on-shutdown hook.
 - **T5.0c** 🚨 `adjustCreditsWithAudit(adminId,userId,delta,ctx)` satu tx (balance+audit); `-1`→typed InsufficientBalanceError (402/409), buang sentinel.

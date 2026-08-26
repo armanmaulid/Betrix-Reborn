@@ -1,4 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm';
+import { AppError } from '@betrix/core';
 import { ICreditRepository, CreditTransaction } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { creditTransactions, users } from '../drizzle/schema.js';
@@ -58,7 +59,7 @@ export class DrizzleCreditRepository implements ICreditRepository {
         .returning({ credits: users.credits });
 
       if (updatedUser.length === 0) {
-        return -1; // insufficient balance
+        throw new AppError('Insufficient balance for this operation.', 402); // insufficient balance
       }
 
       // Record transaction

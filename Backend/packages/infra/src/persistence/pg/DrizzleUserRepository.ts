@@ -94,7 +94,10 @@ export class DrizzleUserRepository implements IUserRepository {
         status: user.status,
         tier: user.tier || 'free',
         emailVerified: user.emailVerified,
-        credits: user.credits,
+        // T5.0a — credits/reservedCredits are NEVER written here. Balance is
+        // owned exclusively by CreditRepository (addCredits/deductCredits/
+        // settleReservation) so concurrent AI-chat settlements can't be
+        // clobbered by a stale admin-panel read.
         googleId: user.googleId,
         phone: user.phone,
         address: user.address,
