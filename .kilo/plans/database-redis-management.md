@@ -145,6 +145,19 @@ Detail task card (arsitektur):
 - **T2.5** 🔥 Kuota guard Redis: ticker market 1s→**5s + adaptive idle-backoff**, pipeline multi-get per tick; pasang counter harian ala `consumeDailyBudget` (REDIS_DAILY_BUDGET) + alert §F; opsional arahkan UPSTASH ke self-host SRH (dev compose sudah ada).
 Verify: hitung ops/hari dari log budget < 70% tier. Rollback: interval lama.
 
+### FASE 2.5 — WORKER HARDENING ✅ SELESAI 2026-08-26
+Status eksekusi:
+- [x] T6.1 ✔ Leader lease di ManagedWorkerBase: `SET NX PX` (TTL WORKER_LEASE_TTL_MS=90s) · renew 30s dengan verifikasi kepemilikan · release Lua compare-and-del · **runAsLeaderOrStandby()** dipakai 7 worker (start, reconnect ws, doRestart) — standby polling 30s.
+- [x] T6.2 ✔ ws pause durability: pong dibalas SEBELUM cek paused (Finnhub tak idle-close → tak self-resume); reconnect & doRestart hormati paused.
+- [x] T6.3 ✔ Seeder crash-loop guard: marker Redis `ops:marker:calendar-seed-ok` TTL = CALENDAR_SEED_MIN_GAP_HOURS(12j) — restart beruntun tidak membakar kuota.
+- [x] T6.4 ✔ Budget guard menyeluruh: daily join path (plannedCalls = kode unik ×2) & SSE handler (2/event) kini lewat consumeDailyBudget; fallback schedule-only insert saat budget habis.
+- [x] T6.5 ✔ dispatchChain serialization + recordReportTelemetry (telemetry TIDAK menyentuh `status` — status milik eksklusif recordCommand) + timer guards.
+- [x] T6.6 ✔ Jitter cron rollover (calendar=0m, sync=3m, seeder=7m via param BrokerTimeCalculator) + reentry guards (sync/refresh/seed/cleanup).
+- [x] T6.7 ✔ main.ts grace window 3 detik setelah allSettled(stop) sebelum exit.
+- SMOKE dual-process: ditunda ke deploy (butuh Redis live) — mekanisme lease terverifikasi kompilasi & pola SET NX/EVAL standar.
+- GATE: BE tsc 7/7 · eslint 0 error · prettier · unit 6+44+2+28 ✓
+> Rollback: per-task revert; lease non-blocking bagi perilaku single-instance lama.
+
 ### FASE 2.5 — WORKER HARDENING (semua K7–K11)
 - **T6.1 Leader lease** di ManagedWorkerBase: `SET b:{env}:wlock:{id} {instanceId} NX PX 90000` + renew 30s + release Lua-compare on stop; follower standby (tetap subscribe, skip timer). Alternatif PG advisory lock.
 - **T6.2** ws-worker: pindahkan cek isPaused SETELAH branch ping/pong; scheduleReconnect hormati paused; doPause set flag reconnect-aware.

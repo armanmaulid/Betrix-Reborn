@@ -113,9 +113,12 @@ export interface IWorkerStateRepository {
     adminId: string | null
   ): Promise<WorkerStateRecord>;
   /** Upserts the record after the worker process reports its live health/telemetry. */
-  recordReport(
+  /**
+   * T6.5 — telemetry-only: updates counters/lastReport but NEVER `status`
+   * (status ownership belongs exclusively to recordCommand / admin actions).
+   */
+  recordReportTelemetry(
     workerId: string,
-    status: WorkerStatus,
     processedCount: number,
     errorCount: number,
     lastError: string | null

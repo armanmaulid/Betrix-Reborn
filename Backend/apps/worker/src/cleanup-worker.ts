@@ -69,7 +69,7 @@ export class CleanupWorker extends ManagedWorkerBase implements IManagedWorker {
       logger.info('Cleanup Worker was previously paused/stopped by an admin — not auto-starting.');
       return;
     }
-    await this.doStart();
+    await this.runAsLeaderOrStandby();
   }
 
   protected async doStart(): Promise<void> {
@@ -90,7 +90,10 @@ export class CleanupWorker extends ManagedWorkerBase implements IManagedWorker {
     logger.info('Maintenance Cleanup Worker scheduled to run hourly (0 * * * *).');
   }
 
+  private cleanupRunning = false;
   public async runCleanup(): Promise<void> {
+    if (this.cleanupRunning) return;
+    this.cleanupRunning = true;
     try {
       logger.info('Executing system purge for expired tokens, sessions, and old login attempts...');
       const result = await this.cleanupUseCase.execute({ olderThanDays: 30 });
@@ -114,6 +117,8 @@ export class CleanupWorker extends ManagedWorkerBase implements IManagedWorker {
       this.errorCount += 1;
       this.lastError = err.message;
       logger.error({ err: err.message }, 'Failed to execute maintenance cleanup');
+    } finally {
+      this.cleanupRunning = false;
     }
   }
 
@@ -153,6 +158,7 @@ export class CleanupWorker extends ManagedWorkerBase implements IManagedWorker {
 
   public async stop(): Promise<void> {
     this.isShuttingDown = true;
+    await this.releaseLeaderLease();
     await this.doStop();
     await this.pool.end();
     logger.info('Cleanup Worker stopped cleanly.');

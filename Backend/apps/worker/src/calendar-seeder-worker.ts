@@ -63,6 +63,8 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
   private lastError: string | null = null;
   private pool: ReturnType<typeof createPgPool>;
   private calendarRepo: DrizzleCalendarRepository;
+  /** T6.3 persistent quota guard across crash-loops. */
+  private markerRedis = createRedisClient();
   private fxMacroData = new FxMacroDataClient();
 
   constructor(private readonly brokerUtcOffset: number = env.BROKER_UTC_OFFSET) {
@@ -87,11 +89,11 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
       );
       return;
     }
-    await this.doStart();
+    await this.runAsLeaderOrStandby();
   }
 
   protected async doStart(): Promise<void> {
-    const cronExpr = BrokerTimeCalculator.getBrokerRolloverCronExpression(this.brokerUtcOffset);
+    const cronExpr = BrokerTimeCalculator.getBrokerRolloverCronExpression(this.brokerUtcOffset, 7);
     logger.info(
       `Starting Calendar Seeder Worker (Broker Offset: UTC+${this.brokerUtcOffset}, cron: '${cronExpr}')...`
     );
@@ -117,6 +119,22 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
    */
   public async seedStartupYears(): Promise<void> {
     const currency = env.FXMACRODATA_CALENDAR_CURRENCY.toUpperCase();
+
+    // T6.3 — crash-loop quota guard: skip the upstream fetch when a successful
+    // full seed happened within CALENDAR_SEED_MIN_GAP_HOURS (Redis-persisted).
+    const gapHours = env.CALENDAR_SEED_MIN_GAP_HOURS;
+    const markerKey = `b:${env.NODE_ENV || 'development'}:ops:marker:calendar-seed-ok`;
+    let lastSeedAt: string | null = null;
+    try {
+      lastSeedAt = (await this.markerRedis.get<string>(markerKey)) ?? null;
+    } catch {
+      // Marker read failure must not block seeding.
+    }
+    if (lastSeedAt && Date.now() - Number(lastSeedAt) < gapHours * 3600_000) {
+      logger.info('[CALENDAR SEED] Skipping startup seed — completed recently (quota guard).');
+      return;
+    }
+
     const years = seedYearSpan();
     const firstYear = years[0];
     const lastYear = years[years.length - 1];
@@ -146,6 +164,14 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
           `schedule=${schedule.length}, daysMissing=${missing.length}, inserted=${saved} ` +
           `(${[...perYear.entries()].map(([y, n]) => `${y}:${n}`).join(', ') || 'no gaps'}).`
       );
+
+      try {
+        await this.markerRedis.set(markerKey, String(Date.now()), {
+          ex: Math.ceil(gapHours * 3600)
+        });
+      } catch {
+        // Marker write failure is non-fatal.
+      }
     } catch (err: any) {
       // Never throw — an FXMacroData outage must not crash the worker process.
       this.errorCount += 1;
@@ -230,6 +256,7 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
   }
 
   public async stop(): Promise<void> {
+    await this.releaseLeaderLease();
     await this.doStop();
     await this.pool.end();
     logger.info('Calendar Seeder Worker stopped cleanly.');

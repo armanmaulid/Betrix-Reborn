@@ -14,7 +14,11 @@ import {
 } from '@betrix/infra';
 import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
 import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
-import { pickForecast, joinWithAnnouncementsAndPredictions } from './shared/calendar-mapping.js';
+import {
+  pickForecast,
+  joinWithAnnouncementsAndPredictions,
+  toCalendarEvent
+} from './shared/calendar-mapping.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -60,11 +64,11 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
       logger.info('Calendar Worker was previously paused/stopped by an admin — not auto-starting.');
       return;
     }
-    await this.doStart();
+    await this.runAsLeaderOrStandby();
   }
 
   protected async doStart(): Promise<void> {
-    const cronExpr = BrokerTimeCalculator.getBrokerRolloverCronExpression(this.brokerUtcOffset);
+    const cronExpr = BrokerTimeCalculator.getBrokerRolloverCronExpression(this.brokerUtcOffset, 0);
     logger.info(
       `Starting Calendar Sync Worker (Broker Offset: UTC+${this.brokerUtcOffset}, cron: '${cronExpr}')...`
     );
@@ -177,7 +181,18 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
    * no-op — see the checklist requirement to verify no HTTP call happens in
    * that case.
    */
+  private syncRunning = false;
   public async syncIfMonthMissing(): Promise<void> {
+    if (this.syncRunning) return;
+    this.syncRunning = true;
+    try {
+      await this.syncIfMonthMissingInner();
+    } finally {
+      this.syncRunning = false;
+    }
+  }
+
+  private async syncIfMonthMissingInner(): Promise<void> {
     const currency = env.FXMACRODATA_CALENDAR_CURRENCY.toUpperCase();
     const currentYearMonth = new Date().toISOString().slice(0, 7);
 
@@ -195,6 +210,24 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
     try {
       const rawEvents = await this.fxMacroData.fetchCalendar(env.FXMACRODATA_CALENDAR_CURRENCY);
       const eventsThisMonth = rawEvents.filter((e) => e.date?.startsWith(currentYearMonth));
+
+      // T6.4 — the daily join costs 2 calls per unique indicator. Respect the
+      // shared daily budget: when exhausted, fall back to a schedule-only
+      // insert (0 extra calls); the refresh pass catches up values later.
+      const uniqueCodes = new Set(eventsThisMonth.map((e) => e.release));
+      const plannedCalls = uniqueCodes.size * 2;
+      if (!this.consumeDailyBudget(plannedCalls)) {
+        logger.warn(
+          `[CALENDAR SYNC] Daily FXMacroData budget exhausted — inserting schedule-only rows for ${currency} ${currentYearMonth}.`
+        );
+        const scheduleOnly = eventsThisMonth.map((raw) =>
+          toCalendarEvent(raw, currency.toUpperCase(), undefined, undefined)
+        );
+        const savedOnly = await this.calendarRepo.saveMany(scheduleOnly);
+        this.processedCount += savedOnly;
+        logger.info(`[CALENDAR SYNC] Schedule-only insert: ${savedOnly} rows.`);
+        return;
+      }
 
       const events = await joinWithAnnouncementsAndPredictions(
         this.fxMacroData,
@@ -233,7 +266,18 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
    * per endpoint (deduped across the whole window), capped per pass, and gated
    * by a daily call budget. A tick with nothing to refresh makes zero calls.
    */
+  private refreshRunning = false;
   public async refreshRecentValues(): Promise<void> {
+    if (this.refreshRunning) return;
+    this.refreshRunning = true;
+    try {
+      await this.refreshRecentValuesInner();
+    } finally {
+      this.refreshRunning = false;
+    }
+  }
+
+  private async refreshRecentValuesInner(): Promise<void> {
     const currency = env.FXMACRODATA_CALENDAR_CURRENCY.toUpperCase();
     const nowSec = Math.floor(Date.now() / 1000);
     const lookbackStart = nowSec - env.CALENDAR_REFRESH_LOOKBACK_HOURS * 3600;
@@ -404,6 +448,7 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
 
   public async stop(): Promise<void> {
     this.isShuttingDown = true;
+    await this.releaseLeaderLease();
     await this.doStop();
     await this.pool.end();
     logger.info('Calendar Worker stopped cleanly.');

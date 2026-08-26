@@ -83,7 +83,7 @@ export class FinnhubWsWorker extends ManagedWorkerBase implements IManagedWorker
       );
       return;
     }
-    await this.doStart();
+    await this.runAsLeaderOrStandby();
   }
 
   protected async doStart(): Promise<void> {
@@ -123,6 +123,10 @@ export class FinnhubWsWorker extends ManagedWorkerBase implements IManagedWorker
           this.ws?.send(JSON.stringify({ type: 'pong' }));
           return;
         }
+
+        // T6.2 — pong already answered above; NOW drop ticks while paused so
+        // Finnhub never idle-closes us and silently self-resumes via reconnect.
+        if (this.isPaused) return;
 
         if (message.type === 'trade' && Array.isArray(message.data)) {
           for (const trade of message.data) {
@@ -211,11 +215,8 @@ export class FinnhubWsWorker extends ManagedWorkerBase implements IManagedWorker
     );
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      if (!this.isShuttingDown) {
-        this.doStart().catch((err) => {
-          logger.error({ err: err.message }, 'Failed during scheduled reconnect');
-          this.scheduleReconnect();
-        });
+      if (!this.isShuttingDown && !this.isPaused) {
+        this.runAsLeaderOrStandby();
       }
     }, delay);
   }
@@ -319,7 +320,7 @@ export class FinnhubWsWorker extends ManagedWorkerBase implements IManagedWorker
     this.isShuttingDown = false;
     await this.doStop();
     this.isShuttingDown = false;
-    await this.doStart();
+    await this.runAsLeaderOrStandby();
   }
 
   public getHealth(): WorkerHealthSnapshot {
@@ -336,6 +337,7 @@ export class FinnhubWsWorker extends ManagedWorkerBase implements IManagedWorker
   }
 
   public async stop(): Promise<void> {
+    await this.releaseLeaderLease();
     await this.doStop();
     await this.pool.end();
   }

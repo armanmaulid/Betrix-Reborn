@@ -69,12 +69,12 @@ export class SyncWorker extends ManagedWorkerBase implements IManagedWorker {
       logger.info('Sync Worker was previously paused/stopped by an admin — not auto-starting.');
       return;
     }
-    await this.doStart();
+    await this.runAsLeaderOrStandby();
   }
 
   protected async doStart(): Promise<void> {
     const rolloverUtcHour = BrokerTimeCalculator.getBrokerRolloverUtcHour(this.brokerUtcOffset);
-    const cronExpr = BrokerTimeCalculator.getBrokerRolloverCronExpression(this.brokerUtcOffset);
+    const cronExpr = BrokerTimeCalculator.getBrokerRolloverCronExpression(this.brokerUtcOffset, 3);
 
     logger.info(
       `Starting Symbol & D1 Baseline Sync Worker (Broker Offset: UTC+${this.brokerUtcOffset}, Rollover: ${rolloverUtcHour}:00 UTC / 00:00 Broker Time)...`
@@ -208,6 +208,7 @@ export class SyncWorker extends ManagedWorkerBase implements IManagedWorker {
 
   public async stop(): Promise<void> {
     this.isShuttingDown = true;
+    await this.releaseLeaderLease();
     await this.doStop();
     await this.pool.end();
     logger.info('Sync Worker stopped cleanly.');

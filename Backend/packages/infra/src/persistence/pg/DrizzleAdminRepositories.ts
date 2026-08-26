@@ -524,9 +524,13 @@ export class DrizzleWorkerStateRepository implements IWorkerStateRepository {
     return this.mapToDomain(rows[0]!);
   }
 
-  async recordReport(
+  /**
+   * T6.5 — telemetry-only upsert: NEVER touches `status`, which is owned
+   * exclusively by `recordCommand` (admin actions). This kills the race where
+   * a slow report clobbered a newer pause/stop.
+   */
+  async recordReportTelemetry(
     workerId: string,
-    status: WorkerStatus,
     processedCount: number,
     errorCount: number,
     lastError: string | null
@@ -536,7 +540,7 @@ export class DrizzleWorkerStateRepository implements IWorkerStateRepository {
       .insert(workerStates)
       .values({
         workerId,
-        status,
+        status: 'running',
         lastReportAt: now,
         processedCount,
         errorCount,
@@ -546,7 +550,6 @@ export class DrizzleWorkerStateRepository implements IWorkerStateRepository {
       .onConflictDoUpdate({
         target: workerStates.workerId,
         set: {
-          status,
           lastReportAt: now,
           processedCount,
           errorCount,

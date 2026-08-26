@@ -18,9 +18,15 @@ export class BrokerTimeCalculator {
    * Returns a standard 5-part cron expression that triggers 5 seconds after Broker Midnight Rollover.
    * Example: UTC+3 offset -> '5 0 21 * * *' (21:00:05 UTC every day)
    */
-  public static getBrokerRolloverCronExpression(offsetHours: number = 3): string {
+  public static getBrokerRolloverCronExpression(
+    offsetHours: number = 3,
+    jitterMinutes: number = 0
+  ): string {
     const rolloverUtcHour = this.getBrokerRolloverUtcHour(offsetHours);
-    return `5 ${rolloverUtcHour} * * *`;
+    // T6.6 — stagger workers sharing the same rollover so they never fire in
+    // the same minute (0/3/7 passed by callers).
+    const minute = (5 + (Number(jitterMinutes) || 0)) % 60;
+    return `${minute} ${rolloverUtcHour} * * *`;
   }
 
   /**

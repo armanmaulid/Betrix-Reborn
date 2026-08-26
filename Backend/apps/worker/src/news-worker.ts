@@ -119,7 +119,7 @@ export class NewsWorker extends ManagedWorkerBase implements IManagedWorker {
       logger.info('News Worker was previously paused/stopped by an admin — not auto-starting.');
       return;
     }
-    await this.doStart();
+    await this.runAsLeaderOrStandby();
   }
 
   protected async doStart(): Promise<void> {
@@ -262,6 +262,7 @@ export class NewsWorker extends ManagedWorkerBase implements IManagedWorker {
 
   public async stop(): Promise<void> {
     this.isShuttingDown = true;
+    await this.releaseLeaderLease();
     await this.doStop();
     await this.pool.end();
     logger.info('News Worker stopped cleanly.');

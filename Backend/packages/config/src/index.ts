@@ -140,6 +140,13 @@ export const env = {
   // the AI gateway reports them; 'estimate' forces the legacy chars/4 model.
   BILLING_SOURCE: process.env.BILLING_SOURCE || 'provider',
 
+  // Fase 2.5 — seeder crash-loop quota guard (T6.3): skip the startup
+  // FXMacroData fetch when a full seed completed within this window.
+  CALENDAR_SEED_MIN_GAP_HOURS: Number(process.env.CALENDAR_SEED_MIN_GAP_HOURS) || 12,
+
+  // Fase 2.5 — leader lease for worker singleton enforcement (T6.1).
+  WORKER_LEASE_TTL_MS: Number(process.env.WORKER_LEASE_TTL_MS) || 90000,
+
   // Fase 2 — Redis hygiene & quota (plan §D Fase 2 / T2.5):
   RATELIMIT_BACKEND: process.env.RATELIMIT_BACKEND || 'redis',
   MARKET_TICKER_INTERVAL_MS: Number(process.env.MARKET_TICKER_INTERVAL_MS) || 5000,
