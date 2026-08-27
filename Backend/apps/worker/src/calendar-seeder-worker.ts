@@ -194,35 +194,39 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
    * have rows? yes → skip (zero HTTP calls); no → seed its schedule.
    */
   public async seedCurrentMonthIfMissing(): Promise<void> {
-    const currency = env.FXMACRODATA_CALENDAR_CURRENCY.toUpperCase();
+    const currencies = activeCalendarCurrencies();
     const currentYearMonth = new Date().toISOString().slice(0, 7);
 
-    try {
-      const existingCount = await this.calendarRepo.countByCurrencyAndMonth(
-        currency,
-        currentYearMonth
-      );
-      if (existingCount > 0) {
-        logger.info(
-          `[CALENDAR SEED] ${currency} ${currentYearMonth} already has ${existingCount} events, skip.`
+    for (const cur of currencies) {
+      try {
+        const existingCount = await this.calendarRepo.countByCurrencyAndMonth(
+          cur,
+          currentYearMonth
         );
-        return;
-      }
+        if (existingCount > 0) {
+          logger.info(
+            `[CALENDAR SEED] ${cur.toUpperCase()} ${currentYearMonth} already has ${existingCount} events, skip.`
+          );
+          continue;
+        }
 
-      const schedule = await this.fetchSchedule();
-      const monthEvents = schedule.filter((e) => e.date?.startsWith(currentYearMonth));
-      const saved = await this.calendarRepo.saveMany(toScheduleOnlyEvents(monthEvents, currency));
-      this.processedCount += saved;
-      logger.info(
-        `[CALENDAR SEED] Seeded ${saved}/${monthEvents.length} scheduled events for ${currency} ${currentYearMonth}.`
-      );
-    } catch (err: any) {
-      this.errorCount += 1;
-      this.lastError = err.message;
-      logger.error(
-        { err: err.message },
-        `[CALENDAR SEED] Monthly seed failed for ${currency} ${currentYearMonth}.`
-      );
+        const schedule = await this.fetchSchedule(cur);
+        const monthEvents = schedule.filter((e) => e.date?.startsWith(currentYearMonth));
+        const saved = await this.calendarRepo.saveMany(
+          toScheduleOnlyEvents(monthEvents, cur)
+        );
+        this.processedCount += saved;
+        logger.info(
+          `[CALENDAR SEED] Seeded ${saved}/${monthEvents.length} scheduled events for ${cur.toUpperCase()} ${currentYearMonth}.`
+        );
+      } catch (err: any) {
+        this.errorCount += 1;
+        this.lastError = err.message;
+        logger.error(
+          { err: err.message, currency: cur },
+          `[CALENDAR SEED] Monthly seed failed for ${cur.toUpperCase()} ${currentYearMonth} - continuing.`
+        );
+      }
     }
   }
 
@@ -232,16 +236,16 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
    * FXMacroData's /v1/calendar returns only UPCOMING releases unless
    * start_date/end_date are supplied, which is why historical years were empty.
    */
-  private async fetchSchedule(): Promise<FxMacroDataCalendarEvent[]> {
+  private async fetchSchedule(currency: string): Promise<FxMacroDataCalendarEvent[]> {
     const years = seedYearSpan();
     const firstYear = years[0];
     const lastYear = years[years.length - 1];
     if (firstYear === undefined || lastYear === undefined) {
-      return this.fxMacroData.fetchCalendar(env.FXMACRODATA_CALENDAR_CURRENCY);
+      return this.fxMacroData.fetchCalendar(currency);
     }
     const start = `${firstYear}-01-01`;
     const end = `${lastYear}-12-31`;
-    return this.fxMacroData.fetchCalendar(env.FXMACRODATA_CALENDAR_CURRENCY, start, end);
+    return this.fxMacroData.fetchCalendar(currency, start, end);
   }
 
   /**
