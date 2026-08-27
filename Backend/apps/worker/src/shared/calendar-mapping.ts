@@ -58,26 +58,6 @@ export function toScheduleOnlyEvents(
   return rawEvents.map((raw) => toCalendarEvent(raw, currency.toUpperCase(), undefined, undefined));
 }
 
-function utcDayKey(unixSeconds: number): string {
-  return new Date(unixSeconds * 1000).toISOString().slice(0, 10);
-}
-
-/**
- * Day-level idempotence for the seeder: drop upstream events whose UTC day
- * already has ANY stored row. raw.date is upstream's "YYYY-MM-DD" (UTC day),
- * which is exactly the bucket key used on the database side.
- */
-export function filterEventsMissingDays(
-  rawEvents: FxMacroDataCalendarEvent[],
-  existingUnixSeconds: number[]
-): FxMacroDataCalendarEvent[] {
-  const coveredDays = new Set(existingUnixSeconds.map(utcDayKey));
-  return rawEvents.filter((raw) => {
-    if (!raw.date) return false; // unplaceable without a date — skip defensively
-    return !coveredDays.has(raw.date);
-  });
-}
-
 export function toCalendarEvent(
   raw: FxMacroDataCalendarEvent,
   currency: string,

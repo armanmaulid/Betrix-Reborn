@@ -218,7 +218,17 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
     }
 
     try {
-      const rawEvents = await this.fxMacroData.fetchCalendar(env.FXMACRODATA_CALENDAR_CURRENCY);
+      // Range = full current month (incl. already-released past days): the
+      // default /v1/calendar only returns UPCOMING releases, so without the
+      // bounds a zero-row month would be partially seeded and miss past days.
+      const [cy, cm] = currentYearMonth.split('-').map(Number);
+      const monthStart = `${currentYearMonth}-01`;
+      const monthEnd = new Date(Date.UTC(cy!, cm! + 1, 0)).toISOString().slice(0, 10);
+      const rawEvents = await this.fxMacroData.fetchCalendar(
+        env.FXMACRODATA_CALENDAR_CURRENCY,
+        monthStart,
+        monthEnd
+      );
       const eventsThisMonth = rawEvents.filter((e) => e.date?.startsWith(currentYearMonth));
 
       // T6.4 — the daily join costs 2 calls per unique indicator. Respect the

@@ -14,7 +14,7 @@ import {
 } from '@betrix/infra';
 import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
 import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
-import { filterEventsMissingDays, toScheduleOnlyEvents } from './shared/calendar-mapping.js';
+import { toScheduleOnlyEvents } from './shared/calendar-mapping.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -31,13 +31,6 @@ const logger = pino({
 function seedYearSpan(): number[] {
   const current = new Date().getUTCFullYear();
   return [current - 1, current, current + 1];
-}
-
-function utcYearRange(year: number): { startUnix: number; endUnix: number } {
-  return {
-    startUnix: Math.floor(Date.UTC(year, 0, 1) / 1000),
-    endUnix: Math.floor(Date.UTC(year + 1, 0, 1) / 1000) - 1
-  };
 }
 
 /**
@@ -136,33 +129,29 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
     }
 
     const years = seedYearSpan();
-    const firstYear = years[0];
-    const lastYear = years[years.length - 1];
-    if (firstYear === undefined || lastYear === undefined) return;
 
     try {
-      const [schedule, existingUnix] = await Promise.all([
-        this.fetchSchedule(),
-        this.calendarRepo.listAnnouncementUnixInRange(
-          currency,
-          utcYearRange(firstYear).startUnix,
-          utcYearRange(lastYear).endUnix
-        )
-      ]);
+      const schedule = await this.fetchSchedule();
 
-      const missing = filterEventsMissingDays(schedule, existingUnix);
-      const saved = await this.calendarRepo.saveMany(toScheduleOnlyEvents(missing, currency));
+      // Do NOT pre-filter by "missing day": the old filter compared each event's
+      // reference-period `date` against a set keyed on the *publication* day
+      // (announcementUnix) — different things — and multiple distinct events can
+      // legitimately share a reference period (e.g. CPI + PPI both for "2025-03"),
+      // so it could silently skip real events. Idempotence is already guaranteed
+      // by the primary key + saveMany(... onConflictDoNothing); just insert all
+      // and let duplicates no-op.
+      const saved = await this.calendarRepo.saveMany(toScheduleOnlyEvents(schedule, currency));
       this.processedCount += saved;
 
       const perYear = new Map<number, number>();
-      for (const e of missing) {
+      for (const e of schedule) {
         const y = Number(e.date?.slice(0, 4));
         if (!Number.isNaN(y)) perYear.set(y, (perYear.get(y) ?? 0) + 1);
       }
       logger.info(
-        `[CALENDAR SEED] Startup check ${years.join('/')}: ` +
-          `schedule=${schedule.length}, daysMissing=${missing.length}, inserted=${saved} ` +
-          `(${[...perYear.entries()].map(([y, n]) => `${y}:${n}`).join(', ') || 'no gaps'}).`
+        `[CALENDAR SEED] Startup seed ${years.join('/')}: ` +
+          `schedule=${schedule.length}, inserted=${saved} ` +
+          `(${[...perYear.entries()].map(([y, n]) => `${y}:${n}`).join(', ') || 'empty'}).`
       );
 
       try {
