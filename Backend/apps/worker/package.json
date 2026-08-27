@@ -19,6 +19,10 @@
     "start:cleanup": "node dist/cleanup-worker.js",
     "start:calendar": "node dist/calendar-worker.js",
     "calendar:backfill": "tsx src/scripts/calendar-backfill.ts",
+    "fx:backfill": "tsx src/scripts/fx-backfill.ts",
+    "cot:backfill": "tsx src/scripts/cot-backfill.ts",
+    "commodities:backfill": "tsx src/scripts/commodities-backfill.ts",
+    "usd:catalogue": "tsx src/scripts/usd-catalogue-list.ts",
     "test": "vitest run --exclude '**/dist/**' --passWithNoTests",
     "lint": "tsc --noEmit"
   },
