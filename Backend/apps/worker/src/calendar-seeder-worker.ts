@@ -15,6 +15,7 @@ import {
 import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
 import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
 import { toScheduleOnlyEvents } from './shared/calendar-mapping.js';
+import { activeCalendarCurrencies } from './shared/fxmacrodata-helpers.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -31,17 +32,6 @@ const logger = pino({
 function seedYearSpan(): number[] {
   const current = new Date().getUTCFullYear();
   return [current - 1, current, current + 1];
-}
-
-/**
- * Resolves the active calendar currency list. Tier 2 multi-currency: when
- * `FXMACRODATA_CALENDAR_CURRENCIES` is set (comma-separated), it takes
- * precedence. Otherwise we fall back to the single `FXMACRODATA_CALENDAR_CURRENCY`
- * for backward compatibility. Always lowercased — callers uppercase at the
- * call site for logging.
- */
-function activeCalendarCurrencies(): string[] {
-  return env.FXMACRODATA_CALENDAR_CURRENCIES ?? [env.FXMACRODATA_CALENDAR_CURRENCY];
 }
 
 /**

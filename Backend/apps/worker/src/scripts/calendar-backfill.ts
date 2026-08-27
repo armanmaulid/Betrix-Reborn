@@ -20,6 +20,7 @@
 import pino from 'pino';
 import { env } from '@betrix/config';
 import { BackfillableCalendarSync } from './calendar-backfill-lib.js';
+import { activeCalendarCurrencies } from '../shared/fxmacrodata-helpers.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -32,10 +33,6 @@ const logger = pino({
 const _now = new Date();
 const BACKFILL_START = `${_now.getUTCFullYear() - 1}-01-01`;
 const BACKFILL_END = `${_now.getUTCFullYear() - 1}-12-31`;
-
-function activeCalendarCurrencies(): string[] {
-  return env.FXMACRODATA_CALENDAR_CURRENCIES ?? [env.FXMACRODATA_CALENDAR_CURRENCY];
-}
 
 async function main(): Promise<void> {
   const currencies = activeCalendarCurrencies();

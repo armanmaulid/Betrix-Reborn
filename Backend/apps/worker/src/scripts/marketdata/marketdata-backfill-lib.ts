@@ -15,15 +15,13 @@ import {
   createPgPool,
   createDrizzleClient,
   FxMacroDataClient,
+  DrizzleFxSpotPriceRepository,
+  DrizzleCotPositionRepository,
+  DrizzleCommodityPriceRepository,
   type FxMacroDataFxPriceRow,
   type FxMacroDataCotRow,
   type FxMacroDataCommodityRow,
   type FxMacroDataCatalogueEntry
-} from '@betrix/infra';
-import {
-  DrizzleFxSpotPriceRepository,
-  DrizzleCotPositionRepository,
-  DrizzleCommodityPriceRepository
 } from '@betrix/infra';
 import { FxSpotPrice, CotPosition, CommodityPrice } from '@betrix/domain';
 

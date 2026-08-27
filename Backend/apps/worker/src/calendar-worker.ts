@@ -15,10 +15,11 @@ import {
 import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
 import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
 import {
-  pickForecast,
   joinWithAnnouncementsAndPredictions,
-  toCalendarEvent
+  toCalendarEvent,
+  mergeEventWithUpstream
 } from './shared/calendar-mapping.js';
+import { activeCalendarCurrencies } from './shared/fxmacrodata-helpers.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -27,16 +28,6 @@ const logger = pino({
     options: { colorize: true }
   }
 });
-
-/**
- * Resolves the active calendar currency list. Tier 2 multi-currency: when
- * `FXMACRODATA_CALENDAR_CURRENCIES` is set (comma-separated), it takes
- * precedence. Otherwise fall back to single `FXMACRODATA_CALENDAR_CURRENCY`
- * for backward compatibility. Always lowercased.
- */
-function activeCalendarCurrencies(): string[] {
-  return env.FXMACRODATA_CALENDAR_CURRENCIES ?? [env.FXMACRODATA_CALENDAR_CURRENCY];
-}
 
 export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker {
   private dailyCronJob: ScheduledTask | null = null;
@@ -181,13 +172,7 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
       return;
     }
 
-    const updated = new CalendarEvent({
-      ...existing,
-      beforeValue: announcement.previous_value,
-      actualValue: announcement.val,
-      hasOfficialForecast: announcement.has_official_forecast,
-      ...pickForecastProps(predictionGroup)
-    });
+    const updated = mergeEventWithUpstream(existing, announcement, predictionGroup);
 
     await this.calendarRepo.upsertOne(updated);
     this.processedCount += 1;
@@ -382,32 +367,14 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
           // announcement_id ({currency}_{release}_{date}), so a direct match is
           // exact - never fuzzy.
           const announcement = announcements.find((a) => a.announcement_id === row.id);
-          const forecast = pickForecast(predictionGroups.find((p) => p.announcement_id === row.id));
 
           // Only overwrite with real upstream values - never downgrade an
           // existing stored value back to null because one response omitted it.
-          const updated = new CalendarEvent({
-            id: row.id,
-            currency: row.currency,
-            eventCode: row.eventCode,
-            eventName: row.eventName,
-            referencePeriodDate: row.referencePeriodDate,
-            announcementUnix: row.announcementUnix,
-            announcementDatetimeUtc: row.announcementDatetimeUtc,
-            announcementDatetimeLocal: row.announcementDatetimeLocal,
-            importance: row.importance,
-            marketTier: row.marketTier,
-            isTopTier: row.isTopTier,
-            sourceName: row.sourceName,
-            sourceUrl: row.sourceUrl,
-            beforeValue: announcement ? announcement.previous_value : row.beforeValue,
-            forecastValue: forecast.value ?? row.forecastValue,
-            forecastType: forecast.type ?? row.forecastType,
-            actualValue: announcement ? announcement.val : row.actualValue,
-            hasOfficialForecast: announcement
-              ? announcement.has_official_forecast
-              : row.hasOfficialForecast
-          });
+          const updated = mergeEventWithUpstream(
+            row,
+            announcement,
+            predictionGroups.find((p) => p.announcement_id === row.id)
+          );
 
           try {
             await this.calendarRepo.upsertOne(updated);
@@ -499,14 +466,6 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
   public async pause(): Promise<void> {
     await this.doPause();
   }
-}
-
-function pickForecastProps(group: Parameters<typeof pickForecast>[0]): {
-  forecastValue: number | null;
-  forecastType: string | null;
-} {
-  const forecast = pickForecast(group);
-  return { forecastValue: forecast.value, forecastType: forecast.type };
 }
 
 // Direct CLI entrypoint execution

@@ -258,3 +258,40 @@ export async function eventsFromAnnouncements(
   }
   return events;
 }
+
+/**
+ * Apply upstream `announcement` + `predictionGroup` onto an existing stored
+ * `CalendarEvent`, returning a NEW event with merged values. Shared by the
+ * SSE `handleStreamEvent` and the periodic `refreshRecentValuesInner` so
+ * the merge rules (never downgrade to null, `pickForecast` priority, etc.)
+ * stay in one place.
+ */
+export function mergeEventWithUpstream(
+  existing: CalendarEvent,
+  announcement: FxMacroDataAnnouncement | undefined,
+  predictionGroup: FxMacroDataPredictionGroup | undefined
+): CalendarEvent {
+  const forecast = pickForecast(predictionGroup);
+  return new CalendarEvent({
+    id: existing.id,
+    currency: existing.currency,
+    eventCode: existing.eventCode,
+    eventName: existing.eventName,
+    referencePeriodDate: existing.referencePeriodDate,
+    announcementUnix: existing.announcementUnix,
+    announcementDatetimeUtc: existing.announcementDatetimeUtc,
+    announcementDatetimeLocal: existing.announcementDatetimeLocal,
+    importance: existing.importance,
+    marketTier: existing.marketTier,
+    isTopTier: existing.isTopTier,
+    sourceName: existing.sourceName,
+    sourceUrl: existing.sourceUrl,
+    beforeValue: announcement ? announcement.previous_value : existing.beforeValue,
+    forecastValue: forecast.value ?? existing.forecastValue,
+    forecastType: forecast.type ?? existing.forecastType,
+    actualValue: announcement ? announcement.val : existing.actualValue,
+    hasOfficialForecast: announcement
+      ? announcement.has_official_forecast
+      : existing.hasOfficialForecast
+  });
+}
