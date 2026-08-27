@@ -217,9 +217,22 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
     }
   }
 
-  /** Single upstream call powering both tasks — the whole quota story. */
+  /**
+   * Single upstream call powering both tasks. Requests the FULL three-year
+   * window (last year → next year) so PAST schedules are actually retrieved —
+   * FXMacroData's /v1/calendar returns only UPCOMING releases unless
+   * start_date/end_date are supplied, which is why historical years were empty.
+   */
   private async fetchSchedule(): Promise<FxMacroDataCalendarEvent[]> {
-    return this.fxMacroData.fetchCalendar(env.FXMACRODATA_CALENDAR_CURRENCY);
+    const years = seedYearSpan();
+    const firstYear = years[0];
+    const lastYear = years[years.length - 1];
+    if (firstYear === undefined || lastYear === undefined) {
+      return this.fxMacroData.fetchCalendar(env.FXMACRODATA_CALENDAR_CURRENCY);
+    }
+    const start = `${firstYear}-01-01`;
+    const end = `${lastYear}-12-31`;
+    return this.fxMacroData.fetchCalendar(env.FXMACRODATA_CALENDAR_CURRENCY, start, end);
   }
 
   /**

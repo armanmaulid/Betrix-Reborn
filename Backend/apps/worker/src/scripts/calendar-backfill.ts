@@ -22,8 +22,11 @@ const logger = pino({
   transport: { target: 'pino-pretty', options: { colorize: true } }
 });
 
-const BACKFILL_START = '2026-01-01';
-const BACKFILL_END = '2026-12-31';
+// Cover last year → next year so historical schedules are backfilled too,
+// matching the startup seeder's three-year window (computed at run time).
+const _now = new Date();
+const BACKFILL_START = `${_now.getUTCFullYear() - 1}-01-01`;
+const BACKFILL_END = `${_now.getUTCFullYear() + 1}-12-31`;
 
 async function main(): Promise<void> {
   const sync = new BackfillableCalendarSync(logger);

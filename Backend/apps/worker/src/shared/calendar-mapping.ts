@@ -1,5 +1,5 @@
 import pino from 'pino';
-import { CalendarEvent } from '@betrix/domain';
+import { CalendarEvent, type CalendarEventImportance } from '@betrix/domain';
 import {
   FxMacroDataClient,
   type FxMacroDataCalendarEvent,
@@ -15,8 +15,22 @@ import {
  * substituted without recording which one was used (see forecastType on
  * CalendarEvent).
  */
+// FXMacroData exposes up to 9 prediction_type values; the previous list only
+// handled 2, so forecasts from surveys / central banks / IMF / OECD were left
+// NULL (the "too few forecasts" symptom). Rank by source authority: a real
+// consensus/survey wins over a single institution's own model, never averaged.
 const FORECAST_TYPE_PRIORITY: FxMacroDataPredictionGroup['predictions'][number]['prediction_type'][] =
-  ['market_consensus', 'fxmacrodata'];
+  [
+    'market_consensus',
+    'survey',
+    'central_bank_forecast',
+    'central_bank_projection',
+    'imf_weo',
+    'oecd_eo',
+    'market_prediction',
+    'model_nowcast',
+    'fxmacrodata'
+  ];
 
 export function pickForecast(group: FxMacroDataPredictionGroup | undefined): {
   value: number | null;
@@ -80,8 +94,10 @@ export function toCalendarEvent(
     announcementUnix: raw.announcement_datetime,
     announcementDatetimeUtc: raw.announcement_datetime_utc,
     announcementDatetimeLocal: raw.announcement_datetime_local,
-    importance: raw.event_importance,
-    marketTier: raw.market_tier,
+    // FXMacroData may return null importance/tier; the DB column is NOT NULL,
+    // so fall back to safe defaults instead of inserting NULL and dropping the row.
+    importance: (raw.event_importance as CalendarEventImportance) ?? 'low',
+    marketTier: raw.market_tier ?? 0,
     isTopTier: raw.top_tier_for_currency ?? false,
     sourceName: raw.source ?? null,
     sourceUrl: raw.source_url ?? null,
@@ -108,13 +124,17 @@ export async function joinWithAnnouncementsAndPredictions(
   currency: string,
   logger: pino.Logger
 ): Promise<CalendarEvent[]> {
+  // FXMacroData identifiers are lowercase (e.g. announcement_id "usd_inflation_2026-01-31"),
+  // so the value endpoints must be called with the lowercase currency — otherwise the
+  // join silently fails and Before/Actual/Forecast stay NULL.
+  const currencyKey = currency.toLowerCase();
   const uniqueEventCodes = [...new Set(rawEvents.map((e) => e.release))];
   const announcementsByCode = new Map<string, FxMacroDataAnnouncement[]>();
   const predictionsByCode = new Map<string, FxMacroDataPredictionGroup[]>();
 
   for (const code of uniqueEventCodes) {
     try {
-      announcementsByCode.set(code, await fxMacroData.fetchAnnouncements(currency, code));
+      announcementsByCode.set(code, await fxMacroData.fetchAnnouncements(currencyKey, code));
     } catch (err: any) {
       logger.warn(
         { err: err.message },
@@ -123,7 +143,7 @@ export async function joinWithAnnouncementsAndPredictions(
       announcementsByCode.set(code, []);
     }
     try {
-      predictionsByCode.set(code, await fxMacroData.fetchPredictions(currency, code));
+      predictionsByCode.set(code, await fxMacroData.fetchPredictions(currencyKey, code));
     } catch (err: any) {
       logger.warn(
         { err: err.message },

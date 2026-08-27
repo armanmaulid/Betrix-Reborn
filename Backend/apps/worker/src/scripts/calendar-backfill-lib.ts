@@ -43,8 +43,12 @@ export class BackfillableCalendarSync {
     startDate: string,
     endDate: string
   ): Promise<BackfillResult> {
-    this.logger.info(`Fetching FXMacroData calendar for ${currency.toUpperCase()}...`);
-    const rawEvents = await this.fxMacroData.fetchCalendar(currency);
+    this.logger.info(
+      `Fetching FXMacroData calendar for ${currency.toUpperCase()} (${startDate}..${endDate})...`
+    );
+    // Pass the range to the API: /v1/calendar returns only UPCOMING releases by
+    // default, so a past window would otherwise come back empty.
+    const rawEvents = await this.fxMacroData.fetchCalendar(currency, startDate, endDate);
 
     const eventsInRange = rawEvents.filter((e) => e.date >= startDate && e.date <= endDate);
     this.logger.info(

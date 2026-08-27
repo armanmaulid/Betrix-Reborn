@@ -29,7 +29,9 @@ export type FxMacroDataPredictionType =
   | 'survey'
   | 'model_nowcast'
   | 'central_bank_forecast'
+  | 'central_bank_projection'
   | 'imf_weo'
+  | 'oecd_eo'
   | 'fxmacrodata';
 
 export interface FxMacroDataPrediction {
@@ -115,10 +117,20 @@ export class FxMacroDataClient {
     throw lastError;
   }
 
-  /** GET /v1/calendar/{currency} — the event schedule, no Before/Forecast/Actual values. */
-  public async fetchCalendar(currency: string): Promise<FxMacroDataCalendarEvent[]> {
+  /** GET /v1/calendar/{currency} — the event schedule, no Before/Forecast/Actual values.
+   *  FXMacroData returns ONLY upcoming releases unless `start_date`/`end_date`
+   *  are supplied, so historical (past-year) schedules require the range. */
+  public async fetchCalendar(
+    currency: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<FxMacroDataCalendarEvent[]> {
+    const qs = new URLSearchParams();
+    if (startDate) qs.set('start_date', startDate);
+    if (endDate) qs.set('end_date', endDate);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
     const result = await this.fetchWithRetry<{ data: FxMacroDataCalendarEvent[] }>(
-      `/v1/calendar/${currency}`
+      `/v1/calendar/${currency}${suffix}`
     );
     return result.data ?? [];
   }
