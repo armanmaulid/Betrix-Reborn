@@ -21,6 +21,9 @@ export interface FxMacroDataAnnouncement {
   previous_value: number | null;
   announcement_datetime: number;
   has_official_forecast: boolean;
+  /** Present on the API response (AnnouncementDataPoint) but optional. */
+  source?: string;
+  source_url?: string;
 }
 
 export type FxMacroDataPredictionType =

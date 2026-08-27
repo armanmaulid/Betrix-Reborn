@@ -22,11 +22,13 @@ const logger = pino({
   transport: { target: 'pino-pretty', options: { colorize: true } }
 });
 
-// Cover last year → next year so historical schedules are backfilled too,
-// matching the startup seeder's three-year window (computed at run time).
+// Backfill the PREVIOUS calendar year (e.g. in 2026 → 2025-01-01..2025-12-31),
+// computed dynamically so it never goes stale. FXMacroData's /v1/calendar has
+// no prior-year history, so this is driven by /v1/announcements (historical
+// values), handled inside BackfillableCalendarSync.backfillRange.
 const _now = new Date();
 const BACKFILL_START = `${_now.getUTCFullYear() - 1}-01-01`;
-const BACKFILL_END = `${_now.getUTCFullYear() + 1}-12-31`;
+const BACKFILL_END = `${_now.getUTCFullYear() - 1}-12-31`;
 
 async function main(): Promise<void> {
   const sync = new BackfillableCalendarSync(logger);

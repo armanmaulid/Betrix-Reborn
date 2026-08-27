@@ -144,3 +144,98 @@ export async function joinWithAnnouncementsAndPredictions(
     return toCalendarEvent(raw, currency.toUpperCase(), announcement, predictionGroup);
   });
 }
+
+/**
+ * Parse the indicator slug out of an FXMacroData `announcement_id`, which uses
+ * the format `{currency}_{indicator}_{date}` (date = YYYY-MM-DD, may contain
+ * dashes; indicator slugs may themselves contain underscores, e.g.
+ * non_farm_payrolls). The date is the final `_`-separated segment.
+ */
+function indicatorFromAnnouncementId(announcementId: string, currency: string): string | null {
+  const prefix = `${currency.toLowerCase()}_`;
+  if (!announcementId.startsWith(prefix)) return null;
+  const rest = announcementId.slice(prefix.length);
+  const lastUnderscore = rest.lastIndexOf('_');
+  if (lastUnderscore < 0) return null;
+  return rest.slice(0, lastUnderscore);
+}
+
+/**
+ * Build a CalendarEvent directly from an FXMacroData announcement. Used for
+ * historical backfills where /v1/calendar returns nothing (it only serves
+ * ~2 months lookback + forward) but /v1/announcements carries the full
+ * historical time series (before/actual values). Schedule-only fields the
+ * calendar would provide (importance, friendly name, local timestamp) are not
+ * present on announcements, so they fall back to safe defaults.
+ */
+export function toCalendarEventFromAnnouncement(
+  ann: FxMacroDataAnnouncement,
+  predGroup: FxMacroDataPredictionGroup | undefined,
+  currency: string
+): CalendarEvent {
+  const cur = currency.toLowerCase();
+  const indicator = indicatorFromAnnouncementId(ann.announcement_id ?? '', cur) ?? '';
+  const forecast = pickForecast(predGroup);
+  return new CalendarEvent({
+    id: `${cur}_${indicator}_${ann.date}`,
+    currency,
+    eventCode: indicator,
+    eventName: indicator,
+    referencePeriodDate: ann.date,
+    announcementUnix: ann.announcement_datetime,
+    announcementDatetimeUtc: ann.announcement_datetime
+      ? new Date(ann.announcement_datetime * 1000).toISOString()
+      : '',
+    announcementDatetimeLocal: '',
+    importance: 'low',
+    marketTier: 0,
+    isTopTier: false,
+    sourceName: ann.source ?? null,
+    sourceUrl: ann.source_url ?? null,
+    beforeValue: ann.previous_value ?? null,
+    forecastValue: forecast.value,
+    forecastType: forecast.type,
+    actualValue: ann.val ?? null,
+    hasOfficialForecast: ann.has_official_forecast
+  });
+}
+
+/**
+ * Turn a batch of historical announcements into CalendarEvents. Predictions are
+ * fetched once per unique indicator (FXMacroData returns the whole prediction
+ * series; we match by announcement_id), so cost stays at ~2 calls/indicator.
+ */
+export async function eventsFromAnnouncements(
+  fxMacroData: FxMacroDataClient,
+  announcements: FxMacroDataAnnouncement[],
+  currency: string,
+  logger: pino.Logger
+): Promise<CalendarEvent[]> {
+  const cur = currency.toLowerCase();
+  const byIndicator = new Map<string, FxMacroDataAnnouncement[]>();
+  for (const ann of announcements) {
+    const indicator = indicatorFromAnnouncementId(ann.announcement_id ?? '', cur);
+    if (!indicator) continue;
+    const bucket = byIndicator.get(indicator) ?? [];
+    bucket.push(ann);
+    byIndicator.set(indicator, bucket);
+  }
+
+  const events: CalendarEvent[] = [];
+  for (const [indicator, anns] of byIndicator) {
+    let predGroups: FxMacroDataPredictionGroup[] = [];
+    try {
+      predGroups = await fxMacroData.fetchPredictions(cur, indicator);
+    } catch (err: any) {
+      logger.warn(
+        { err: err.message },
+        `predictions failed for '${indicator}' — forecast will stay null.`
+      );
+    }
+    for (const ann of anns) {
+      const group = predGroups.find((p) => p.announcement_id === ann.announcement_id);
+      events.push(toCalendarEventFromAnnouncement(ann, group, currency));
+    }
+  }
+  return events;
+}

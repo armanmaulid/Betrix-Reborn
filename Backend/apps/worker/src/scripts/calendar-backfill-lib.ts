@@ -4,9 +4,10 @@ import {
   createPgPool,
   createDrizzleClient,
   DrizzleCalendarRepository,
-  FxMacroDataClient
+  FxMacroDataClient,
+  type FxMacroDataAnnouncement
 } from '@betrix/infra';
-import { joinWithAnnouncementsAndPredictions } from '../shared/calendar-mapping.js';
+import { eventsFromAnnouncements } from '../shared/calendar-mapping.js';
 
 export interface BackfillResult {
   inserted: number;
@@ -16,17 +17,17 @@ export interface BackfillResult {
 
 /**
  * Backfill logic factored out of the CLI entrypoint (calendar-backfill.ts)
- * so it is independently testable and reuses the exact same
- * joinWithAnnouncementsAndPredictions logic CalendarWorker's daily sync
- * uses — no separate "backfill version" of the mapping/join rules.
+ * so it is independently testable and reuses the exact same mapping rules
+ * CalendarWorker's daily sync uses — no separate "backfill version".
  *
- * FXMacroData's free tier is capped at 100 requests/day: if the number of
- * unique indicators in the requested window would exceed what a single
- * day's quota allows, this does NOT force completion in one run — it
- * processes as many indicators as it safely can and returns, so the
- * operator can re-run the same command the next day to continue (already
- * backfilled rows are skipped via onConflictDoNothing, so re-running is
- * always safe).
+ * IMPORTANT: FXMacroData's /v1/calendar only serves ~2 months lookback +
+ * forward and returns ZERO rows for any prior calendar year. Historical
+ * values live in /v1/announcements (a full time series). So for a PAST range
+ * this backs up from announcements: it derives the indicator universe from
+ * the current-year calendar (which works), then fetches each indicator's
+ * announcements over [startDate, endDate] and builds CalendarEvents from them
+ * (joining predictions for forecasts). saveMany's onConflictDoNothing makes
+ * re-runs safe and idempotent.
  */
 export class BackfillableCalendarSync {
   private pool = createPgPool(env.DATABASE_URL, 5);
@@ -43,30 +44,52 @@ export class BackfillableCalendarSync {
     startDate: string,
     endDate: string
   ): Promise<BackfillResult> {
-    this.logger.info(
-      `Fetching FXMacroData calendar for ${currency.toUpperCase()} (${startDate}..${endDate})...`
-    );
-    // Pass the range to the API: /v1/calendar returns only UPCOMING releases by
-    // default, so a past window would otherwise come back empty.
-    const rawEvents = await this.fxMacroData.fetchCalendar(currency, startDate, endDate);
+    const cur = currency.toLowerCase();
 
-    const eventsInRange = rawEvents.filter((e) => e.date >= startDate && e.date <= endDate);
-    this.logger.info(
-      `${eventsInRange.length} of ${rawEvents.length} fetched events fall within ${startDate}..${endDate}.`
-    );
-
-    if (eventsInRange.length === 0) {
+    // Indicator universe: FXMacroData's prior-year calendar is empty, so take
+    // the live indicator list from the current-year calendar (which works).
+    let indicators: string[] = [];
+    try {
+      const thisYear = new Date().getUTCFullYear();
+      const calendar = await this.fxMacroData.fetchCalendar(
+        cur,
+        `${thisYear}-01-01`,
+        `${thisYear}-12-31`
+      );
+      indicators = [...new Set(calendar.map((e) => e.release))];
+    } catch (err: any) {
+      this.logger.warn(
+        { err: err.message },
+        'Failed to load indicator universe from current-year calendar.'
+      );
+    }
+    if (indicators.length === 0) {
       return { inserted: 0, skippedExisting: 0, indicatorsProcessed: 0 };
     }
 
-    const uniqueIndicatorCount = new Set(eventsInRange.map((e) => e.release)).size;
+    // Fetch the historical ANNOUNCEMENTS (before/actual values) for the range.
+    const allAnnouncements: FxMacroDataAnnouncement[] = [];
+    for (const indicator of indicators) {
+      try {
+        const rows = await this.fxMacroData.fetchAnnouncements(cur, indicator, startDate, endDate);
+        allAnnouncements.push(...rows);
+      } catch (err: any) {
+        this.logger.warn(
+          { err: err.message },
+          `announcements failed for indicator '${indicator}'.`
+        );
+      }
+    }
     this.logger.info(
-      `Joining against ${uniqueIndicatorCount} unique indicator(s) (deduplicated across the year)...`
+      `${allAnnouncements.length} announcement rows fetched across ${indicators.length} indicators for ${startDate}..${endDate}.`
     );
+    if (allAnnouncements.length === 0) {
+      return { inserted: 0, skippedExisting: 0, indicatorsProcessed: indicators.length };
+    }
 
-    const events = await joinWithAnnouncementsAndPredictions(
+    const events = await eventsFromAnnouncements(
       this.fxMacroData,
-      eventsInRange,
+      allAnnouncements,
       currency,
       this.logger
     );
@@ -75,7 +98,7 @@ export class BackfillableCalendarSync {
     return {
       inserted,
       skippedExisting: events.length - inserted,
-      indicatorsProcessed: uniqueIndicatorCount
+      indicatorsProcessed: indicators.length
     };
   }
 
