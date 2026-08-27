@@ -1,4 +1,4 @@
-import { and, eq, gte, lte, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { CalendarEvent, ICalendarRepository } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { redisKeys } from '../redis/redis-keys.js';
@@ -228,23 +228,6 @@ export class DrizzleCalendarRepository implements ICalendarRepository {
       .where(eq(calendarEvents.id, announcementId))
       .limit(1);
     return rows[0] ? this.mapToDomain(rows[0]) : null;
-  }
-
-  /**
-   * T4.5 — retention: purge calendar events whose ANNOUNCEMENT time (not row
-   * insertion time) is before the cutoff. Comparing announcementUnix (event
-   * age) instead of createdAt (ingestion age) gives a true rolling
-   * "current + previous calendar year" window, so backfilled/seeder rows are
-   * not prematurely wiped just because the row was inserted long ago.
-   */
-  async deleteOlderThan(cutoff: Date): Promise<number> {
-    this.bumpCalendarCache();
-    const cutoffUnix = Math.floor(cutoff.getTime() / 1000);
-    const deleted = await this.db
-      .delete(calendarEvents)
-      .where(lt(calendarEvents.announcementUnix, cutoffUnix))
-      .returning({ id: calendarEvents.id });
-    return deleted.length;
   }
 }
 

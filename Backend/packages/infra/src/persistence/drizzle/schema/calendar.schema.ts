@@ -1,14 +1,11 @@
 import {
-  pgSchema,
-  pgTable,
   varchar,
   text,
   integer,
   doublePrecision,
   boolean,
   timestamp,
-  index,
-  unique
+  index
 } from 'drizzle-orm/pg-core';
 import { content as contentSchema } from './schemas.js';
 
@@ -44,11 +41,10 @@ export const calendarEvents = contentSchema.table(
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
   },
   (t) => [
-    index('calendar_events_currency_unix_idx').on(t.currency, t.announcementUnix),
-    unique('calendar_events_currency_code_unix_unique').on(
-      t.currency,
-      t.eventCode,
-      t.announcementUnix
-    )
+    // The previous `(currency, event_code, announcement_unix) UNIQUE` index was
+    // dropped: it's redundant with the primary key `id` and, if ever violated
+    // (same indicator at the exact same publication second), would fail the
+    // entire saveMany batch because onConflictDoNothing only targets the PK.
+    index('calendar_events_currency_unix_idx').on(t.currency, t.announcementUnix)
   ]
 );
