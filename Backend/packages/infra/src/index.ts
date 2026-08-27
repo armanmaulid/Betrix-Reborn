@@ -21,6 +21,7 @@ export * from './persistence/pg/DrizzleAuthRepositories.js';
 export * from './persistence/pg/DrizzleVoucherRepository.js';
 export * from './persistence/pg/DrizzleAiAgentRepository.js';
 export * from './persistence/pg/DrizzleCalendarRepository.js';
+export * from './persistence/pg/DrizzleMarketDataRepositories.js';
 export * from './messaging/RedisWorkerCommandBus.js';
 
 // Persistence - Redis

@@ -61,6 +61,9 @@ export * from './admin/repositories/IAdminRepositories.js';
 export * from './calendar/entities/CalendarEvent.js';
 export * from './calendar/repositories/ICalendarRepository.js';
 
+// Market Data Bounded Context (FX spot, COT, commodities)
+export * from './market-data/index.js';
+
 // Shared Kernel
 export * from './shared/events/EventDispatcher.js';
 export * from './shared/ports/INotifier.js';
