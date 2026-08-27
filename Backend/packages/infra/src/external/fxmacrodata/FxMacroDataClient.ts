@@ -227,13 +227,17 @@ export class FxMacroDataClient {
     return result.data ?? [];
   }
 
-  /** GET /v1/announcements/{currency}/{indicator} — historical Before/Actual values. */
+  /** GET /v1/announcements/{currency}/{indicator} — historical Before/Actual values.
+   *  Premium endpoint — full history (incl. >365d USD) requires an API key.
+   *  Without one, returns [] so the calendar/refresh pass is a no-op and
+   *  the trial period is a hard gate. */
   public async fetchAnnouncements(
     currency: string,
     indicator: string,
     startDate?: string,
     endDate?: string
   ): Promise<FxMacroDataAnnouncement[]> {
+    if (!this.hasApiKey()) return [];
     const qs = new URLSearchParams();
     if (startDate) qs.set('start_date', startDate);
     if (endDate) qs.set('end_date', endDate);
@@ -249,12 +253,14 @@ export class FxMacroDataClient {
    * announcement_id. Not every indicator has a value for every
    * prediction_type; callers apply the priority rule (market_consensus first,
    * fxmacrodata as fallback) — this client returns the raw groups unfiltered.
+   * Premium endpoint — no API key → returns [].
    */
   public async fetchPredictions(
     currency: string,
     indicator: string,
     predictionType?: FxMacroDataPredictionType
   ): Promise<FxMacroDataPredictionGroup[]> {
+    if (!this.hasApiKey()) return [];
     const suffix = predictionType ? `?prediction_type=${predictionType}` : '';
     const result = await this.fetchWithRetry<{ data: FxMacroDataPredictionGroup[] }>(
       `/v1/predictions/${currency}/${indicator}${suffix}`
@@ -274,6 +280,19 @@ export class FxMacroDataClient {
     onEvent: (event: FxMacroDataStreamEvent) => void,
     onError: (err: Error) => void
   ): () => void {
+    // Premium endpoint — no API key → surface the error once and return a
+    // no-op unsubscribe. Prevents the worker from burning a 401/connect-error
+    // loop and ensures SSE is purely trial/paid gated.
+    if (!this.hasApiKey()) {
+      onError(
+        new Error(
+          'FXMacroData SSE stream requires FXMACRODATA_API_KEY (premium/paid). Subscribe is a no-op without a key.'
+        )
+      );
+      return () => {
+        /* no-op */
+      };
+    }
     let stopped = false;
     let abortController: AbortController | null = null;
 
@@ -375,6 +394,7 @@ export class FxMacroDataClient {
     endDate?: string,
     indicators?: FxTechnicalIndicator[]
   ): Promise<FxMacroDataFxPriceRow[]> {
+    if (!this.hasApiKey()) return [];
     const qs = new URLSearchParams();
     if (startDate) qs.set('start_date', startDate);
     if (endDate) qs.set('end_date', endDate);
@@ -386,12 +406,14 @@ export class FxMacroDataClient {
     return result.rows ?? [];
   }
 
-  /** GET /v1/cot/{currency} — CFTC Commitment of Traders positioning. */
+  /** GET /v1/cot/{currency} — CFTC Commitment of Traders positioning.
+   *  Premium endpoint — no API key → returns []. */
   public async fetchCOT(
     currency: string,
     startDate?: string,
     endDate?: string
   ): Promise<FxMacroDataCotRow[]> {
+    if (!this.hasApiKey()) return [];
     const qs = new URLSearchParams();
     if (startDate) qs.set('start_date', startDate);
     if (endDate) qs.set('end_date', endDate);
@@ -402,12 +424,14 @@ export class FxMacroDataClient {
     return result.rows ?? [];
   }
 
-  /** GET /v1/commodities/{indicator} — gold | silver | platinum history. */
+  /** GET /v1/commodities/{indicator} — gold | silver | platinum history.
+   *  Premium endpoint — no API key → returns []. */
   public async fetchCommodities(
     indicator: FxCommodityIndicator,
     startDate?: string,
     endDate?: string
   ): Promise<FxMacroDataCommodityRow[]> {
+    if (!this.hasApiKey()) return [];
     const qs = new URLSearchParams();
     if (startDate) qs.set('start_date', startDate);
     if (endDate) qs.set('end_date', endDate);
