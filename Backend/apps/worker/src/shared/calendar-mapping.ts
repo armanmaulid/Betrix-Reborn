@@ -161,17 +161,34 @@ function indicatorFromAnnouncementId(announcementId: string, currency: string): 
 }
 
 /**
+ * Per-indicator metadata sourced from the (live) current-year calendar, used
+ * to enrich historical announcement rows that otherwise lack a friendly name /
+ * importance / tier. FXMacroData's prior-year /v1/calendar is empty, so we
+ * borrow these stable, indicator-level attributes from the current year.
+ */
+export interface CalendarEventMeta {
+  name?: string | null;
+  importance?: string | null;
+  marketTier?: number | null;
+  topTier?: boolean | null;
+  source?: string | null;
+  sourceUrl?: string | null;
+}
+
+/**
  * Build a CalendarEvent directly from an FXMacroData announcement. Used for
  * historical backfills where /v1/calendar returns nothing (it only serves
  * ~2 months lookback + forward) but /v1/announcements carries the full
- * historical time series (before/actual values). Schedule-only fields the
- * calendar would provide (importance, friendly name, local timestamp) are not
- * present on announcements, so they fall back to safe defaults.
+ * historical time series (before/actual values). Indicator-level metadata
+ * (friendly name, importance, tier) is passed via `meta` (sourced from the
+ * current-year calendar) so historical rows are as readable as live ones;
+ * fields the announcement cannot supply fall back to safe defaults.
  */
 export function toCalendarEventFromAnnouncement(
   ann: FxMacroDataAnnouncement,
   predGroup: FxMacroDataPredictionGroup | undefined,
-  currency: string
+  currency: string,
+  meta?: CalendarEventMeta
 ): CalendarEvent {
   const cur = currency.toLowerCase();
   const indicator = indicatorFromAnnouncementId(ann.announcement_id ?? '', cur) ?? '';
@@ -180,18 +197,18 @@ export function toCalendarEventFromAnnouncement(
     id: `${cur}_${indicator}_${ann.date}`,
     currency,
     eventCode: indicator,
-    eventName: indicator,
+    eventName: meta?.name ?? indicator,
     referencePeriodDate: ann.date,
     announcementUnix: ann.announcement_datetime,
     announcementDatetimeUtc: ann.announcement_datetime
       ? new Date(ann.announcement_datetime * 1000).toISOString()
       : '',
     announcementDatetimeLocal: '',
-    importance: 'low',
-    marketTier: 0,
-    isTopTier: false,
-    sourceName: ann.source ?? null,
-    sourceUrl: ann.source_url ?? null,
+    importance: (meta?.importance as CalendarEventImportance) ?? 'low',
+    marketTier: meta?.marketTier ?? 0,
+    isTopTier: meta?.topTier ?? false,
+    sourceName: meta?.source ?? ann.source ?? null,
+    sourceUrl: meta?.sourceUrl ?? ann.source_url ?? null,
     beforeValue: ann.previous_value ?? null,
     forecastValue: forecast.value,
     forecastType: forecast.type,
@@ -209,7 +226,8 @@ export async function eventsFromAnnouncements(
   fxMacroData: FxMacroDataClient,
   announcements: FxMacroDataAnnouncement[],
   currency: string,
-  logger: pino.Logger
+  logger: pino.Logger,
+  metaByIndicator: Record<string, CalendarEventMeta> = {}
 ): Promise<CalendarEvent[]> {
   const cur = currency.toLowerCase();
   const byIndicator = new Map<string, FxMacroDataAnnouncement[]>();
@@ -232,9 +250,10 @@ export async function eventsFromAnnouncements(
         `predictions failed for '${indicator}' — forecast will stay null.`
       );
     }
+    const meta = metaByIndicator[indicator];
     for (const ann of anns) {
       const group = predGroups.find((p) => p.announcement_id === ann.announcement_id);
-      events.push(toCalendarEventFromAnnouncement(ann, group, currency));
+      events.push(toCalendarEventFromAnnouncement(ann, group, currency, meta));
     }
   }
   return events;

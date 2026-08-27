@@ -7,7 +7,7 @@ import {
   FxMacroDataClient,
   type FxMacroDataAnnouncement
 } from '@betrix/infra';
-import { eventsFromAnnouncements } from '../shared/calendar-mapping.js';
+import { eventsFromAnnouncements, type CalendarEventMeta } from '../shared/calendar-mapping.js';
 
 export interface BackfillResult {
   inserted: number;
@@ -49,6 +49,7 @@ export class BackfillableCalendarSync {
     // Indicator universe: FXMacroData's prior-year calendar is empty, so take
     // the live indicator list from the current-year calendar (which works).
     let indicators: string[] = [];
+    const metaByIndicator: Record<string, CalendarEventMeta> = {};
     try {
       const thisYear = new Date().getUTCFullYear();
       const calendar = await this.fxMacroData.fetchCalendar(
@@ -57,6 +58,18 @@ export class BackfillableCalendarSync {
         `${thisYear}-12-31`
       );
       indicators = [...new Set(calendar.map((e) => e.release))];
+      // Borrow stable, indicator-level metadata (friendly name, importance,
+      // tier) from the live calendar so historical rows read like live ones.
+      for (const row of calendar) {
+        metaByIndicator[row.release] = {
+          name: row.name ?? null,
+          importance: row.event_importance ?? null,
+          marketTier: row.market_tier ?? null,
+          topTier: row.top_tier_for_currency ?? null,
+          source: row.source ?? null,
+          sourceUrl: row.source_url ?? null
+        };
+      }
     } catch (err: any) {
       this.logger.warn(
         { err: err.message },
@@ -91,7 +104,8 @@ export class BackfillableCalendarSync {
       this.fxMacroData,
       allAnnouncements,
       currency,
-      this.logger
+      this.logger,
+      metaByIndicator
     );
     const inserted = await this.calendarRepo.saveMany(events);
 
