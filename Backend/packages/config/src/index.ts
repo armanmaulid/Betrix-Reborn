@@ -121,12 +121,11 @@ export const env = {
   // Multi-currency (Tier 2): comma-separated list. Takes precedence over
   // FXMACRODATA_CALENDAR_CURRENCY. Default 'usd' preserves single-currency
   // behavior. Example: 'usd,eur,gbp,jpy,aud,cad,chf,nzd'.
-  FXMACRODATA_CALENDAR_CURRENCIES:
-    process.env.FXMACRODATA_CALENDAR_CURRENCIES
-      ? process.env.FXMACRODATA_CALENDAR_CURRENCIES.split(',')
-          .map((s) => s.trim().toLowerCase())
-          .filter(Boolean)
-      : undefined,
+  FXMACRODATA_CALENDAR_CURRENCIES: process.env.FXMACRODATA_CALENDAR_CURRENCIES
+    ? process.env.FXMACRODATA_CALENDAR_CURRENCIES.split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean)
+    : undefined,
   FXMACRODATA_API_KEY: process.env.FXMACRODATA_API_KEY || '',
   FXMACRODATA_RETRY_MAX_ATTEMPTS: Number(process.env.FXMACRODATA_RETRY_MAX_ATTEMPTS) || 3,
   FXMACRODATA_RETRY_BASE_DELAY_MS: Number(process.env.FXMACRODATA_RETRY_BASE_DELAY_MS) || 1000,

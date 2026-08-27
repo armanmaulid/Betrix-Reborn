@@ -41,10 +41,7 @@ function seedYearSpan(): number[] {
  * call site for logging.
  */
 function activeCalendarCurrencies(): string[] {
-  return (
-    env.FXMACRODATA_CALENDAR_CURRENCIES ??
-    [env.FXMACRODATA_CALENDAR_CURRENCY]
-  );
+  return env.FXMACRODATA_CALENDAR_CURRENCIES ?? [env.FXMACRODATA_CALENDAR_CURRENCY];
 }
 
 /**
@@ -212,9 +209,7 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
 
         const schedule = await this.fetchSchedule(cur);
         const monthEvents = schedule.filter((e) => e.date?.startsWith(currentYearMonth));
-        const saved = await this.calendarRepo.saveMany(
-          toScheduleOnlyEvents(monthEvents, cur)
-        );
+        const saved = await this.calendarRepo.saveMany(toScheduleOnlyEvents(monthEvents, cur));
         this.processedCount += saved;
         logger.info(
           `[CALENDAR SEED] Seeded ${saved}/${monthEvents.length} scheduled events for ${cur.toUpperCase()} ${currentYearMonth}.`

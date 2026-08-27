@@ -1,17 +1,21 @@
 /**
- * One-time backfill: fetches the full FXMacroData calendar for
- * `env.FXMACRODATA_CALENDAR_CURRENCY`, filters to the 2026-01-01..2026-12-31
- * window, joins with announcements (Before/Actual) and predictions
- * (Forecast), and saves everything to `calendar_events`.
+ * One-time backfill: fetches the full FXMacroData calendar for every
+ * active currency (FXMACRODATA_CALENDAR_CURRENCIES or the legacy
+ * FXMACRODATA_CALENDAR_CURRENCY), filters to the previous calendar year,
+ * joins with announcements (Before/Actual) and predictions (Forecast),
+ * and saves everything to `calendar_events`.
  *
- * Deduplicates by eventCode before fetching announcements/predictions —
- * one indicator (e.g. non_farm_payrolls) recurs many times a year but is
- * only fetched once, to stay within FXMacroData's 100 req/day free-tier
- * limit. Run with: `pnpm --filter @betrix/worker calendar:backfill`.
+ * The previous calendar year (e.g. in 2026 -> 2025-01-01..2025-12-31) is
+ * computed dynamically so the window never goes stale. FXMacroData's
+ * /v1/calendar has no prior-year history, so this is driven by
+ * /v1/announcements (historical values) inside the lib.
  *
- * NOT part of CalendarWorker's daily sync — this is a manual, one-time
- * operation. Safe to re-run: `saveMany` uses onConflictDoNothing, so
- * already-backfilled rows are simply skipped.
+ * Run with: `pnpm --filter @betrix/worker calendar:backfill`.
+ *
+ * NOT part of CalendarWorker's daily sync -- this is a manual, one-time
+ * operation. Safe to re-run: saveMany uses onConflictDoUpdate for values
+ * and onConflictDoNothing for schedule rows, so already-backfilled rows are
+ * simply skipped/overwritten.
  */
 import pino from 'pino';
 import { env } from '@betrix/config';
@@ -22,27 +26,47 @@ const logger = pino({
   transport: { target: 'pino-pretty', options: { colorize: true } }
 });
 
-// Backfill the PREVIOUS calendar year (e.g. in 2026 → 2025-01-01..2025-12-31),
-// computed dynamically so it never goes stale. FXMacroData's /v1/calendar has
-// no prior-year history, so this is driven by /v1/announcements (historical
-// values), handled inside BackfillableCalendarSync.backfillRange.
+// Previous calendar year (e.g. in 2026 -> 2025-01-01..2025-12-31), computed
+// dynamically so it never goes stale. Driven by /v1/announcements because
+// /v1/calendar has no prior-year history.
 const _now = new Date();
 const BACKFILL_START = `${_now.getUTCFullYear() - 1}-01-01`;
 const BACKFILL_END = `${_now.getUTCFullYear() - 1}-12-31`;
 
+function activeCalendarCurrencies(): string[] {
+  return env.FXMACRODATA_CALENDAR_CURRENCIES ?? [env.FXMACRODATA_CALENDAR_CURRENCY];
+}
+
 async function main(): Promise<void> {
+  const currencies = activeCalendarCurrencies();
   const sync = new BackfillableCalendarSync(logger);
+  let totalInserted = 0;
+  let totalSkipped = 0;
+  let totalIndicators = 0;
   try {
-    const result = await sync.backfillRange(
-      env.FXMACRODATA_CALENDAR_CURRENCY,
-      BACKFILL_START,
-      BACKFILL_END
-    );
+    for (const currency of currencies) {
+      try {
+        const result = await sync.backfillRange(currency, BACKFILL_START, BACKFILL_END);
+        totalInserted += result.inserted;
+        totalSkipped += result.skippedExisting;
+        totalIndicators += result.indicatorsProcessed;
+        logger.info(
+          `[BACKFILL] ${currency.toUpperCase()} inserted=${result.inserted} skipped=${result.skippedExisting} indicatorsProcessed=${result.indicatorsProcessed}`
+        );
+      } catch (err: any) {
+        // Per-currency failure: log and continue with next currency so a
+        // single 4xx (e.g. non-USD without a paid key) doesn't abort the run.
+        logger.error(
+          { err: err.message, currency },
+          `Backfill failed for ${currency.toUpperCase()} - continuing with next`
+        );
+      }
+    }
     logger.info(
-      `[BACKFILL COMPLETE] currency=${env.FXMACRODATA_CALENDAR_CURRENCY.toUpperCase()} inserted=${result.inserted} skipped=${result.skippedExisting} indicatorsProcessed=${result.indicatorsProcessed}`
+      `[BACKFILL COMPLETE] currencies=${currencies.length} window=${BACKFILL_START}..${BACKFILL_END} inserted=${totalInserted} skipped=${totalSkipped} indicatorsProcessed=${totalIndicators}`
     );
   } catch (err: any) {
-    logger.error({ err: err.message }, 'Backfill failed');
+    logger.error({ err: err.message }, 'Backfill run failed');
     process.exitCode = 1;
   } finally {
     await sync.close();
