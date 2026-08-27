@@ -6,7 +6,6 @@ import {
   IAdminActionRepository,
   IDeviceRepository,
   INewsRepository,
-  ICalendarRepository,
   IVoucherRepository,
   IChatRepository,
   IActivityLogRepository,
@@ -21,7 +20,6 @@ export interface CleanupResult {
   devicesDeleted: number;
   activityLogsDeleted: number;
   newsDeleted: number;
-  calendarDeleted: number;
   vouchersDeleted: number;
   chatMessagesDeleted: number;
 }
@@ -34,7 +32,6 @@ export class SystemCleanupUseCase {
     private readonly adminActionRepo?: IAdminActionRepository,
     private readonly deviceRepo?: IDeviceRepository,
     private readonly newsRepo?: INewsRepository,
-    private readonly calendarRepo?: ICalendarRepository,
     private readonly voucherRepo?: IVoucherRepository,
     private readonly chatRepo?: IChatRepository,
     private readonly activityLogRepo?: IActivityLogRepository
@@ -51,11 +48,13 @@ export class SystemCleanupUseCase {
 
     const now = new Date();
     const daysAgo = (d: number) => new Date(now.getTime() - d * 86400_000);
-    const startOfLastYear = new Date(now.getFullYear() - 1, 0, 1);
 
     // T4.5 — retention windows (plan §Fase 4 T4.5 / K18):
-    //   devices >180d · activity_logs >90d · news >18mo · calendar < start(Y-1)
+    //   devices >180d · activity_logs >90d · news >18mo
     //   vouchers redeemed/expired >90d · chat_messages >365d
+    // NOTE: calendar events are intentionally NEVER purged here. The frontend
+    // has no custom-date tab yet, so backfilled prior-year history must
+    // persist until a date picker is added.
     const [
       expiredSessionsDeleted,
       expiredTokensDeleted,
@@ -63,7 +62,6 @@ export class SystemCleanupUseCase {
       devicesDeleted,
       activityLogsDeleted,
       newsDeleted,
-      calendarDeleted,
       vouchersDeleted,
       chatMessagesDeleted
     ] = await Promise.all([
@@ -73,7 +71,6 @@ export class SystemCleanupUseCase {
       this.deviceRepo?.deleteOlderThan(daysAgo(180)) ?? 0,
       this.activityLogRepo?.deleteOlderThan(daysAgo(90)) ?? 0,
       this.newsRepo?.deleteOlderThan(daysAgo(18 * 30)) ?? 0,
-      this.calendarRepo?.deleteOlderThan(startOfLastYear) ?? 0,
       this.voucherRepo?.deleteExpiredOlderThan(daysAgo(90)) ?? 0,
       this.chatRepo?.deleteOlderThan(daysAgo(365)) ?? 0
     ]);
@@ -85,7 +82,6 @@ export class SystemCleanupUseCase {
       devicesDeleted,
       activityLogsDeleted,
       newsDeleted,
-      calendarDeleted,
       vouchersDeleted,
       chatMessagesDeleted
     };

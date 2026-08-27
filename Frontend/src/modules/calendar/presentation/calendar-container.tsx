@@ -13,6 +13,7 @@ import type {
   CalendarEvent,
   CalendarEventImportance
 } from '@calendar/domain/entities/CalendarEvent';
+import type { CalendarQueryParams } from '@calendar/domain/repositories/ICalendarRepository';
 
 const IMPORTANCE_TONE: Record<CalendarEventImportance, BadgeTone> = {
   high: 'negative',
@@ -240,15 +241,62 @@ export function CalendarContainer() {
   const [currency, setCurrency] = useState('USD');
   // Default view: THIS WEEK, auto-scrolled to Today (see scroll effect below).
   const [preset, setPreset] = useState<PresetKey>('this_week');
+  // 'preset' → quick-range buttons drive from/to. 'custom' → year/month inputs
+  // (unlocks prior-year backfill + specific months; backend bypasses the 92-day
+  // cap for `year`).
+  const [mode, setMode] = useState<'preset' | 'custom'>('preset');
+  // Committed custom range — only re-queries after APPLY so we don't fire on
+  // every keystroke. Defaults to the previous calendar year (the year the
+  // backfill is supposed to cover).
+  const initialYear = new Date().getFullYear() - 1;
+  const [customYear, setCustomYear] = useState<number>(initialYear);
+  const [customMonth, setCustomMonth] = useState<string>(''); // 'YYYY-MM' or ''
+  // Raw input strings (controlled) for the custom form, plus a validation msg.
+  const [customYearInput, setCustomYearInput] = useState<string>(String(initialYear));
+  const [customMonthInput, setCustomMonthInput] = useState<string>('');
+  const [customError, setCustomError] = useState<string | null>(null);
 
   const range = useMemo(() => rangeForPreset(preset), [preset]);
 
-  const { data, isLoading, isError, isRefetching, refetch } = useCalendarQuery({
-    currency,
-    from: range.from,
-    to: range.to,
-    limit: 250
-  });
+  const queryParams = useMemo<CalendarQueryParams>(() => {
+    if (mode === 'custom') {
+      const m = customMonth.trim();
+      if (/^\d{4}-\d{2}$/.test(m)) return { currency, month: m, limit: 500 };
+      if (Number.isInteger(customYear) && customYear >= 1990 && customYear <= 2100) {
+        return { currency, year: customYear, limit: 500 };
+      }
+      // Invalid committed value — avoid silently falling back to "upcoming".
+      return { currency, year: 1990, limit: 500 };
+    }
+    return { currency, from: range.from, to: range.to, limit: 250 };
+  }, [mode, currency, customYear, customMonth, range]);
+
+  const { data, isLoading, isError, isRefetching, refetch } = useCalendarQuery(queryParams);
+
+  // Validate the custom form and commit on APPLY. Month takes precedence over
+  // year (month = single YYYY-MM; empty month = full year).
+  const applyCustom = (): void => {
+    const m = customMonthInput.trim();
+    if (m) {
+      if (!/^\d{4}-\d{2}$/.test(m)) {
+        setCustomError('Month must be YYYY-MM (e.g. 2025-03).');
+        return;
+      }
+      setCustomMonth(m);
+      setCustomError(null);
+      setMode('custom');
+      return;
+    }
+    const y = Number(customYearInput);
+    if (!Number.isInteger(y) || y < 1990 || y > 2100) {
+      setCustomError('Year must be an integer between 1990 and 2100.');
+      return;
+    }
+    setCustomYear(y);
+    setCustomMonth('');
+    setCustomError(null);
+    setMode('custom');
+  };
 
   const groups = useMemo<DayGroup[]>(() => {
     const list = data || [];
@@ -303,7 +351,7 @@ export function CalendarContainer() {
     if (isLoading || !data || !scrollTargetKey) return;
     // Re-scroll only when the user actually changes view — background polls
     // must never yank the viewport while someone is reading.
-    const sig = `${preset}|${currency}|${scrollTargetKey}`;
+    const sig = `${mode}|${preset}|${currency}|${scrollTargetKey}`;
     if (lastScrollSig.current === sig) return;
     lastScrollSig.current = sig;
 
@@ -314,7 +362,7 @@ export function CalendarContainer() {
       panel.scrollTo({ top: el.offsetTop - 4, behavior: 'smooth' });
     }, 80);
     return () => window.clearTimeout(timer);
-  }, [data, isLoading, preset, currency, scrollTargetKey]);
+  }, [data, isLoading, mode, preset, currency, scrollTargetKey]);
 
   const totalEvents = data?.length ?? 0;
 
@@ -348,9 +396,12 @@ export function CalendarContainer() {
             <button
               key={key}
               type="button"
-              onClick={() => setPreset(key)}
+              onClick={() => {
+                setPreset(key);
+                setMode('preset');
+              }}
               className={`px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider border transition-colors cursor-pointer ${
-                preset === key
+                mode === 'preset' && preset === key
                   ? 'border-accent bg-accent/20 text-accent'
                   : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:border-muted-foreground'
               }`}
@@ -358,7 +409,70 @@ export function CalendarContainer() {
               {label}
             </button>
           ))}
+          <span className="mx-1 h-4 w-px bg-border" aria-hidden />
+          <button
+            type="button"
+            onClick={() => setMode('custom')}
+            className={`px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider border transition-colors cursor-pointer ${
+              mode === 'custom'
+                ? 'border-accent bg-accent/20 text-accent'
+                : 'border-border bg-surface text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+            }`}
+            title="Pick a specific year or month (unlocks prior-year backfill)"
+          >
+            CUSTOM
+          </button>
         </div>
+
+        {/* Custom range controls — visible whenever the user has entered custom
+            mode. Month takes precedence over year (single month = YYYY-MM). */}
+        {mode === 'custom' && (
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              YEAR
+              <input
+                type="number"
+                min={1990}
+                max={2100}
+                value={customYearInput}
+                onChange={(e) => setCustomYearInput(e.target.value)}
+                className="w-20 bg-surface border border-border px-2 py-1 text-xs text-foreground focus:outline-none focus:border-accent tabular-nums"
+              />
+            </label>
+            <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              MONTH
+              <input
+                type="text"
+                placeholder="YYYY-MM"
+                pattern="\d{4}-\d{2}"
+                value={customMonthInput}
+                onChange={(e) => setCustomMonthInput(e.target.value)}
+                className="w-28 bg-surface border border-border px-2 py-1 text-xs text-foreground focus:outline-none focus:border-accent tabular-nums"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={applyCustom}
+              className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider border border-accent bg-accent/20 text-accent hover:bg-accent/30 transition-colors cursor-pointer"
+            >
+              APPLY
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('preset');
+                setCustomError(null);
+              }}
+              className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider border border-border bg-surface text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              title="Back to quick-range presets"
+            >
+              ← PRESETS
+            </button>
+            {customError && (
+              <span className="text-[10px] font-bold uppercase text-negative">{customError}</span>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-3">
           <select
@@ -376,15 +490,11 @@ export function CalendarContainer() {
 
           <div className="ml-auto text-xs text-muted-foreground">
             <span className="mr-3 hidden md:inline">
-              {new Date(range.from * 1000).toLocaleDateString('en-US', {
-                month: 'short',
-                day: '2-digit'
-              })}{' '}
-              →{' '}
-              {new Date(range.to * 1000).toLocaleDateString('en-US', {
-                month: 'short',
-                day: '2-digit'
-              })}
+              {mode === 'custom'
+                ? customMonth.trim()
+                  ? `MONTH ${customMonth}`
+                  : `YEAR ${customYear}`
+                : `${new Date(range.from * 1000).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })} → ${new Date(range.to * 1000).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}`}
             </span>
             TOTAL:{' '}
             <strong className="text-foreground tabular-nums">

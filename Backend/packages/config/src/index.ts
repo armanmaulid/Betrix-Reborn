@@ -116,7 +116,16 @@ export const env = {
   SMTP_PASS: process.env.SMTP_PASS || '',
   SMTP_FROM: process.env.SMTP_FROM || 'no-reply@betrix.io',
   FXMACRODATA_BASE_URL: process.env.FXMACRODATA_BASE_URL || 'https://api.fxmacrodata.com',
+  // Single-currency (legacy): used as a fallback when CURRENCIES is not set.
   FXMACRODATA_CALENDAR_CURRENCY: process.env.FXMACRODATA_CALENDAR_CURRENCY || 'usd',
+  // Multi-currency (Tier 2): comma-separated list. Takes precedence over
+  // FXMACRODATA_CALENDAR_CURRENCY. Default 'usd' preserves single-currency
+  // behavior. Example: 'usd,eur,gbp,jpy,aud,cad,chf,nzd'.
+  FXMACRODATA_CALENDAR_CURRENCIES: process.env.FXMACRODATA_CALENDAR_CURRENCIES
+    ? process.env.FXMACRODATA_CALENDAR_CURRENCIES.split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean)
+    : undefined,
   FXMACRODATA_API_KEY: process.env.FXMACRODATA_API_KEY || '',
   FXMACRODATA_RETRY_MAX_ATTEMPTS: Number(process.env.FXMACRODATA_RETRY_MAX_ATTEMPTS) || 3,
   FXMACRODATA_RETRY_BASE_DELAY_MS: Number(process.env.FXMACRODATA_RETRY_BASE_DELAY_MS) || 1000,

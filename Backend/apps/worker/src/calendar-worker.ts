@@ -15,10 +15,11 @@ import {
 import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
 import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
 import {
-  pickForecast,
   joinWithAnnouncementsAndPredictions,
-  toCalendarEvent
+  toCalendarEvent,
+  mergeEventWithUpstream
 } from './shared/calendar-mapping.js';
+import { activeCalendarCurrencies } from './shared/fxmacrodata-helpers.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -171,13 +172,7 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
       return;
     }
 
-    const updated = new CalendarEvent({
-      ...existing,
-      beforeValue: announcement.previous_value,
-      actualValue: announcement.val,
-      hasOfficialForecast: announcement.has_official_forecast,
-      ...pickForecastProps(predictionGroup)
-    });
+    const updated = mergeEventWithUpstream(existing, announcement, predictionGroup);
 
     await this.calendarRepo.upsertOne(updated);
     this.processedCount += 1;
@@ -203,62 +198,66 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
   }
 
   private async syncIfMonthMissingInner(): Promise<void> {
-    const currency = env.FXMACRODATA_CALENDAR_CURRENCY.toUpperCase();
+    const currencies = activeCalendarCurrencies();
     const currentYearMonth = new Date().toISOString().slice(0, 7);
 
-    const existingCount = await this.calendarRepo.countByCurrencyAndMonth(
-      currency,
-      currentYearMonth
-    );
-    if (existingCount > 0) {
-      logger.info(
-        `[CALENDAR SYNC] ${currency} ${currentYearMonth} already has ${existingCount} events, skip fetch.`
-      );
-      return;
-    }
-
-    try {
-      const rawEvents = await this.fxMacroData.fetchCalendar(env.FXMACRODATA_CALENDAR_CURRENCY);
-      const eventsThisMonth = rawEvents.filter((e) => e.date?.startsWith(currentYearMonth));
-
-      // T6.4 — the daily join costs 2 calls per unique indicator. Respect the
-      // shared daily budget: when exhausted, fall back to a schedule-only
-      // insert (0 extra calls); the refresh pass catches up values later.
-      const uniqueCodes = new Set(eventsThisMonth.map((e) => e.release));
-      const plannedCalls = uniqueCodes.size * 2;
-      if (!this.consumeDailyBudget(plannedCalls)) {
-        logger.warn(
-          `[CALENDAR SYNC] Daily FXMacroData budget exhausted — inserting schedule-only rows for ${currency} ${currentYearMonth}.`
+    for (const currency of currencies) {
+      const cur = currency.toUpperCase();
+      const existingCount = await this.calendarRepo.countByCurrencyAndMonth(cur, currentYearMonth);
+      if (existingCount > 0) {
+        logger.info(
+          `[CALENDAR SYNC] ${cur} ${currentYearMonth} already has ${existingCount} events, skip fetch.`
         );
-        const scheduleOnly = eventsThisMonth.map((raw) =>
-          toCalendarEvent(raw, currency.toUpperCase(), undefined, undefined)
-        );
-        const savedOnly = await this.calendarRepo.saveMany(scheduleOnly);
-        this.processedCount += savedOnly;
-        logger.info(`[CALENDAR SYNC] Schedule-only insert: ${savedOnly} rows.`);
-        return;
+        continue;
       }
 
-      const events = await joinWithAnnouncementsAndPredictions(
-        this.fxMacroData,
-        eventsThisMonth,
-        currency,
-        logger
-      );
-      const saved = await this.calendarRepo.saveMany(events);
-      this.processedCount += saved;
-      logger.info(
-        `[CALENDAR SYNC] Inserted ${saved} new events for ${currency} ${currentYearMonth}.`
-      );
-    } catch (err: any) {
-      // Log and continue — the cron will retry tomorrow. Never throw here,
-      // or a transient FXMacroData outage would crash the worker process.
-      this.errorCount += 1;
-      this.lastError = err.message;
-      logger.error(
-        { err: err.message },
-        `Failed to sync calendar for ${currency} ${currentYearMonth}`
-      );
+      try {
+        // Range = full current month (incl. already-released past days): the
+        // default /v1/calendar only returns UPCOMING releases, so without the
+        // bounds a zero-row month would be partially seeded and miss past days.
+        const [cy, cm] = currentYearMonth.split('-').map(Number);
+        const monthStart = `${currentYearMonth}-01`;
+        const monthEnd = new Date(Date.UTC(cy!, cm! + 1, 0)).toISOString().slice(0, 10);
+        const rawEvents = await this.fxMacroData.fetchCalendar(currency, monthStart, monthEnd);
+        const eventsThisMonth = rawEvents.filter((e) => e.date?.startsWith(currentYearMonth));
+
+        // T6.4 - the daily join costs 2 calls per unique indicator. Respect the
+        // shared daily budget: when exhausted, fall back to a schedule-only
+        // insert (0 extra calls); the refresh pass catches up values later.
+        const uniqueCodes = new Set(eventsThisMonth.map((e) => e.release));
+        const plannedCalls = uniqueCodes.size * 2;
+        if (!this.consumeDailyBudget(plannedCalls)) {
+          logger.warn(
+            `[CALENDAR SYNC] Daily FXMacroData budget exhausted - inserting schedule-only rows for ${cur} ${currentYearMonth}.`
+          );
+          const scheduleOnly = eventsThisMonth.map((raw) =>
+            toCalendarEvent(raw, cur, undefined, undefined)
+          );
+          const savedOnly = await this.calendarRepo.saveMany(scheduleOnly);
+          this.processedCount += savedOnly;
+          logger.info(`[CALENDAR SYNC] Schedule-only insert: ${savedOnly} rows.`);
+          continue;
+        }
+
+        const events = await joinWithAnnouncementsAndPredictions(
+          this.fxMacroData,
+          eventsThisMonth,
+          cur,
+          logger
+        );
+        const saved = await this.calendarRepo.saveMany(events);
+        this.processedCount += saved;
+        logger.info(`[CALENDAR SYNC] Inserted ${saved} new events for ${cur} ${currentYearMonth}.`);
+      } catch (err: any) {
+        // Log and continue - the cron will retry tomorrow. Never throw here,
+        // or a transient FXMacroData outage would crash the worker process.
+        this.errorCount += 1;
+        this.lastError = err.message;
+        logger.error(
+          { err: err.message, currency: cur },
+          `Failed to sync calendar for ${cur} ${currentYearMonth}`
+        );
+      }
     }
   }
 
@@ -288,118 +287,114 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
   }
 
   private async refreshRecentValuesInner(): Promise<void> {
-    const currency = env.FXMACRODATA_CALENDAR_CURRENCY.toUpperCase();
+    const currencies = activeCalendarCurrencies();
     const nowSec = Math.floor(Date.now() / 1000);
     const lookbackStart = nowSec - env.CALENDAR_REFRESH_LOOKBACK_HOURS * 3600;
     const aheadEnd = nowSec + env.CALENDAR_REFRESH_AHEAD_HOURS * 3600;
 
-    let recent: CalendarEvent[];
-    let upcoming: CalendarEvent[];
-    try {
-      [recent, upcoming] = await Promise.all([
-        this.calendarRepo.findByCurrencyAndRange(currency, lookbackStart, nowSec),
-        this.calendarRepo.findByCurrencyAndRange(currency, nowSec, aheadEnd)
-      ]);
-    } catch (err: any) {
-      this.errorCount += 1;
-      this.lastError = err.message;
-      logger.error({ err: err.message }, '[CALENDAR REFRESH] Failed to load refresh candidates.');
-      return;
-    }
+    for (const currency of currencies) {
+      const cur = currency.toUpperCase();
 
-    const needsActual = recent.filter((e) => e.actualValue === null);
-    const targets = new Map<string, CalendarEvent>();
-    for (const e of [...needsActual, ...upcoming]) targets.set(e.id, e);
-    if (targets.size === 0) {
-      logger.info('[CALENDAR REFRESH] Nothing to refresh — no HTTP calls made.');
-      return;
-    }
-
-    // Soonest-first priority so the next release is always covered even when
-    // the per-pass cap truncates a crowded calendar week.
-    const codes: string[] = [
-      ...new Set(
-        [...targets.values()]
-          .sort(
-            (a, b) => Math.abs(a.announcementUnix - nowSec) - Math.abs(b.announcementUnix - nowSec)
-          )
-          .map((e) => e.eventCode)
-      )
-    ].slice(0, env.CALENDAR_REFRESH_MAX_CODES_PER_PASS);
-
-    if (!this.consumeDailyBudget(codes.length * 2)) {
-      this.lastError = 'Daily FXMacroData call budget exhausted';
-      logger.warn(
-        `[CALENDAR REFRESH] Daily call budget (${env.FXMACRODATA_DAILY_CALL_BUDGET}) exhausted — skipping pass.`
-      );
-      return;
-    }
-
-    let updatedRows = 0;
-    for (const code of codes) {
-      let announcements;
-      let predictionGroups;
+      let recent: CalendarEvent[];
+      let upcoming: CalendarEvent[];
       try {
-        [announcements, predictionGroups] = await Promise.all([
-          this.fxMacroData.fetchAnnouncements(currency.toLowerCase(), code),
-          this.fxMacroData.fetchPredictions(currency.toLowerCase(), code)
+        [recent, upcoming] = await Promise.all([
+          this.calendarRepo.findByCurrencyAndRange(cur, lookbackStart, nowSec),
+          this.calendarRepo.findByCurrencyAndRange(cur, nowSec, aheadEnd)
         ]);
       } catch (err: any) {
         this.errorCount += 1;
         this.lastError = err.message;
-        logger.warn({ err: err.message }, `[CALENDAR REFRESH] Fetch failed for '${code}'.`);
+        logger.error(
+          { err: err.message, currency: cur },
+          '[CALENDAR REFRESH] Failed to load refresh candidates.'
+        );
         continue;
       }
 
-      for (const row of targets.values()) {
-        if (row.eventCode !== code) continue;
+      const needsActual = recent.filter((e) => e.actualValue === null);
+      const targets = new Map<string, CalendarEvent>();
+      for (const e of [...needsActual, ...upcoming]) targets.set(e.id, e);
+      if (targets.size === 0) {
+        logger.info(`[CALENDAR REFRESH] ${cur}: nothing to refresh, no HTTP calls.`);
+        continue;
+      }
 
-        // row.id follows the same deterministic convention as upstream's
-        // announcement_id ({currency}_{release}_{date}), so a direct match is
-        // exact — never fuzzy.
-        const announcement = announcements.find((a) => a.announcement_id === row.id);
-        const forecast = pickForecast(predictionGroups.find((p) => p.announcement_id === row.id));
+      // Soonest-first priority so the next release is always covered even when
+      // the per-pass cap truncates a crowded calendar week.
+      const codes: string[] = [
+        ...new Set(
+          [...targets.values()]
+            .sort(
+              (a, b) =>
+                Math.abs(a.announcementUnix - nowSec) - Math.abs(b.announcementUnix - nowSec)
+            )
+            .map((e) => e.eventCode)
+        )
+      ].slice(0, env.CALENDAR_REFRESH_MAX_CODES_PER_PASS);
 
-        // Only overwrite with real upstream values — never downgrade an
-        // existing stored value back to null because one response omitted it.
-        const updated = new CalendarEvent({
-          id: row.id,
-          currency: row.currency,
-          eventCode: row.eventCode,
-          eventName: row.eventName,
-          referencePeriodDate: row.referencePeriodDate,
-          announcementUnix: row.announcementUnix,
-          announcementDatetimeUtc: row.announcementDatetimeUtc,
-          announcementDatetimeLocal: row.announcementDatetimeLocal,
-          importance: row.importance,
-          marketTier: row.marketTier,
-          isTopTier: row.isTopTier,
-          sourceName: row.sourceName,
-          sourceUrl: row.sourceUrl,
-          beforeValue: announcement ? announcement.previous_value : row.beforeValue,
-          forecastValue: forecast.value ?? row.forecastValue,
-          forecastType: forecast.type ?? row.forecastType,
-          actualValue: announcement ? announcement.val : row.actualValue,
-          hasOfficialForecast: announcement
-            ? announcement.has_official_forecast
-            : row.hasOfficialForecast
-        });
+      if (!this.consumeDailyBudget(codes.length * 2)) {
+        this.lastError = 'Daily FXMacroData call budget exhausted';
+        logger.warn(
+          `[CALENDAR REFRESH] Daily call budget (${env.FXMACRODATA_DAILY_CALL_BUDGET}) exhausted - skipping pass for ${cur}.`
+        );
+        continue;
+      }
 
+      let updatedRows = 0;
+      for (const code of codes) {
+        let announcements;
+        let predictionGroups;
         try {
-          await this.calendarRepo.upsertOne(updated);
-          updatedRows += 1;
+          [announcements, predictionGroups] = await Promise.all([
+            this.fxMacroData.fetchAnnouncements(cur.toLowerCase(), code),
+            this.fxMacroData.fetchPredictions(cur.toLowerCase(), code)
+          ]);
         } catch (err: any) {
           this.errorCount += 1;
           this.lastError = err.message;
-          logger.warn({ err: err.message }, `[CALENDAR REFRESH] Upsert failed for ${row.id}.`);
+          logger.warn(
+            { err: err.message, currency: cur },
+            `[CALENDAR REFRESH] Fetch failed for '${code}'.`
+          );
+          continue;
+        }
+
+        for (const row of targets.values()) {
+          if (row.eventCode !== code) continue;
+
+          // row.id follows the same deterministic convention as upstream's
+          // announcement_id ({currency}_{release}_{date}), so a direct match is
+          // exact - never fuzzy.
+          const announcement = announcements.find((a) => a.announcement_id === row.id);
+
+          // Only overwrite with real upstream values - never downgrade an
+          // existing stored value back to null because one response omitted it.
+          const updated = mergeEventWithUpstream(
+            row,
+            announcement,
+            predictionGroups.find((p) => p.announcement_id === row.id)
+          );
+
+          try {
+            await this.calendarRepo.upsertOne(updated);
+            updatedRows += 1;
+          } catch (err: any) {
+            this.errorCount += 1;
+            this.lastError = err.message;
+            logger.warn(
+              { err: err.message, currency: cur },
+              `[CALENDAR REFRESH] Upsert failed for ${row.id}.`
+            );
+          }
         }
       }
-    }
 
-    this.processedCount += updatedRows;
-    logger.info(
-      `[CALENDAR REFRESH] ${updatedRows} row(s) refreshed across ${codes.length} indicator(s).`
-    );
+      this.processedCount += updatedRows;
+      logger.info(
+        `[CALENDAR REFRESH] ${cur}: ${updatedRows} row(s) refreshed across ${codes.length} indicator(s).`
+      );
+    }
   }
 
   /** Resets at UTC midnight; returns false once today's quota would be exceeded. */
@@ -471,14 +466,6 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
   public async pause(): Promise<void> {
     await this.doPause();
   }
-}
-
-function pickForecastProps(group: Parameters<typeof pickForecast>[0]): {
-  forecastValue: number | null;
-  forecastType: string | null;
-} {
-  const forecast = pickForecast(group);
-  return { forecastValue: forecast.value, forecastType: forecast.type };
 }
 
 // Direct CLI entrypoint execution

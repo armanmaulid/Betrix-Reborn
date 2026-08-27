@@ -14,7 +14,8 @@ import {
 } from '@betrix/infra';
 import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
 import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
-import { filterEventsMissingDays, toScheduleOnlyEvents } from './shared/calendar-mapping.js';
+import { toScheduleOnlyEvents } from './shared/calendar-mapping.js';
+import { activeCalendarCurrencies } from './shared/fxmacrodata-helpers.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -31,13 +32,6 @@ const logger = pino({
 function seedYearSpan(): number[] {
   const current = new Date().getUTCFullYear();
   return [current - 1, current, current + 1];
-}
-
-function utcYearRange(year: number): { startUnix: number; endUnix: number } {
-  return {
-    startUnix: Math.floor(Date.UTC(year, 0, 1) / 1000),
-    endUnix: Math.floor(Date.UTC(year + 1, 0, 1) / 1000) - 1
-  };
 }
 
 /**
@@ -118,7 +112,7 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
    * stored row yet inside the three-year window.
    */
   public async seedStartupYears(): Promise<void> {
-    const currency = env.FXMACRODATA_CALENDAR_CURRENCY.toUpperCase();
+    const currencies = activeCalendarCurrencies();
 
     // T6.3 — crash-loop quota guard: skip the upstream fetch when a successful
     // full seed happened within CALENDAR_SEED_MIN_GAP_HOURS (Redis-persisted).
@@ -136,47 +130,49 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
     }
 
     const years = seedYearSpan();
-    const firstYear = years[0];
-    const lastYear = years[years.length - 1];
-    if (firstYear === undefined || lastYear === undefined) return;
+
+    for (const cur of currencies) {
+      try {
+        const schedule = await this.fetchSchedule(cur);
+
+        // Do NOT pre-filter by "missing day": the old filter compared each event's
+        // reference-period `date` against a set keyed on the *publication* day
+        // (announcementUnix) — different things — and multiple distinct events can
+        // legitimately share a reference period (e.g. CPI + PPI both for "2025-03"),
+        // so it could silently skip real events. Idempotence is already guaranteed
+        // by the primary key + saveMany(... onConflictDoNothing); just insert all
+        // and let duplicates no-op.
+        const saved = await this.calendarRepo.saveMany(toScheduleOnlyEvents(schedule, cur));
+        this.processedCount += saved;
+
+        const perYear = new Map<number, number>();
+        for (const e of schedule) {
+          const y = Number(e.date?.slice(0, 4));
+          if (!Number.isNaN(y)) perYear.set(y, (perYear.get(y) ?? 0) + 1);
+        }
+        logger.info(
+          `[CALENDAR SEED] Startup seed ${cur.toUpperCase()} ${years.join('/')}: ` +
+            `schedule=${schedule.length}, inserted=${saved} ` +
+            `(${[...perYear.entries()].map(([y, n]) => `${y}:${n}`).join(', ') || 'empty'}).`
+        );
+      } catch (err: any) {
+        // Per-currency failure: log and continue with the next currency so
+        // a single 4xx (e.g. non-USD without a paid key) doesn't block the rest.
+        this.errorCount += 1;
+        this.lastError = err.message;
+        logger.error(
+          { err: err.message, currency: cur },
+          '[CALENDAR SEED] Startup seeding failed for currency — continuing with next.'
+        );
+      }
+    }
 
     try {
-      const [schedule, existingUnix] = await Promise.all([
-        this.fetchSchedule(),
-        this.calendarRepo.listAnnouncementUnixInRange(
-          currency,
-          utcYearRange(firstYear).startUnix,
-          utcYearRange(lastYear).endUnix
-        )
-      ]);
-
-      const missing = filterEventsMissingDays(schedule, existingUnix);
-      const saved = await this.calendarRepo.saveMany(toScheduleOnlyEvents(missing, currency));
-      this.processedCount += saved;
-
-      const perYear = new Map<number, number>();
-      for (const e of missing) {
-        const y = Number(e.date?.slice(0, 4));
-        if (!Number.isNaN(y)) perYear.set(y, (perYear.get(y) ?? 0) + 1);
-      }
-      logger.info(
-        `[CALENDAR SEED] Startup check ${years.join('/')}: ` +
-          `schedule=${schedule.length}, daysMissing=${missing.length}, inserted=${saved} ` +
-          `(${[...perYear.entries()].map(([y, n]) => `${y}:${n}`).join(', ') || 'no gaps'}).`
-      );
-
-      try {
-        await this.markerRedis.set(markerKey, String(Date.now()), {
-          ex: Math.ceil(gapHours * 3600)
-        });
-      } catch {
-        // Marker write failure is non-fatal.
-      }
-    } catch (err: any) {
-      // Never throw — an FXMacroData outage must not crash the worker process.
-      this.errorCount += 1;
-      this.lastError = err.message;
-      logger.error({ err: err.message }, '[CALENDAR SEED] Startup seeding failed.');
+      await this.markerRedis.set(markerKey, String(Date.now()), {
+        ex: Math.ceil(gapHours * 3600)
+      });
+    } catch {
+      // Marker write failure is non-fatal.
     }
   }
 
@@ -185,41 +181,56 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
    * have rows? yes → skip (zero HTTP calls); no → seed its schedule.
    */
   public async seedCurrentMonthIfMissing(): Promise<void> {
-    const currency = env.FXMACRODATA_CALENDAR_CURRENCY.toUpperCase();
+    const currencies = activeCalendarCurrencies();
     const currentYearMonth = new Date().toISOString().slice(0, 7);
 
-    try {
-      const existingCount = await this.calendarRepo.countByCurrencyAndMonth(
-        currency,
-        currentYearMonth
-      );
-      if (existingCount > 0) {
-        logger.info(
-          `[CALENDAR SEED] ${currency} ${currentYearMonth} already has ${existingCount} events, skip.`
+    for (const cur of currencies) {
+      try {
+        const existingCount = await this.calendarRepo.countByCurrencyAndMonth(
+          cur,
+          currentYearMonth
         );
-        return;
-      }
+        if (existingCount > 0) {
+          logger.info(
+            `[CALENDAR SEED] ${cur.toUpperCase()} ${currentYearMonth} already has ${existingCount} events, skip.`
+          );
+          continue;
+        }
 
-      const schedule = await this.fetchSchedule();
-      const monthEvents = schedule.filter((e) => e.date?.startsWith(currentYearMonth));
-      const saved = await this.calendarRepo.saveMany(toScheduleOnlyEvents(monthEvents, currency));
-      this.processedCount += saved;
-      logger.info(
-        `[CALENDAR SEED] Seeded ${saved}/${monthEvents.length} scheduled events for ${currency} ${currentYearMonth}.`
-      );
-    } catch (err: any) {
-      this.errorCount += 1;
-      this.lastError = err.message;
-      logger.error(
-        { err: err.message },
-        `[CALENDAR SEED] Monthly seed failed for ${currency} ${currentYearMonth}.`
-      );
+        const schedule = await this.fetchSchedule(cur);
+        const monthEvents = schedule.filter((e) => e.date?.startsWith(currentYearMonth));
+        const saved = await this.calendarRepo.saveMany(toScheduleOnlyEvents(monthEvents, cur));
+        this.processedCount += saved;
+        logger.info(
+          `[CALENDAR SEED] Seeded ${saved}/${monthEvents.length} scheduled events for ${cur.toUpperCase()} ${currentYearMonth}.`
+        );
+      } catch (err: any) {
+        this.errorCount += 1;
+        this.lastError = err.message;
+        logger.error(
+          { err: err.message, currency: cur },
+          `[CALENDAR SEED] Monthly seed failed for ${cur.toUpperCase()} ${currentYearMonth} - continuing.`
+        );
+      }
     }
   }
 
-  /** Single upstream call powering both tasks — the whole quota story. */
-  private async fetchSchedule(): Promise<FxMacroDataCalendarEvent[]> {
-    return this.fxMacroData.fetchCalendar(env.FXMACRODATA_CALENDAR_CURRENCY);
+  /**
+   * Single upstream call powering both tasks. Requests the FULL three-year
+   * window (last year → next year) so PAST schedules are actually retrieved —
+   * FXMacroData's /v1/calendar returns only UPCOMING releases unless
+   * start_date/end_date are supplied, which is why historical years were empty.
+   */
+  private async fetchSchedule(currency: string): Promise<FxMacroDataCalendarEvent[]> {
+    const years = seedYearSpan();
+    const firstYear = years[0];
+    const lastYear = years[years.length - 1];
+    if (firstYear === undefined || lastYear === undefined) {
+      return this.fxMacroData.fetchCalendar(currency);
+    }
+    const start = `${firstYear}-01-01`;
+    const end = `${lastYear}-12-31`;
+    return this.fxMacroData.fetchCalendar(currency, start, end);
   }
 
   /**

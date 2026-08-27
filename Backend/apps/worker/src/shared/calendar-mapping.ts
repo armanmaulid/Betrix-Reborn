@@ -1,5 +1,5 @@
 import pino from 'pino';
-import { CalendarEvent } from '@betrix/domain';
+import { CalendarEvent, type CalendarEventImportance } from '@betrix/domain';
 import {
   FxMacroDataClient,
   type FxMacroDataCalendarEvent,
@@ -15,8 +15,22 @@ import {
  * substituted without recording which one was used (see forecastType on
  * CalendarEvent).
  */
+// FXMacroData exposes up to 9 prediction_type values; the previous list only
+// handled 2, so forecasts from surveys / central banks / IMF / OECD were left
+// NULL (the "too few forecasts" symptom). Rank by source authority: a real
+// consensus/survey wins over a single institution's own model, never averaged.
 const FORECAST_TYPE_PRIORITY: FxMacroDataPredictionGroup['predictions'][number]['prediction_type'][] =
-  ['market_consensus', 'fxmacrodata'];
+  [
+    'market_consensus',
+    'survey',
+    'central_bank_forecast',
+    'central_bank_projection',
+    'imf_weo',
+    'oecd_eo',
+    'market_prediction',
+    'model_nowcast',
+    'fxmacrodata'
+  ];
 
 export function pickForecast(group: FxMacroDataPredictionGroup | undefined): {
   value: number | null;
@@ -44,26 +58,6 @@ export function toScheduleOnlyEvents(
   return rawEvents.map((raw) => toCalendarEvent(raw, currency.toUpperCase(), undefined, undefined));
 }
 
-function utcDayKey(unixSeconds: number): string {
-  return new Date(unixSeconds * 1000).toISOString().slice(0, 10);
-}
-
-/**
- * Day-level idempotence for the seeder: drop upstream events whose UTC day
- * already has ANY stored row. raw.date is upstream's "YYYY-MM-DD" (UTC day),
- * which is exactly the bucket key used on the database side.
- */
-export function filterEventsMissingDays(
-  rawEvents: FxMacroDataCalendarEvent[],
-  existingUnixSeconds: number[]
-): FxMacroDataCalendarEvent[] {
-  const coveredDays = new Set(existingUnixSeconds.map(utcDayKey));
-  return rawEvents.filter((raw) => {
-    if (!raw.date) return false; // unplaceable without a date — skip defensively
-    return !coveredDays.has(raw.date);
-  });
-}
-
 export function toCalendarEvent(
   raw: FxMacroDataCalendarEvent,
   currency: string,
@@ -80,8 +74,10 @@ export function toCalendarEvent(
     announcementUnix: raw.announcement_datetime,
     announcementDatetimeUtc: raw.announcement_datetime_utc,
     announcementDatetimeLocal: raw.announcement_datetime_local,
-    importance: raw.event_importance,
-    marketTier: raw.market_tier,
+    // FXMacroData may return null importance/tier; the DB column is NOT NULL,
+    // so fall back to safe defaults instead of inserting NULL and dropping the row.
+    importance: (raw.event_importance as CalendarEventImportance) ?? 'low',
+    marketTier: raw.market_tier ?? 0,
     isTopTier: raw.top_tier_for_currency ?? false,
     sourceName: raw.source ?? null,
     sourceUrl: raw.source_url ?? null,
@@ -108,13 +104,17 @@ export async function joinWithAnnouncementsAndPredictions(
   currency: string,
   logger: pino.Logger
 ): Promise<CalendarEvent[]> {
+  // FXMacroData identifiers are lowercase (e.g. announcement_id "usd_inflation_2026-01-31"),
+  // so the value endpoints must be called with the lowercase currency — otherwise the
+  // join silently fails and Before/Actual/Forecast stay NULL.
+  const currencyKey = currency.toLowerCase();
   const uniqueEventCodes = [...new Set(rawEvents.map((e) => e.release))];
   const announcementsByCode = new Map<string, FxMacroDataAnnouncement[]>();
   const predictionsByCode = new Map<string, FxMacroDataPredictionGroup[]>();
 
   for (const code of uniqueEventCodes) {
     try {
-      announcementsByCode.set(code, await fxMacroData.fetchAnnouncements(currency, code));
+      announcementsByCode.set(code, await fxMacroData.fetchAnnouncements(currencyKey, code));
     } catch (err: any) {
       logger.warn(
         { err: err.message },
@@ -123,7 +123,7 @@ export async function joinWithAnnouncementsAndPredictions(
       announcementsByCode.set(code, []);
     }
     try {
-      predictionsByCode.set(code, await fxMacroData.fetchPredictions(currency, code));
+      predictionsByCode.set(code, await fxMacroData.fetchPredictions(currencyKey, code));
     } catch (err: any) {
       logger.warn(
         { err: err.message },
@@ -142,5 +142,156 @@ export async function joinWithAnnouncementsAndPredictions(
       .get(raw.release)
       ?.find((p) => p.announcement_id === announcementId);
     return toCalendarEvent(raw, currency.toUpperCase(), announcement, predictionGroup);
+  });
+}
+
+/**
+ * Parse the indicator slug out of an FXMacroData `announcement_id`, which uses
+ * the format `{currency}_{indicator}_{date}` (date = YYYY-MM-DD, may contain
+ * dashes; indicator slugs may themselves contain underscores, e.g.
+ * non_farm_payrolls). The date is the final `_`-separated segment.
+ */
+function indicatorFromAnnouncementId(announcementId: string, currency: string): string | null {
+  const prefix = `${currency.toLowerCase()}_`;
+  if (!announcementId.startsWith(prefix)) return null;
+  const rest = announcementId.slice(prefix.length);
+  const lastUnderscore = rest.lastIndexOf('_');
+  if (lastUnderscore < 0) return null;
+  return rest.slice(0, lastUnderscore);
+}
+
+/**
+ * Per-indicator metadata sourced from the (live) current-year calendar, used
+ * to enrich historical announcement rows that otherwise lack a friendly name /
+ * importance / tier. FXMacroData's prior-year /v1/calendar is empty, so we
+ * borrow these stable, indicator-level attributes from the current year.
+ */
+export interface CalendarEventMeta {
+  name?: string | null;
+  importance?: string | null;
+  marketTier?: number | null;
+  topTier?: boolean | null;
+  source?: string | null;
+  sourceUrl?: string | null;
+}
+
+/**
+ * Build a CalendarEvent directly from an FXMacroData announcement. Used for
+ * historical backfills where /v1/calendar returns nothing (it only serves
+ * ~2 months lookback + forward) but /v1/announcements carries the full
+ * historical time series (before/actual values). Indicator-level metadata
+ * (friendly name, importance, tier) is passed via `meta` (sourced from the
+ * current-year calendar) so historical rows are as readable as live ones;
+ * fields the announcement cannot supply fall back to safe defaults.
+ */
+export function toCalendarEventFromAnnouncement(
+  ann: FxMacroDataAnnouncement,
+  predGroup: FxMacroDataPredictionGroup | undefined,
+  currency: string,
+  meta?: CalendarEventMeta
+): CalendarEvent {
+  const cur = currency.toLowerCase();
+  const indicator = indicatorFromAnnouncementId(ann.announcement_id ?? '', cur) ?? '';
+  const forecast = pickForecast(predGroup);
+  return new CalendarEvent({
+    id: `${cur}_${indicator}_${ann.date}`,
+    currency,
+    eventCode: indicator,
+    eventName: meta?.name ?? indicator,
+    referencePeriodDate: ann.date,
+    announcementUnix: ann.announcement_datetime,
+    announcementDatetimeUtc: ann.announcement_datetime
+      ? new Date(ann.announcement_datetime * 1000).toISOString()
+      : '',
+    announcementDatetimeLocal: '',
+    importance: (meta?.importance as CalendarEventImportance) ?? 'low',
+    marketTier: meta?.marketTier ?? 0,
+    isTopTier: meta?.topTier ?? false,
+    sourceName: meta?.source ?? ann.source ?? null,
+    sourceUrl: meta?.sourceUrl ?? ann.source_url ?? null,
+    beforeValue: ann.previous_value ?? null,
+    forecastValue: forecast.value,
+    forecastType: forecast.type,
+    actualValue: ann.val ?? null,
+    hasOfficialForecast: ann.has_official_forecast
+  });
+}
+
+/**
+ * Turn a batch of historical announcements into CalendarEvents. Predictions are
+ * fetched once per unique indicator (FXMacroData returns the whole prediction
+ * series; we match by announcement_id), so cost stays at ~2 calls/indicator.
+ */
+export async function eventsFromAnnouncements(
+  fxMacroData: FxMacroDataClient,
+  announcements: FxMacroDataAnnouncement[],
+  currency: string,
+  logger: pino.Logger,
+  metaByIndicator: Record<string, CalendarEventMeta> = {}
+): Promise<CalendarEvent[]> {
+  const cur = currency.toLowerCase();
+  const byIndicator = new Map<string, FxMacroDataAnnouncement[]>();
+  for (const ann of announcements) {
+    const indicator = indicatorFromAnnouncementId(ann.announcement_id ?? '', cur);
+    if (!indicator) continue;
+    const bucket = byIndicator.get(indicator) ?? [];
+    bucket.push(ann);
+    byIndicator.set(indicator, bucket);
+  }
+
+  const events: CalendarEvent[] = [];
+  for (const [indicator, anns] of byIndicator) {
+    let predGroups: FxMacroDataPredictionGroup[] = [];
+    try {
+      predGroups = await fxMacroData.fetchPredictions(cur, indicator);
+    } catch (err: any) {
+      logger.warn(
+        { err: err.message },
+        `predictions failed for '${indicator}' — forecast will stay null.`
+      );
+    }
+    const meta = metaByIndicator[indicator];
+    for (const ann of anns) {
+      const group = predGroups.find((p) => p.announcement_id === ann.announcement_id);
+      events.push(toCalendarEventFromAnnouncement(ann, group, currency, meta));
+    }
+  }
+  return events;
+}
+
+/**
+ * Apply upstream `announcement` + `predictionGroup` onto an existing stored
+ * `CalendarEvent`, returning a NEW event with merged values. Shared by the
+ * SSE `handleStreamEvent` and the periodic `refreshRecentValuesInner` so
+ * the merge rules (never downgrade to null, `pickForecast` priority, etc.)
+ * stay in one place.
+ */
+export function mergeEventWithUpstream(
+  existing: CalendarEvent,
+  announcement: FxMacroDataAnnouncement | undefined,
+  predictionGroup: FxMacroDataPredictionGroup | undefined
+): CalendarEvent {
+  const forecast = pickForecast(predictionGroup);
+  return new CalendarEvent({
+    id: existing.id,
+    currency: existing.currency,
+    eventCode: existing.eventCode,
+    eventName: existing.eventName,
+    referencePeriodDate: existing.referencePeriodDate,
+    announcementUnix: existing.announcementUnix,
+    announcementDatetimeUtc: existing.announcementDatetimeUtc,
+    announcementDatetimeLocal: existing.announcementDatetimeLocal,
+    importance: existing.importance,
+    marketTier: existing.marketTier,
+    isTopTier: existing.isTopTier,
+    sourceName: existing.sourceName,
+    sourceUrl: existing.sourceUrl,
+    beforeValue: announcement ? announcement.previous_value : existing.beforeValue,
+    forecastValue: forecast.value ?? existing.forecastValue,
+    forecastType: forecast.type ?? existing.forecastType,
+    actualValue: announcement ? announcement.val : existing.actualValue,
+    hasOfficialForecast: announcement
+      ? announcement.has_official_forecast
+      : existing.hasOfficialForecast
   });
 }

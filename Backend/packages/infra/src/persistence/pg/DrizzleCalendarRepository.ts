@@ -1,4 +1,4 @@
-import { and, eq, gte, lte, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { CalendarEvent, ICalendarRepository } from '@betrix/domain';
 import { DrizzleDb } from '../drizzle/client.js';
 import { redisKeys } from '../redis/redis-keys.js';
@@ -228,16 +228,6 @@ export class DrizzleCalendarRepository implements ICalendarRepository {
       .where(eq(calendarEvents.id, announcementId))
       .limit(1);
     return rows[0] ? this.mapToDomain(rows[0]) : null;
-  }
-
-  /** T4.5 — retention: purge calendar events announced before the cutoff. */
-  async deleteOlderThan(cutoff: Date): Promise<number> {
-    this.bumpCalendarCache();
-    const deleted = await this.db
-      .delete(calendarEvents)
-      .where(lt(calendarEvents.createdAt, cutoff))
-      .returning({ id: calendarEvents.id });
-    return deleted.length;
   }
 }
 

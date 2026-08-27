@@ -622,7 +622,6 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
     adminActionRepo,
     deviceRepo,
     newsRepo,
-    calendarRepo,
     voucherRepo,
     chatRepo,
     activityLogRepo

@@ -21,6 +21,9 @@ export interface FxMacroDataAnnouncement {
   previous_value: number | null;
   announcement_datetime: number;
   has_official_forecast: boolean;
+  /** Present on the API response (AnnouncementDataPoint) but optional. */
+  source?: string;
+  source_url?: string;
 }
 
 export type FxMacroDataPredictionType =
@@ -29,7 +32,9 @@ export type FxMacroDataPredictionType =
   | 'survey'
   | 'model_nowcast'
   | 'central_bank_forecast'
+  | 'central_bank_projection'
   | 'imf_weo'
+  | 'oecd_eo'
   | 'fxmacrodata';
 
 export interface FxMacroDataPrediction {
@@ -50,6 +55,95 @@ export interface FxMacroDataStreamEvent {
   indicator: string;
   event_type: string;
   timestamp: number;
+}
+
+// ── Data catalogue ────────────────────────────────────────────────────────
+// `GET /v1/data_catalogue/{currency}` returns the full set of indicators
+// available for a currency (name, unit, frequency, has_official_forecast).
+// The calendar endpoint only exposes the subset that is scheduled; the
+// catalogue is the authoritative list to backfill from.
+export interface FxMacroDataCatalogueEntry {
+  indicator: string;
+  name?: string;
+  unit?: string;
+  frequency?: string;
+  has_official_forecast?: boolean;
+}
+export interface FxMacroDataCatalogueResponse {
+  currency: string;
+  indicators: FxMacroDataCatalogueEntry[];
+}
+
+// ── FX spot prices ────────────────────────────────────────────────────────
+// `GET /v1/forex/{base}/{quote}` — daily OHLC + optional technical overlays.
+export type FxTechnicalIndicator =
+  | 'sma_20'
+  | 'sma_50'
+  | 'sma_200'
+  | 'rsi_14'
+  | 'macd'
+  | 'ema_12'
+  | 'ema_26'
+  | 'bollinger_bands'
+  | 'all';
+export interface FxMacroDataFxPriceRow {
+  date: string; // YYYY-MM-DD
+  open?: number;
+  high?: number;
+  low?: number;
+  close: number;
+  // Technical overlays (only present when ?indicators= is passed).
+  sma_20?: number;
+  sma_50?: number;
+  sma_200?: number;
+  rsi_14?: number;
+  macd?: number;
+  macd_signal?: number;
+  macd_hist?: number;
+  ema_12?: number;
+  ema_26?: number;
+  bb_upper?: number;
+  bb_middle?: number;
+  bb_lower?: number;
+}
+export interface FxMacroDataFxPriceResponse {
+  base: string;
+  quote: string;
+  rows: FxMacroDataFxPriceRow[];
+}
+
+// ── COT positioning ───────────────────────────────────────────────────────
+// `GET /v1/cot/{currency}` — CFTC Commitment of Traders.
+export interface FxMacroDataCotRow {
+  date: string; // YYYY-MM-DD
+  // Standard COT fields (subset — schema is large; we keep what trading UI needs).
+  commercial_long?: number;
+  commercial_short?: number;
+  commercial_net?: number;
+  noncommercial_long?: number;
+  noncommercial_short?: number;
+  noncommercial_net?: number;
+  total_open_interest?: number;
+}
+export interface FxMacroDataCotResponse {
+  currency: string;
+  rows: FxMacroDataCotRow[];
+}
+
+// ── Commodities ──────────────────────────────────────────────────────────
+// `GET /v1/commodities/{indicator}` — gold | silver | platinum history.
+export type FxCommodityIndicator = 'gold' | 'silver' | 'platinum';
+export interface FxMacroDataCommodityRow {
+  date: string; // YYYY-MM-DD
+  close: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  unit?: string; // e.g. USD/oz
+}
+export interface FxMacroDataCommodityResponse {
+  indicator: FxCommodityIndicator;
+  rows: FxMacroDataCommodityRow[];
 }
 
 const RETRYABLE_STATUS = new Set([401, 429, 500, 502, 503, 504]);
@@ -115,15 +209,30 @@ export class FxMacroDataClient {
     throw lastError;
   }
 
-  /** GET /v1/calendar/{currency} — the event schedule, no Before/Forecast/Actual values. */
-  public async fetchCalendar(currency: string): Promise<FxMacroDataCalendarEvent[]> {
+  /** GET /v1/calendar/{currency} — the event schedule, no Before/Forecast/Actual values.
+   *  FXMacroData returns ONLY upcoming releases unless `start_date`/`end_date`
+   *  are supplied, so historical (past-year) schedules require the range. */
+  public async fetchCalendar(
+    currency: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<FxMacroDataCalendarEvent[]> {
+    const qs = new URLSearchParams();
+    if (startDate) qs.set('start_date', startDate);
+    if (endDate) qs.set('end_date', endDate);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
     const result = await this.fetchWithRetry<{ data: FxMacroDataCalendarEvent[] }>(
-      `/v1/calendar/${currency}`
+      `/v1/calendar/${currency}${suffix}`
     );
     return result.data ?? [];
   }
 
-  /** GET /v1/announcements/{currency}/{indicator} — historical Before/Actual values. */
+  /** GET /v1/announcements/{currency}/{indicator} — historical Before/Actual values.
+   *  Available on the FREE tier for USD (clamped to the most recent 365 days;
+   *  older `start_date` is silently clamped server-side per the spec). Other
+   *  currencies require a paid key. Anonymous callers hit the 365-day window;
+   *  callers with a key get the full history. The client does NOT gate on
+   *  key presence — it forwards the request either way and the server decides. */
   public async fetchAnnouncements(
     currency: string,
     indicator: string,
@@ -145,6 +254,8 @@ export class FxMacroDataClient {
    * announcement_id. Not every indicator has a value for every
    * prediction_type; callers apply the priority rule (market_consensus first,
    * fxmacrodata as fallback) — this client returns the raw groups unfiltered.
+   * Free for USD (subject to the same 365-day window as announcements); not
+   * gated client-side.
    */
   public async fetchPredictions(
     currency: string,
@@ -170,6 +281,19 @@ export class FxMacroDataClient {
     onEvent: (event: FxMacroDataStreamEvent) => void,
     onError: (err: Error) => void
   ): () => void {
+    // Premium endpoint — no API key → surface the error once and return a
+    // no-op unsubscribe. Prevents the worker from burning a 401/connect-error
+    // loop and ensures SSE is purely trial/paid gated.
+    if (!this.hasApiKey()) {
+      onError(
+        new Error(
+          'FXMacroData SSE stream requires FXMACRODATA_API_KEY (premium/paid). Subscribe is a no-op without a key.'
+        )
+      );
+      return () => {
+        /* no-op */
+      };
+    }
     let stopped = false;
     let abortController: AbortController | null = null;
 
@@ -235,5 +359,90 @@ export class FxMacroDataClient {
       stopped = true;
       abortController?.abort();
     };
+  }
+
+  /**
+   * True iff the client was constructed with a non-empty API key. Premium
+   * endpoints (data_catalogue, forex, cot, commodities) require a paid
+   * Professional key — they short-circuit to `[]` when absent, so the
+   * 14-day trial is a hard gate and there's no accidental API burn when the
+   * key is empty/expired.
+   */
+  public hasApiKey(): boolean {
+    return !!this.apiKey && this.apiKey.length > 0;
+  }
+
+  /** GET /v1/data_catalogue/{currency} — full list of indicators available
+   *  for the currency (name/unit/frequency/official-forecast flag). Used to
+   *  discover every indicator worth backfilling, even those not yet
+   *  scheduled in the calendar.
+   *
+   *  Free for USD (all USD indicators are publicly accessible per README);
+   *  other currencies require a paid key — the server enforces that and
+   *  returns 4xx, which the caller's fetchWithRetry will surface. The
+   *  client intentionally does NOT gate this so free USD catalogue
+   *  discovery keeps working. */
+  public async fetchDataCatalogue(currency: string): Promise<FxMacroDataCatalogueEntry[]> {
+    const result = await this.fetchWithRetry<FxMacroDataCatalogueResponse>(
+      `/v1/data_catalogue/${currency}`
+    );
+    return result.indicators ?? [];
+  }
+
+  /** GET /v1/forex/{base}/{quote} — daily FX spot OHLC + optional technical
+   *  indicators. Premium endpoint — no API key → returns []. */
+  public async fetchFxPrice(
+    base: string,
+    quote: string,
+    startDate?: string,
+    endDate?: string,
+    indicators?: FxTechnicalIndicator[]
+  ): Promise<FxMacroDataFxPriceRow[]> {
+    if (!this.hasApiKey()) return [];
+    const qs = new URLSearchParams();
+    if (startDate) qs.set('start_date', startDate);
+    if (endDate) qs.set('end_date', endDate);
+    if (indicators && indicators.length > 0) qs.set('indicators', indicators.join(','));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const result = await this.fetchWithRetry<FxMacroDataFxPriceResponse>(
+      `/v1/forex/${base}/${quote}${suffix}`
+    );
+    return result.rows ?? [];
+  }
+
+  /** GET /v1/cot/{currency} — CFTC Commitment of Traders positioning.
+   *  Premium endpoint — no API key → returns []. */
+  public async fetchCOT(
+    currency: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<FxMacroDataCotRow[]> {
+    if (!this.hasApiKey()) return [];
+    const qs = new URLSearchParams();
+    if (startDate) qs.set('start_date', startDate);
+    if (endDate) qs.set('end_date', endDate);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const result = await this.fetchWithRetry<FxMacroDataCotResponse>(
+      `/v1/cot/${currency}${suffix}`
+    );
+    return result.rows ?? [];
+  }
+
+  /** GET /v1/commodities/{indicator} — gold | silver | platinum history.
+   *  Premium endpoint — no API key → returns []. */
+  public async fetchCommodities(
+    indicator: FxCommodityIndicator,
+    startDate?: string,
+    endDate?: string
+  ): Promise<FxMacroDataCommodityRow[]> {
+    if (!this.hasApiKey()) return [];
+    const qs = new URLSearchParams();
+    if (startDate) qs.set('start_date', startDate);
+    if (endDate) qs.set('end_date', endDate);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const result = await this.fetchWithRetry<FxMacroDataCommodityResponse>(
+      `/v1/commodities/${indicator}${suffix}`
+    );
+    return result.rows ?? [];
   }
 }

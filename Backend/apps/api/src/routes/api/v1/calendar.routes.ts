@@ -10,6 +10,14 @@ const GetCalendarQuerySchema = Type.Object({
       pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$'
     })
   ),
+  year: Type.Optional(
+    Type.Number({
+      description:
+        'Full calendar year (e.g. 2025). Takes precedence over month/upcoming and bypasses the 92-day cap so a complete prior-year backfill can be served in one call.',
+      minimum: 1990,
+      maximum: 2100
+    })
+  ),
   limit: Type.Optional(Type.Number()),
   pastDays: Type.Optional(
     Type.Number({

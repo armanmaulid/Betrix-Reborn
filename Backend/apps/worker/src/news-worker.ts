@@ -88,6 +88,15 @@ export class NewsWorker extends ManagedWorkerBase implements IManagedWorker {
   private errorCount = 0;
   private lastError: string | null = null;
 
+  // Finnhub serves market news under separate feeds. Fetching only `general`
+  // silently drops the dedicated forex/crypto/merger streams (root cause of
+  // "too few news" for a forex/crypto platform).
+  private static readonly NEWS_CATEGORIES = ['general', 'forex', 'crypto', 'merger'] as const;
+
+  // Per-category high-water mark so each poll only pulls news newer than the
+  // last seen id (no `slice(0,30)` cap, no re-ingesting old articles).
+  private lastMinId: Record<string, number> = {};
+
   constructor(
     private readonly apiKey: string = env.FINNHUB_API_KEY,
     private readonly pollIntervalMs: number = 10000 // 10 seconds interval
@@ -147,65 +156,96 @@ export class NewsWorker extends ManagedWorkerBase implements IManagedWorker {
     this.isRunning = true;
 
     try {
-      const url = `https://finnhub.io/api/v1/news?category=general&token=${this.apiKey}`;
-      // Hard timeout — a hung TCP connection must not stall the news cycle.
-      let resp: Response;
-      try {
-        resp = await fetch(url, { signal: AbortSignal.timeout(env.FINNHUB_TIMEOUT_MS) });
-      } catch (err: any) {
-        err.stage = 'UPSTREAM_FETCH';
-        throw err;
-      }
-
-      if (!resp.ok) {
-        logger.warn(`Finnhub News API returned status: ${resp.status} ${resp.statusText}`);
-        return;
-      }
-
-      const items: any[] = await resp.json();
-      if (!Array.isArray(items) || items.length === 0) {
-        return;
-      }
-
       const articlesToSave: NewsArticle[] = [];
 
-      for (const item of items.slice(0, 30)) {
-        if (!item.headline || !item.url) continue;
+      for (const category of NewsWorker.NEWS_CATEGORIES) {
+        const minId = this.lastMinId[category] ?? 0;
+        const url = `https://finnhub.io/api/v1/news?category=${category}&minId=${minId}&token=${this.apiKey}`;
 
-        const headline = String(item.headline).trim();
-        const summary = String(item.summary || '').trim();
-        const newsUrl = String(item.url).trim();
-        const source = String(item.source || 'Finnhub').trim();
-        const imageUrl = item.image ? String(item.image).trim() : null;
-        const datetime = item.datetime ? Number(item.datetime) : Math.floor(Date.now() / 1000);
+        // Hard timeout — a hung TCP connection must not stall the news cycle.
+        let resp: Response;
+        try {
+          resp = await fetch(url, { signal: AbortSignal.timeout(env.FINNHUB_TIMEOUT_MS) });
+        } catch (err: any) {
+          err.stage = 'UPSTREAM_FETCH';
+          // One category failing must not abort the rest of the cycle.
+          logger.error(
+            { err: err.message, category, stage: err.stage },
+            'Finnhub news fetch failed for category'
+          );
+          continue;
+        }
 
-        // Stable id from Finnhub so onConflictDoNothing dedupes across polls
-        const finnhubId = item.id ? String(item.id) : null;
-        if (!finnhubId) continue;
+        if (!resp.ok) {
+          logger.warn(
+            `Finnhub News API (${category}) returned status: ${resp.status} ${resp.statusText}`
+          );
+          continue;
+        }
 
-        // 1. Smart backend tagging and categorization
-        const tags = NewsTagging.tagArticle(headline, summary);
-        const category = detectSmartCategory(tags);
+        const items: any[] = await resp.json();
+        if (!Array.isArray(items) || items.length === 0) {
+          continue;
+        }
 
-        const article = new NewsArticle({
-          id: finnhubId,
-          headline,
-          summary,
-          url: newsUrl,
-          source,
-          category,
-          tags,
-          image: imageUrl,
-          datetime
-        });
+        let maxId = minId;
+        for (const item of items) {
+          if (!item.headline || !item.url) continue;
 
-        articlesToSave.push(article);
+          const headline = String(item.headline).trim();
+          const summary = String(item.summary || '').trim();
+          const newsUrl = String(item.url).trim();
+          const source = String(item.source || 'Finnhub').trim();
+          const imageUrl = item.image ? String(item.image).trim() : null;
+          const datetime = item.datetime ? Number(item.datetime) : Math.floor(Date.now() / 1000);
+
+          // Stable id from Finnhub; fall back to a content hash so valid
+          // articles without an id are never silently dropped.
+          const finnhubId = item.id != null ? String(item.id) : null;
+          const id = finnhubId ?? NewsWorker.fallbackId(category, newsUrl, headline);
+          const numericId = Number(item.id);
+          if (Number.isFinite(numericId) && numericId > maxId) maxId = numericId;
+
+          // 1. Smart backend tagging (keyword-based, may yield 'global').
+          const tags = NewsTagging.tagArticle(headline, summary);
+
+          // 2. Authoritative category: prefer Finnhub's own `category` field,
+          //    then the feed we requested, then keyword fallback. This fixes
+          //    the false-positive/over-strict categorization.
+          const resolvedCategory =
+            (typeof item.category === 'string' && item.category.trim()) ||
+            category ||
+            detectSmartCategory(tags);
+          if (resolvedCategory && !tags.includes(resolvedCategory)) {
+            tags.push(resolvedCategory);
+          }
+
+          const article = new NewsArticle({
+            id,
+            headline,
+            summary,
+            url: newsUrl,
+            source,
+            category: resolvedCategory,
+            tags,
+            image: imageUrl,
+            datetime
+          });
+
+          articlesToSave.push(article);
+        }
+
+        // Advance the high-water mark for this category.
+        this.lastMinId[category] = maxId;
       }
 
-      if (articlesToSave.length > 0) {
+      // Safety cap against a single unusually large burst.
+      const capped = articlesToSave.slice(0, 400);
+
+      if (capped.length > 0) {
         let savedCount = 0;
         try {
-          savedCount = await this.newsRepo.saveMany(articlesToSave);
+          savedCount = await this.newsRepo.saveMany(capped);
         } catch (err: any) {
           err.stage = 'DB_INGEST';
           throw err;
@@ -214,7 +254,7 @@ export class NewsWorker extends ManagedWorkerBase implements IManagedWorker {
 
         if (savedCount > 0) {
           logger.info(
-            `[NEWS INGESTION] Successfully ingested ${savedCount} new unique market news articles.`
+            `[NEWS INGESTION] Successfully ingested ${savedCount} new unique market news articles across ${NewsWorker.NEWS_CATEGORIES.length} categories.`
           );
         }
       }
@@ -228,6 +268,21 @@ export class NewsWorker extends ManagedWorkerBase implements IManagedWorker {
     } finally {
       this.isRunning = false;
     }
+  }
+
+  /**
+   * Deterministic fallback id when Finnhub omits `id`. Based on category+url+
+   * headline so it is stable across polls and unique per article, preventing
+   * valid articles from being silently dropped.
+   */
+  private static fallbackId(category: string, url: string, headline: string): string {
+    const base = `${category}:${url}:${headline}`;
+    let h = 0;
+    for (let i = 0; i < base.length; i++) {
+      h = (h << 5) - h + base.charCodeAt(i);
+      h |= 0;
+    }
+    return `fb_${h}`;
   }
 
   /** No persistent connection here — pause() skips the interval tick until resumed. */
