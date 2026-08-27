@@ -7,11 +7,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { LoginSchema, type LoginInput } from '@/modules/identity/application/schemas/auth.schema';
 import { Lock, Terminal, ShieldAlert, Cpu, CheckCircle2 } from 'lucide-react';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
+import { useOptionalToast } from '@/shared/presentation/ui/terminal-toast';
 
 function LoginForm() {
   usePageTitle('TERMINAL AUTH');
+  const toast = useOptionalToast();
   const searchParams = useSearchParams();
   const rawReturn = searchParams.get('from') || '';
+  const sessionExpired = searchParams.get('reason') === 'expired';
   const returnUrl = (() => {
     // Reject empty, protocol-relative (//evil.com), backslash-bypass (/\evil.com),
     // and any origin that doesn't match our own.
@@ -55,6 +58,16 @@ function LoginForm() {
     }, 1000);
     return () => clearInterval(timer);
   }, [cooldownSeconds]);
+
+  // Session-expired notice via the app toast system (no hardcoded banner).
+  useEffect(() => {
+    if (sessionExpired) {
+      toast?.warning(
+        'SESSION EXPIRED',
+        'Your session was revoked (password reset or admin action). Please sign in again.'
+      );
+    }
+  }, [sessionExpired, toast]);
 
   const {
     register,

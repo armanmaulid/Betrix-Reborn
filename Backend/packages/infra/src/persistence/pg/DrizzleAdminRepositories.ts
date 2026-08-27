@@ -189,7 +189,7 @@ export class DrizzleAnalyticsRepository implements IAnalyticsRepository {
    */
   async upsertRecentUsageDaily(daysBack = 3): Promise<number> {
     const result = await this.db.execute(sql`
-      insert into usage_daily (date, agent_id, chats, input_tokens, output_tokens)
+      insert into ${usageDaily} (date, agent_id, chats, input_tokens, output_tokens)
       select
         to_char(date_trunc('day', ${chatMessages.createdAt} at time zone 'utc'), 'YYYY-MM-DD')::date,
         ${chatMessages.modelUsed},

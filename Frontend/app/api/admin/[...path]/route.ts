@@ -69,15 +69,23 @@ async function handleProxy(
       signal: upstreamSignal
     });
 
-    // If backend returns a stream (e.g. audit export CSV/JSON), pipe it through
-    // without buffering the whole payload in memory.
+    // If backend returns a stream (e.g. audit export CSV/JSON, or the ops SSE
+    // feed), pipe it through without buffering the whole payload in memory.
     const upstreamContentType = backendRes.headers.get('content-type') || '';
-    if (
+    const isStream =
       upstreamContentType.includes('text/csv') ||
-      upstreamContentType.includes('application/octet-stream')
-    ) {
+      upstreamContentType.includes('application/octet-stream') ||
+      upstreamContentType.includes('text/event-stream');
+    if (isStream) {
       const responseHeaders = new Headers();
       responseHeaders.set('Content-Type', upstreamContentType);
+      // SSE must not be buffered or gzip-chunked into a single JSON blob — the
+      // EventSource on the client needs the raw framed stream to stay open.
+      if (upstreamContentType.includes('text/event-stream')) {
+        responseHeaders.set('Cache-Control', 'no-cache, no-transform');
+        responseHeaders.set('X-Accel-Buffering', 'no');
+        responseHeaders.set('Connection', 'keep-alive');
+      }
       const disposition = backendRes.headers.get('content-disposition');
       if (disposition) {
         responseHeaders.set('Content-Disposition', disposition);

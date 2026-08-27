@@ -16,46 +16,48 @@ type UpstashLike = ReturnType<typeof createRedisClient>;
  * Fail-open policy: if Redis errors, incr resolves with counter 0 so traffic
  * is NEVER blocked by an infrastructure outage; a throttled warning is logged
  * instead. RATELIMIT_BACKEND=memory keeps the old behavior explicitly.
+ *
+ * @fastify/rate-limit v11 expects a STORE CONSTRUCTOR (`new Store(globalParams)`)
+ * with `incr(key, cb, timeWindow, max)` → cb(null, {current, ttl}) — not an
+ * instance, and not a bare counter. This factory returns a class matching that
+ * contract.
  */
-class RedisRateLimitStore {
-  constructor(
-    private readonly redis: UpstashLike,
-    private readonly windowSec: number,
-    private readonly scope: string,
-    private readonly onBackendError: () => void
-  ) {}
-
-  incr(key: string, callback: (err: Error | null, counter?: number) => void): void {
-    const k = redisKeys.rateLimit(this.scope, key);
-    this.redis
-      .incr(k)
-      .then(async (current: number) => {
-        if (current === 1) {
-          try {
-            await this.redis.expire(k, this.windowSec);
-          } catch {
-            // Expiry best-effort: worst case key lives until pruned.
+function createRedisRateLimitStore(
+  redis: UpstashLike,
+  scope: string,
+  onBackendError: () => void
+) {
+  return class RedisRateLimitStore {
+    incr(
+      key: string,
+      callback: (err: Error | null, res?: { current: number; ttl: number }) => void,
+      timeWindow?: number
+    ): void {
+      const windowMs = timeWindow ?? 60000;
+      const k = redisKeys.rateLimit(scope, key);
+      redis
+        .incr(k)
+        .then(async (current: number) => {
+          if (current === 1) {
+            try {
+              await redis.expire(k, Math.ceil(windowMs / 1000));
+            } catch {
+              // Expiry best-effort: worst case key lives until pruned.
+            }
           }
-        }
-        callback(null, current);
-      })
-      .catch((err: Error) => {
-        this.onBackendError();
-        // Fail-open: counter 0 can never exceed max.
-        callback(null, 0);
-      });
-  }
+          callback(null, { current, ttl: windowMs });
+        })
+        .catch(() => {
+          onBackendError();
+          // Fail-open: counter 0 can never exceed max.
+          callback(null, { current: 0, ttl: 0 });
+        });
+    }
 
-  child(): RedisRateLimitStore {
-    return this;
-  }
-
-  reset(key: string, callback?: (err?: Error) => void): void {
-    this.redis
-      .del(redisKeys.rateLimit(this.scope, key))
-      .then(() => callback?.())
-      .catch((err: Error) => callback?.(err));
-  }
+    child(): this {
+      return this;
+    }
+  };
 }
 
 const rateLimitPluginCallback: FastifyPluginAsync = async (fastify) => {
@@ -81,7 +83,7 @@ const rateLimitPluginCallback: FastifyPluginAsync = async (fastify) => {
   if (backend === 'redis') {
     const redis = createRedisClient();
     let lastWarnAt = 0;
-    baseOptions.store = new RedisRateLimitStore(redis, Math.ceil(windowMs / 1000), 'global', () => {
+    baseOptions.store = createRedisRateLimitStore(redis, 'global', () => {
       if (Date.now() - lastWarnAt > 300_000) {
         lastWarnAt = Date.now();
         fastify.log.warn('Rate-limit Redis backend erroring — failing open (memory-less).');

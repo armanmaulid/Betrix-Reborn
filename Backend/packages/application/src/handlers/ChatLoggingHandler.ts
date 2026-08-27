@@ -14,12 +14,11 @@ export interface HandlerLogger {
   error(obj: unknown, msg?: string): void;
 }
 
+// Fallback only — real logger is always injected. No pino-pretty transport here:
+// it's a dev dep of apps/*, and under pnpm strict resolution this shared package
+// cannot resolve it (pino throws at import time before injection happens).
 const fallbackLogger: HandlerLogger = pino({
-  level: process.env.LOG_LEVEL || 'info',
-  transport:
-    process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
-      ? { target: 'pino-pretty', options: { colorize: true } }
-      : undefined
+  level: process.env.LOG_LEVEL || 'info'
 });
 
 export class ChatLoggingHandler {

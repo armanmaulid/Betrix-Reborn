@@ -14,7 +14,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const user = await verifySession(token);
   if (!user) {
-    redirect('/login');
+    // Hand off to a Route Handler: only there can the httpOnly cookie be
+    // deleted. Doing it here throws "Cookies can only be modified in a Server
+    // Action or Route Handler", and skipping it leaves a stale cookie that
+    // makes proxy.ts bounce /login straight back here (infinite loop).
+    redirect('/api/auth/clear-session');
   }
 
   return <DashboardShell>{children}</DashboardShell>;

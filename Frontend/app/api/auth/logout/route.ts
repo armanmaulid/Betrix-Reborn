@@ -10,10 +10,12 @@ export async function POST(_request: NextRequest) {
     if (token) {
       try {
         // Synchronous server logout: tell backend to revoke the session in DB
+        // No Content-Type here: Fastify 5 rejects a POST body-less request that
+        // declares application/json (FST_ERR_CTP_EMPTY_JSON_BODY → 400), which
+        // would silently skip backend revocation and leak the session row.
         await fetch(`${BACKEND_URL}/auth/logout`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`
           }
         });

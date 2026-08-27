@@ -20,8 +20,11 @@ function handleSessionExpiry(error: unknown): void {
   if (w.__betrixSessionRedirect) return;
   w.__betrixSessionRedirect = true;
 
-  const from = encodeURIComponent(current);
-  window.location.assign(`/login?from=${from}`);
+  // Route through the clear-session handler: it wipes the httpOnly cookie
+  // server-side, then lands on /login. Assigning /login directly would leave
+  // the stale cookie intact, so proxy.ts would bounce us straight back to
+  // /dashboard and re-trigger the 401 — an infinite loop after a password reset.
+  window.location.assign(`/api/auth/clear-session?from=${encodeURIComponent(current)}`);
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
