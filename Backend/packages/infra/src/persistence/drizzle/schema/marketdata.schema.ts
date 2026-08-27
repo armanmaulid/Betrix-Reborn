@@ -4,8 +4,6 @@ import {
   doublePrecision,
   bigint,
   date,
-  integer,
-  boolean,
   timestamp,
   index,
   unique
@@ -52,9 +50,7 @@ export const fxSpotPrices = contentSchema.table(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
   },
-  (t) => [
-    index('fx_spot_prices_pair_date_idx').on(t.base, t.quote, t.tradeDate)
-  ]
+  (t) => [index('fx_spot_prices_pair_date_idx').on(t.base, t.quote, t.tradeDate)]
 );
 
 // ── COT positioning ───────────────────────────────────────────────────────
@@ -75,9 +71,7 @@ export const cotPositions = contentSchema.table(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
   },
-  (t) => [
-    index('cot_positions_currency_date_idx').on(t.currency, t.tradeDate)
-  ]
+  (t) => [index('cot_positions_currency_date_idx').on(t.currency, t.tradeDate)]
 );
 
 // ── Commodities ──────────────────────────────────────────────────────────
@@ -96,9 +90,7 @@ export const commodityPrices = contentSchema.table(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
   },
-  (t) => [
-    index('commodity_prices_indicator_date_idx').on(t.indicator, t.tradeDate)
-  ]
+  (t) => [index('commodity_prices_indicator_date_idx').on(t.indicator, t.tradeDate)]
 );
 
 // Suppress unused warning for the `unique` re-export shape consistency with

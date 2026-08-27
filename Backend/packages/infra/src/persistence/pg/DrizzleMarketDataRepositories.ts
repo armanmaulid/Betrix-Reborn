@@ -57,11 +57,7 @@ export class DrizzleFxSpotPriceRepository implements IFxSpotPriceRepository {
   }
 
   async findById(id: string): Promise<FxSpotPrice | null> {
-    const rows = await this.db
-      .select()
-      .from(fxSpotPrices)
-      .where(eq(fxSpotPrices.id, id))
-      .limit(1);
+    const rows = await this.db.select().from(fxSpotPrices).where(eq(fxSpotPrices.id, id)).limit(1);
     return rows[0] ? this.mapToDomain(rows[0]) : null;
   }
 
@@ -85,7 +81,9 @@ export class DrizzleFxSpotPriceRepository implements IFxSpotPriceRepository {
     const rows = await this.db
       .select()
       .from(fxSpotPrices)
-      .where(and(eq(fxSpotPrices.base, base.toUpperCase()), eq(fxSpotPrices.quote, quote.toUpperCase())))
+      .where(
+        and(eq(fxSpotPrices.base, base.toUpperCase()), eq(fxSpotPrices.quote, quote.toUpperCase()))
+      )
       .orderBy(desc(fxSpotPrices.tradeDate))
       .limit(1);
     return rows[0] ? this.mapToDomain(rows[0]) : null;
@@ -95,7 +93,9 @@ export class DrizzleFxSpotPriceRepository implements IFxSpotPriceRepository {
     const rows = await this.db
       .select({ c: sql<number>`count(*)::int` })
       .from(fxSpotPrices)
-      .where(and(eq(fxSpotPrices.base, base.toUpperCase()), eq(fxSpotPrices.quote, quote.toUpperCase())));
+      .where(
+        and(eq(fxSpotPrices.base, base.toUpperCase()), eq(fxSpotPrices.quote, quote.toUpperCase()))
+      );
     return Number(rows[0]?.c ?? 0);
   }
 
@@ -290,11 +290,7 @@ export class DrizzleCotPositionRepository implements ICotPositionRepository {
   }
 
   async findById(id: string): Promise<CotPosition | null> {
-    const rows = await this.db
-      .select()
-      .from(cotPositions)
-      .where(eq(cotPositions.id, id))
-      .limit(1);
+    const rows = await this.db.select().from(cotPositions).where(eq(cotPositions.id, id)).limit(1);
     return rows[0] ? this.mapToDomain(rows[0]) : null;
   }
 

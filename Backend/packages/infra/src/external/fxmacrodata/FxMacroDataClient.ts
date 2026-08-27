@@ -228,16 +228,17 @@ export class FxMacroDataClient {
   }
 
   /** GET /v1/announcements/{currency}/{indicator} — historical Before/Actual values.
-   *  Premium endpoint — full history (incl. >365d USD) requires an API key.
-   *  Without one, returns [] so the calendar/refresh pass is a no-op and
-   *  the trial period is a hard gate. */
+   *  Available on the FREE tier for USD (clamped to the most recent 365 days;
+   *  older `start_date` is silently clamped server-side per the spec). Other
+   *  currencies require a paid key. Anonymous callers hit the 365-day window;
+   *  callers with a key get the full history. The client does NOT gate on
+   *  key presence — it forwards the request either way and the server decides. */
   public async fetchAnnouncements(
     currency: string,
     indicator: string,
     startDate?: string,
     endDate?: string
   ): Promise<FxMacroDataAnnouncement[]> {
-    if (!this.hasApiKey()) return [];
     const qs = new URLSearchParams();
     if (startDate) qs.set('start_date', startDate);
     if (endDate) qs.set('end_date', endDate);
@@ -253,14 +254,14 @@ export class FxMacroDataClient {
    * announcement_id. Not every indicator has a value for every
    * prediction_type; callers apply the priority rule (market_consensus first,
    * fxmacrodata as fallback) — this client returns the raw groups unfiltered.
-   * Premium endpoint — no API key → returns [].
+   * Free for USD (subject to the same 365-day window as announcements); not
+   * gated client-side.
    */
   public async fetchPredictions(
     currency: string,
     indicator: string,
     predictionType?: FxMacroDataPredictionType
   ): Promise<FxMacroDataPredictionGroup[]> {
-    if (!this.hasApiKey()) return [];
     const suffix = predictionType ? `?prediction_type=${predictionType}` : '';
     const result = await this.fetchWithRetry<{ data: FxMacroDataPredictionGroup[] }>(
       `/v1/predictions/${currency}/${indicator}${suffix}`
@@ -374,11 +375,14 @@ export class FxMacroDataClient {
   /** GET /v1/data_catalogue/{currency} — full list of indicators available
    *  for the currency (name/unit/frequency/official-forecast flag). Used to
    *  discover every indicator worth backfilling, even those not yet
-   *  scheduled in the calendar. Premium endpoint — no API key → returns []. */
-  public async fetchDataCatalogue(
-    currency: string
-  ): Promise<FxMacroDataCatalogueEntry[]> {
-    if (!this.hasApiKey()) return [];
+   *  scheduled in the calendar.
+   *
+   *  Free for USD (all USD indicators are publicly accessible per README);
+   *  other currencies require a paid key — the server enforces that and
+   *  returns 4xx, which the caller's fetchWithRetry will surface. The
+   *  client intentionally does NOT gate this so free USD catalogue
+   *  discovery keeps working. */
+  public async fetchDataCatalogue(currency: string): Promise<FxMacroDataCatalogueEntry[]> {
     const result = await this.fetchWithRetry<FxMacroDataCatalogueResponse>(
       `/v1/data_catalogue/${currency}`
     );
