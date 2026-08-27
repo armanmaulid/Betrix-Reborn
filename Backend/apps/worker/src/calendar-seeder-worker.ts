@@ -34,6 +34,20 @@ function seedYearSpan(): number[] {
 }
 
 /**
+ * Resolves the active calendar currency list. Tier 2 multi-currency: when
+ * `FXMACRODATA_CALENDAR_CURRENCIES` is set (comma-separated), it takes
+ * precedence. Otherwise we fall back to the single `FXMACRODATA_CALENDAR_CURRENCY`
+ * for backward compatibility. Always lowercased — callers uppercase at the
+ * call site for logging.
+ */
+function activeCalendarCurrencies(): string[] {
+  return (
+    env.FXMACRODATA_CALENDAR_CURRENCIES ??
+    [env.FXMACRODATA_CALENDAR_CURRENCY]
+  );
+}
+
+/**
  * CalendarSeederWorker — guarantees the economic calendar SCHEDULE exists.
  *
  * Split of duties (deliberate, no overlap):
@@ -111,7 +125,7 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
    * stored row yet inside the three-year window.
    */
   public async seedStartupYears(): Promise<void> {
-    const currency = env.FXMACRODATA_CALENDAR_CURRENCY.toUpperCase();
+    const currencies = activeCalendarCurrencies();
 
     // T6.3 — crash-loop quota guard: skip the upstream fetch when a successful
     // full seed happened within CALENDAR_SEED_MIN_GAP_HOURS (Redis-persisted).
@@ -130,42 +144,48 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
 
     const years = seedYearSpan();
 
-    try {
-      const schedule = await this.fetchSchedule();
-
-      // Do NOT pre-filter by "missing day": the old filter compared each event's
-      // reference-period `date` against a set keyed on the *publication* day
-      // (announcementUnix) — different things — and multiple distinct events can
-      // legitimately share a reference period (e.g. CPI + PPI both for "2025-03"),
-      // so it could silently skip real events. Idempotence is already guaranteed
-      // by the primary key + saveMany(... onConflictDoNothing); just insert all
-      // and let duplicates no-op.
-      const saved = await this.calendarRepo.saveMany(toScheduleOnlyEvents(schedule, currency));
-      this.processedCount += saved;
-
-      const perYear = new Map<number, number>();
-      for (const e of schedule) {
-        const y = Number(e.date?.slice(0, 4));
-        if (!Number.isNaN(y)) perYear.set(y, (perYear.get(y) ?? 0) + 1);
-      }
-      logger.info(
-        `[CALENDAR SEED] Startup seed ${years.join('/')}: ` +
-          `schedule=${schedule.length}, inserted=${saved} ` +
-          `(${[...perYear.entries()].map(([y, n]) => `${y}:${n}`).join(', ') || 'empty'}).`
-      );
-
+    for (const cur of currencies) {
       try {
-        await this.markerRedis.set(markerKey, String(Date.now()), {
-          ex: Math.ceil(gapHours * 3600)
-        });
-      } catch {
-        // Marker write failure is non-fatal.
+        const schedule = await this.fetchSchedule(cur);
+
+        // Do NOT pre-filter by "missing day": the old filter compared each event's
+        // reference-period `date` against a set keyed on the *publication* day
+        // (announcementUnix) — different things — and multiple distinct events can
+        // legitimately share a reference period (e.g. CPI + PPI both for "2025-03"),
+        // so it could silently skip real events. Idempotence is already guaranteed
+        // by the primary key + saveMany(... onConflictDoNothing); just insert all
+        // and let duplicates no-op.
+        const saved = await this.calendarRepo.saveMany(toScheduleOnlyEvents(schedule, cur));
+        this.processedCount += saved;
+
+        const perYear = new Map<number, number>();
+        for (const e of schedule) {
+          const y = Number(e.date?.slice(0, 4));
+          if (!Number.isNaN(y)) perYear.set(y, (perYear.get(y) ?? 0) + 1);
+        }
+        logger.info(
+          `[CALENDAR SEED] Startup seed ${cur.toUpperCase()} ${years.join('/')}: ` +
+            `schedule=${schedule.length}, inserted=${saved} ` +
+            `(${[...perYear.entries()].map(([y, n]) => `${y}:${n}`).join(', ') || 'empty'}).`
+        );
+      } catch (err: any) {
+        // Per-currency failure: log and continue with the next currency so
+        // a single 4xx (e.g. non-USD without a paid key) doesn't block the rest.
+        this.errorCount += 1;
+        this.lastError = err.message;
+        logger.error(
+          { err: err.message, currency: cur },
+          '[CALENDAR SEED] Startup seeding failed for currency — continuing with next.'
+        );
       }
-    } catch (err: any) {
-      // Never throw — an FXMacroData outage must not crash the worker process.
-      this.errorCount += 1;
-      this.lastError = err.message;
-      logger.error({ err: err.message }, '[CALENDAR SEED] Startup seeding failed.');
+    }
+
+    try {
+      await this.markerRedis.set(markerKey, String(Date.now()), {
+        ex: Math.ceil(gapHours * 3600)
+      });
+    } catch {
+      // Marker write failure is non-fatal.
     }
   }
 
