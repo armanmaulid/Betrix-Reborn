@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { Timer } from 'lucide-react';
-import { useSystemMetrics } from '@/modules/analytics/application/queries/use-metrics';
+import { useTelemetry } from '../telemetry-context';
 import { formatUptime } from '@/shared/utils';
 
 export const UptimeItem = React.memo(function UptimeItem() {
-  const { metrics, isLoading, isError } = useSystemMetrics(15000);
+  const { metrics, metricsLoading: isLoading, metricsError: isError } = useTelemetry();
 
   const uptime = metrics?.uptimeSeconds;
 

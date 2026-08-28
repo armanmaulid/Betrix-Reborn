@@ -3,11 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { Radio } from 'lucide-react';
-import { useWorkersQuery } from '@/modules/operations/application/queries/use-workers';
+import { useTelemetry } from '../telemetry-context';
 import { getWorkerStats } from '@/shared/utils';
 
 export const StreamStatusItem = React.memo(function StreamStatusItem() {
-  const { data: workers = [], isError: isWorkersError } = useWorkersQuery(10000);
+  const { workers, workersError: isWorkersError } = useTelemetry();
   const { isWsLive } = getWorkerStats(workers);
 
   return (

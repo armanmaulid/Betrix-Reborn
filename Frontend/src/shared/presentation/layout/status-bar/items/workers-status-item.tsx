@@ -3,11 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { Wrench } from 'lucide-react';
-import { useWorkersQuery } from '@/modules/operations/application/queries/use-workers';
+import { useTelemetry } from '../telemetry-context';
 import { getWorkerStats } from '@/shared/utils';
 
 export const WorkersStatusItem = React.memo(function WorkersStatusItem() {
-  const { data: workers = [], isLoading, isError } = useWorkersQuery(10000);
+  const { workers, workersLoading: isLoading, workersError: isError } = useTelemetry();
   const { running, total } = getWorkerStats(workers);
 
   return (

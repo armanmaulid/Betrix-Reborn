@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { Cpu } from 'lucide-react';
-import { useSystemMetrics } from '@/modules/analytics/application/queries/use-metrics';
+import { useTelemetry } from '../telemetry-context';
 import { formatUptime } from '@/shared/utils';
 
 export const BackendRuntimeCard = React.memo(function BackendRuntimeCard() {
-  const { metrics } = useSystemMetrics(15000);
+  const { metrics } = useTelemetry();
 
   const uptime = metrics?.uptimeSeconds;
 

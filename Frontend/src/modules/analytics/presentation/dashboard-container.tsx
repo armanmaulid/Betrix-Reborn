@@ -11,7 +11,7 @@ import { Cpu, Terminal, RefreshCw } from 'lucide-react';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
 import { PageHeader } from '@/shared/presentation/ui/page-header';
-import { useOpsStream } from '@analytics/application/queries/use-ops-stream';
+import { useTelemetry } from '@/shared/presentation/layout/status-bar/telemetry-context';
 
 export function DashboardContainer() {
   usePageTitle('SYSTEM OVERVIEW');
@@ -27,7 +27,7 @@ export function DashboardContainer() {
     isError: isMetricsError,
     isRefetching: isMetricsRefetching,
     refetch: refetchMetrics
-  } = useSystemMetrics(15000);
+  } = useSystemMetrics();
 
   const {
     data: analytics,
@@ -56,8 +56,10 @@ export function DashboardContainer() {
     }
   };
 
-  // Live push channel — replaces the old 15s metrics polling entirely.
-  const { connected: isMetricsStreaming } = useOpsStream();
+  // Live push channel — owned globally by TelemetryProvider (the status bar
+  // keeps the SSE open on every route); this just reads the connection state
+  // so the gauges can label themselves "SSE PUSH" vs "POLLING".
+  const { metricsStreaming: isMetricsStreaming } = useTelemetry();
 
   return (
     <div className="space-y-3 font-mono">

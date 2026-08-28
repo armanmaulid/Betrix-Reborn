@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Wrench } from 'lucide-react';
-import { useWorkersQuery } from '@/modules/operations/application/queries/use-workers';
+import { useTelemetry } from '../telemetry-context';
 import { getWorkerStats } from '@/shared/utils';
 
 interface WorkersCardProps {
@@ -11,7 +11,7 @@ interface WorkersCardProps {
 }
 
 export const WorkersCard = React.memo(function WorkersCard({ onClose }: WorkersCardProps) {
-  const { data: workers = [], isLoading, isError } = useWorkersQuery(10000);
+  const { workers, workersLoading: isLoading, workersError: isError } = useTelemetry();
   const { running, total } = getWorkerStats(workers);
   const isUnreachable = isError || (!isLoading && workers.length === 0);
 
@@ -43,8 +43,8 @@ export const WorkersCard = React.memo(function WorkersCard({ onClose }: WorkersC
         )}
       </div>
       <div className="space-y-1 pt-1 border-t border-border/40 text-[10px]">
-        {workers.slice(0, 3).map((w) => (
-          <div key={w.id} className="flex items-center justify-between">
+        {workers.slice(0, 3).map((w, index) => (
+          <div key={w.id ?? `worker-${index}`} className="flex items-center justify-between">
             <span className="truncate max-w-[110px] text-muted-foreground">{w.name}</span>
             <span
               className={`text-[9px] px-1 font-bold ${
@@ -55,7 +55,7 @@ export const WorkersCard = React.memo(function WorkersCard({ onClose }: WorkersC
                     : 'text-negative'
               }`}
             >
-              {w.status.toUpperCase()}
+              {w.status?.toUpperCase() ?? 'UNKNOWN'}
             </span>
           </div>
         ))}

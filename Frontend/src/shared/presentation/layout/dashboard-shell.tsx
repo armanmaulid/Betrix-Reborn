@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Providers } from './providers';
 import { Header } from './header';
 import { Sidebar } from './sidebar';
 import { StatusBar } from './status-bar';
@@ -81,27 +80,25 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <Providers>
-      <div className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground select-none">
-        {/* Top Bloomberg Terminal Header */}
-        <Header onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} />
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground select-none">
+      {/* Top Bloomberg Terminal Header */}
+      <Header onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} />
 
-        {/* Main Terminal Shell: Sidebar + Content */}
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar isCollapsed={isSidebarCollapsed} onToggleCollapse={handleToggleSidebar} />
+      {/* Main Terminal Shell: Sidebar + Content */}
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar isCollapsed={isSidebarCollapsed} onToggleCollapse={handleToggleSidebar} />
 
-          {/* Dynamic Content Viewport */}
-          <main className="flex-1 overflow-y-auto bg-background p-4 sm:p-6 select-text">
-            {children}
-          </main>
-        </div>
-
-        {/* Centralized Bottom Terminal Status Bar */}
-        <StatusBar />
-
-        {/* Global Keyboard Command Palette */}
-        <CommandPalette isOpen={isCommandPaletteOpen} onClose={handleCloseCommandPalette} />
+        {/* Dynamic Content Viewport */}
+        <main className="flex-1 overflow-y-auto bg-background p-4 sm:p-6 select-text">
+          {children}
+        </main>
       </div>
-    </Providers>
+
+      {/* Centralized Bottom Terminal Status Bar */}
+      <StatusBar />
+
+      {/* Global Keyboard Command Palette */}
+      <CommandPalette isOpen={isCommandPaletteOpen} onClose={handleCloseCommandPalette} />
+    </div>
   );
 }

@@ -24,8 +24,7 @@ interface LiveGaugesProps {
   };
   isLoading?: boolean;
   isError?: boolean;
-  intervalMs?: number;
-  /** True when data arrives via the ops SSE stream instead of polling. */
+  /** True when the ops SSE channel is connected (metrics arrive via push). */
   isStreaming?: boolean;
 }
 
@@ -34,7 +33,6 @@ export function LiveGauges({
   deltas,
   isLoading,
   isError,
-  intervalMs = 15000,
   isStreaming = false
 }: LiveGaugesProps) {
   if (isLoading && !metrics) {
@@ -75,7 +73,6 @@ export function LiveGauges({
     data.dbPoolActive,
     data.dbPoolIdle
   );
-  const intervalSeconds = Math.round(intervalMs / 1000);
 
   const renderDelta = (delta: number) => {
     if (!delta || delta === 0) return null;
@@ -102,12 +99,10 @@ export function LiveGauges({
       <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground uppercase tracking-wider">
         <span className="flex items-center gap-1.5 text-accent font-bold">
           <span className="h-2 w-2 rounded-full bg-accent animate-pulse"></span>
-          {isStreaming
-            ? '[LIVE GAUGES // SSE PUSH]'
-            : `[LIVE GAUGES // ${intervalSeconds}S POLLING INTERVAL]`}
+          {isStreaming ? '[LIVE GAUGES // SSE PUSH]' : '[LIVE GAUGES // IDLE]'}
         </span>
         <span className="text-[10px] text-muted-foreground">
-          {isStreaming ? 'SERVER PUSH ACTIVE' : 'AUTO-REFRESH ACTIVE'}
+          {isStreaming ? 'SERVER PUSH ACTIVE' : 'STREAM DISCONNECTED'}
         </span>
       </div>
 

@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { Database } from 'lucide-react';
-import { useSystemMetrics } from '@/modules/analytics/application/queries/use-metrics';
+import { useTelemetry } from '../telemetry-context';
 import { getDbPoolStats } from '@/shared/utils';
 
 export const PgPoolCard = React.memo(function PgPoolCard() {
-  const { metrics, isLoading, isError } = useSystemMetrics(15000);
+  const { metrics, metricsLoading: isLoading, metricsError: isError } = useTelemetry();
   const { active, idle, total, usagePct } = getDbPoolStats(
     metrics?.dbPoolActive,
     metrics?.dbPoolIdle

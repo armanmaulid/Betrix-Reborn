@@ -2,6 +2,8 @@ import React from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { DashboardShell } from '@/shared/presentation/layout/dashboard-shell';
+import { Providers } from '@/shared/presentation/layout/providers';
+import { TelemetryProvider } from './telemetry-provider';
 import { verifySession } from '@/lib/server-auth';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -21,5 +23,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/api/auth/clear-session');
   }
 
-  return <DashboardShell>{children}</DashboardShell>;
+  return (
+    <Providers>
+      <TelemetryProvider>
+        <DashboardShell>{children}</DashboardShell>
+      </TelemetryProvider>
+    </Providers>
+  );
 }

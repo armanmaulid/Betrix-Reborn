@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { Zap } from 'lucide-react';
-import { useSystemMetrics } from '@/modules/analytics/application/queries/use-metrics';
+import { useTelemetry } from '../telemetry-context';
 
 export const RedisStatusItem = React.memo(function RedisStatusItem() {
-  const { metrics, isLoading, isError } = useSystemMetrics(15000);
+  const { metrics, metricsLoading: isLoading, metricsError: isError } = useTelemetry();
 
   const isHealthy = metrics?.redisStatus === 'healthy';
 

@@ -59,6 +59,7 @@ Thumbs.db
 .windsurf/
 .gemini/
 .agent/
+.codebase-memory/
 docs/
 
 # Security, Certificates & Sensitive Keys
