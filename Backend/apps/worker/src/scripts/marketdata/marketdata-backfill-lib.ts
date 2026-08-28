@@ -51,6 +51,19 @@ export function premiumGate(logger: pino.Logger, featureLabel: string): boolean 
   return false;
 }
 
+/**
+ * Diagnostic snapshot printed at the top of every premium script so the
+ * operator can immediately see whether the key actually reached the script
+ * (and which base URL it is using) without having to add logging manually.
+ * Does NOT print the key value — only its length and presence. */
+export function premiumEnvDiagnostic(logger: pino.Logger, featureLabel: string): void {
+  const keyLen = env.FXMACRODATA_API_KEY ? env.FXMACRODATA_API_KEY.length : 0;
+  const base = env.FXMACRODATA_BASE_URL;
+  logger.info(
+    `[${featureLabel}] env.FXMACRODATA_API_KEY ${keyLen > 0 ? `present (len=${keyLen})` : 'MISSING'} · baseUrl=${base}`
+  );
+}
+
 // ── FX spot prices ────────────────────────────────────────────────────────
 export class FxSpotPriceBackfiller {
   private pool = createPgPool(env.DATABASE_URL, 5);

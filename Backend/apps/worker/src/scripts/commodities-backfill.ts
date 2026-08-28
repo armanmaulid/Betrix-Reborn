@@ -15,6 +15,9 @@ const logger = pino({
   transport: { target: 'pino-pretty', options: { colorize: true } }
 });
 
+import { premiumEnvDiagnostic } from './marketdata/marketdata-backfill-lib.js';
+premiumEnvDiagnostic(logger, 'COMMODITIES');
+
 type CommodityIndicator = 'gold' | 'silver' | 'platinum';
 const DEFAULT: CommodityIndicator[] = ['gold', 'silver', 'platinum'];
 
