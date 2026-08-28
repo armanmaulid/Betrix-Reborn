@@ -16,6 +16,9 @@ const logger = pino({
   transport: { target: 'pino-pretty', options: { colorize: true } }
 });
 
+import { premiumEnvDiagnostic } from './marketdata/marketdata-backfill-lib.js';
+premiumEnvDiagnostic(logger, 'FX');
+
 const DEFAULT_PAIRS: Array<{ base: string; quote: string }> = [
   { base: 'EUR', quote: 'USD' },
   { base: 'GBP', quote: 'USD' },

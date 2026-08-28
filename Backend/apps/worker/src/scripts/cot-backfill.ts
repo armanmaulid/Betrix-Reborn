@@ -15,6 +15,9 @@ const logger = pino({
   transport: { target: 'pino-pretty', options: { colorize: true } }
 });
 
+import { premiumEnvDiagnostic } from './marketdata/marketdata-backfill-lib.js';
+premiumEnvDiagnostic(logger, 'COT');
+
 const DEFAULT_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'];
 
 function parseCurrencies(): string[] {

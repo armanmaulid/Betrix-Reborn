@@ -16,6 +16,9 @@ const logger = pino({
   transport: { target: 'pino-pretty', options: { colorize: true } }
 });
 
+import { premiumEnvDiagnostic } from './marketdata/marketdata-backfill-lib.js';
+premiumEnvDiagnostic(logger, 'USD CATALOGUE');
+
 async function main(): Promise<void> {
   const backfiller = new UsdCatalogueBackfiller(logger);
   try {
