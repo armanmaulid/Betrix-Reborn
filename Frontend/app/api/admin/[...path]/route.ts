@@ -26,6 +26,13 @@ async function handleProxy(
     const searchParams = request.nextUrl.searchParams.toString();
     const targetUrl = `${BACKEND_URL}/admin/${subPath}${searchParams ? `?${searchParams}` : ''}`;
 
+    // Known SSE sub-paths must never inherit the REST timeout below — a
+    // long-lived stream hitting the 30s cap gets cut mid-chunk, which the
+    // browser surfaces as ERR_INCOMPLETE_CHUNKED_ENCODING and forces a
+    // reconnect loop. We can't check the upstream Content-Type before the
+    // fetch happens, so we key off the known streaming path instead.
+    const isKnownStreamPath = safePath.includes('stream');
+
     const headers: Record<string, string> = {
       Authorization: `Bearer ${token}`,
       Accept: 'application/json'
@@ -54,10 +61,15 @@ async function handleProxy(
       } catch {}
     }
 
-    // Propagate the client's disconnect while capping total upstream time.
+    // Propagate the client's disconnect while capping total upstream time —
+    // but only for regular REST calls. SSE streams are long-lived by design;
+    // capping them at 30s severs the connection mid-chunk and the browser
+    // reports ERR_INCOMPLETE_CHUNKED_ENCODING, then EventSource reconnects
+    // and repeats the cycle every 30s. Streams only get the client's own
+    // abort signal, so they stay open as long as the browser keeps listening.
     // Node 22 supports AbortSignal.any; fall back to just request.signal otherwise.
     const upstreamSignal =
-      typeof AbortSignal.any === 'function'
+      !isKnownStreamPath && typeof AbortSignal.any === 'function'
         ? AbortSignal.any([request.signal, AbortSignal.timeout(30000)])
         : request.signal;
 
