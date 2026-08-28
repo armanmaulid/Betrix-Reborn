@@ -172,19 +172,31 @@ export class FxMacroDataClient {
     private readonly sseReconnectDelayMs: number = env.FXMACRODATA_SSE_RECONNECT_DELAY_MS
   ) {}
 
-  private headers(): Record<string, string> {
-    return this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {};
+  /**
+   * FXMacroData authenticates via a query parameter (`?api_key=...`), not an
+   * Authorization header — confirmed against the vendor's own quickstart
+   * (`curl ".../policy_rate?api_key=YOUR_API_KEY"`). Sending `Authorization:
+   * Bearer` (the previous implementation) is simply ignored by the server:
+   * free USD calls still succeed with no key at all, which is why this went
+   * unnoticed — but anything that actually requires the key (SSE stream,
+   * non-USD premium endpoints) 401s every time. Centralized here (via
+   * `withApiKey`) rather than in each of the 7 fetch* methods, so no caller
+   * can forget it and no caller can double-apply it.
+   */
+  private withApiKey(url: URL): URL {
+    if (this.apiKey) url.searchParams.set('api_key', this.apiKey);
+    return url;
   }
 
   private async fetchWithRetry<T>(path: string): Promise<T> {
     let lastError: Error = new Error(`FXMacroData request failed: ${path}`);
+    const url = this.withApiKey(new URL(path, this.baseUrl));
 
     for (let attempt = 0; attempt <= this.maxRetryAttempts; attempt++) {
       try {
         // Per-attempt hard timeout — retries with backoff are useless against
         // a hung TCP connection without one.
-        const resp = await fetch(`${this.baseUrl}${path}`, {
-          headers: this.headers(),
+        const resp = await fetch(url, {
           signal: AbortSignal.timeout(10_000)
         });
 
@@ -302,8 +314,9 @@ export class FxMacroDataClient {
       abortController = new AbortController();
 
       try {
-        const resp = await fetch(`${this.baseUrl}/v1/stream/events`, {
-          headers: { ...this.headers(), Accept: 'text/event-stream' },
+        const streamUrl = this.withApiKey(new URL('/v1/stream/events', this.baseUrl));
+        const resp = await fetch(streamUrl, {
+          headers: { Accept: 'text/event-stream' },
           signal: abortController.signal
         });
 
