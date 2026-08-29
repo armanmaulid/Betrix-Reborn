@@ -23,9 +23,19 @@ declare module 'fastify' {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
+  interface FastifyRequest {
+    // P18 — typed accessor for the live user record `authenticate()` looked
+    // up. Replaces the `(request as ...).authUser` casts that used to
+    // deoptimize V8's hidden classes.
+    authUser: { id: string; isAdmin: boolean; status: string } | null;
+  }
 }
 
 const authPluginCallback: FastifyPluginAsync = async (fastify) => {
+  // P18 — register the request decorator with a typed default so the lookup
+  // is allocation-free and V8 keeps a single hidden class for the request.
+  fastify.decorateRequest('authUser', null);
+
   // 1. Register Fastify JWT
   await fastify.register(fastifyJwt, {
     secret: env.JWT_SECRET,
@@ -60,7 +70,7 @@ const authPluginCallback: FastifyPluginAsync = async (fastify) => {
     if (!user || user.status !== 'active') {
       throw new UnauthorizedError('Account is not active. Please contact support.');
     }
-    (request as FastifyRequest & { authUser?: unknown }).authUser = user;
+    request.authUser = user ? { id: user.id, isAdmin: user.isAdmin, status: user.status } : null;
   });
 
   // 3. Decorate fastify.requireAdmin (Role-Based Access Control)
@@ -69,12 +79,10 @@ const authPluginCallback: FastifyPluginAsync = async (fastify) => {
 
     // Authoritative role check from DB — JWT claim can be up to 7 days stale.
     // Reuse the user authenticate() already loaded when possible.
-    let user = (request as FastifyRequest & { authUser?: { isAdmin?: boolean } }).authUser as
-      { isAdmin?: boolean } | undefined;
+    let user = request.authUser;
     if (!user) {
-      user = (await fastify.container.repositories.userRepo.findById(
-        request.user.userId
-      )) as unknown as { isAdmin?: boolean } | undefined;
+      const found = await fastify.container.repositories.userRepo.findById(request.user.userId);
+      user = found ? { id: found.id, isAdmin: found.isAdmin, status: found.status } : null;
     }
     if (!user?.isAdmin) {
       throw new ForbiddenError('Administrative privileges required for this action.');

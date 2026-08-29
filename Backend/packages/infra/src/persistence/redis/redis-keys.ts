@@ -10,7 +10,9 @@
  *  - Every SET carries a TTL except `ops:*history` and `idem:*`.
  *  - Tier mapping: R0 cache-volatile · R1 auth-gate · R2 coordination.
  */
-const ENV = process.env.NODE_ENV || 'development';
+import { env } from '@betrix/config';
+
+const ENV = env.NODE_ENV;
 
 export const redisKeys = {
   // ── R0 CACHE-VOLATILE ────────────────────────────────────────────────

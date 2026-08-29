@@ -6,6 +6,7 @@ import {
   ThinkingFilter
 } from '@betrix/domain';
 import { AppError } from '@betrix/core';
+import { env } from '@betrix/config';
 
 export class AiGatewayClient implements IAiGateway {
   private readonly baseUrl: string;
@@ -163,7 +164,7 @@ export class AiGatewayClient implements IAiGateway {
       // BILLING_SOURCE=estimate is forced.
       const estimatedInput = Math.ceil(JSON.stringify(request.messages).length / 4);
       const estimatedOutput = Math.ceil(fullContent.length / 4);
-      const preferProvider = (process.env.BILLING_SOURCE || 'provider') !== 'estimate';
+      const preferProvider = env.BILLING_SOURCE !== 'estimate';
       const realInput = providerUsage?.inputTokens;
       const realOutput = providerUsage?.outputTokens;
       const inputTokens = preferProvider && realInput ? realInput : estimatedInput;

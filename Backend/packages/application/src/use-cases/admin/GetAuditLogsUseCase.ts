@@ -1,4 +1,5 @@
 import { IAdminActionRepository, IUserRepository, AdminAction } from '@betrix/domain';
+import { isUuid } from '@betrix/core';
 
 export interface EnrichedAdminAction {
   id: string;
@@ -46,11 +47,10 @@ export class GetAuditLogsUseCase {
     // query, instead of one findById per row (N+1).
     // Filter to valid UUIDs only — targetId can be non-UUID (symbol names,
     // worker IDs, etc.) which would crash the UUID column query.
-    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const idsOnPage = new Set<string>();
     for (const a of paginated.data) {
-      if (UUID_RE.test(a.adminId)) idsOnPage.add(a.adminId);
-      if (UUID_RE.test(a.targetId)) idsOnPage.add(a.targetId);
+      if (isUuid(a.adminId)) idsOnPage.add(a.adminId);
+      if (isUuid(a.targetId)) idsOnPage.add(a.targetId);
     }
     if (idsOnPage.size === 0) {
       return {

@@ -82,19 +82,19 @@ export class AuthService {
 
   /**
    * Sign a JWT token with the given payload.
-   * The signing function is provided by the composition root (Fastify JWT plugin).
-   * This centralizes JWT payload construction — no duplication across auth routes.
+   * P19 — pure mapper from the domain user/session to the JWT payload. The
+   * composition root (`apps/api`) does the actual signing via `fastify.jwt.sign`,
+   * which keeps the application layer free of any Fastify dependency.
    */
-  public signJwt(
+  public toJwtPayload(
     user: { id: string; email: string; isAdmin: boolean },
-    session: { token: string },
-    signFn: (payload: any) => string
-  ): string {
-    return signFn({
+    session: { token: string }
+  ): { userId: string; sessionId: string; email: string; isAdmin: boolean } {
+    return {
       userId: user.id,
       sessionId: session.token,
       email: user.email,
       isAdmin: user.isAdmin
-    });
+    };
   }
 }

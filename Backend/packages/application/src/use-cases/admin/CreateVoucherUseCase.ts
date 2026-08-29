@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { generateSecureToken } from '@betrix/core';
+import { generateSecureToken, isUuid } from '@betrix/core';
 import {
   IVoucherRepository,
   IAdminActionRepository,
@@ -23,13 +23,13 @@ export class CreateVoucherUseCase {
       ? dto.code.trim().toUpperCase()
       : `BTX-${generateSecureToken(8).toUpperCase()}`;
 
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(adminId);
+    const isAdminUuid = isUuid(adminId);
 
     const voucher = new CreditVoucher({
       id: randomUUID(),
       code: voucherCode,
       amount: dto.amount,
-      createdById: isUuid ? adminId : null,
+      createdById: isAdminUuid ? adminId : null,
       isRedeemed: false,
       expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
       createdAt: new Date()

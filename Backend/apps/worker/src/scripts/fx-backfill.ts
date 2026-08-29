@@ -10,6 +10,7 @@
 import pino from 'pino';
 import { env } from '@betrix/config';
 import { FxSpotPriceBackfiller } from './marketdata/marketdata-backfill-lib.js';
+import { parseList } from '../shared/parseList.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -29,26 +30,24 @@ const DEFAULT_PAIRS: Array<{ base: string; quote: string }> = [
   { base: 'USD', quote: 'CAD' }
 ];
 
-function parsePairs(): Array<{ base: string; quote: string }> {
-  const envPairs = process.env.FX_BACKFILL_PAIRS;
-  if (!envPairs) return DEFAULT_PAIRS;
-  return envPairs
-    .split(',')
-    .map((s) => s.trim().toUpperCase())
-    .filter(Boolean)
-    .map((s) => {
-      if (s.length !== 6)
-        throw new Error(`FX_BACKFILL_PAIRS: expected BASE+QUOTE 6 chars, got "${s}"`);
-      return { base: s.slice(0, 3), quote: s.slice(3, 6) };
-    });
-}
-
 async function main(): Promise<void> {
   const currentYear = new Date().getUTCFullYear();
   const years = Number(process.env.FX_BACKFILL_YEARS ?? '5');
   const startYear = currentYear - years;
   const endYear = currentYear;
-  const pairs = parsePairs();
+
+  // W4 — parse the comma-separated list once, then split each 6-char token
+  // into a {base, quote} pair (throws on malformed input, matching the
+  // original strict behavior).
+  const pairStrings = parseList(process.env.FX_BACKFILL_PAIRS, {
+    transform: (s) => s.toUpperCase(),
+    fallback: DEFAULT_PAIRS.map((p) => p.base + p.quote)
+  });
+  const pairs = pairStrings.map((s) => {
+    if (s.length !== 6)
+      throw new Error(`FX_BACKFILL_PAIRS: expected BASE+QUOTE 6 chars, got "${s}"`);
+    return { base: s.slice(0, 3), quote: s.slice(3, 6) };
+  });
   const includeTechnical = (process.env.FX_BACKFILL_TECHNICAL ?? 'true') === 'true';
 
   const backfiller = new FxSpotPriceBackfiller(logger);

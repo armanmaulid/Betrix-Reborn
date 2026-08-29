@@ -9,6 +9,7 @@
 import pino from 'pino';
 import { env } from '@betrix/config';
 import { CommodityPriceBackfiller } from './marketdata/marketdata-backfill-lib.js';
+import { parseList } from '../shared/parseList.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -19,24 +20,23 @@ import { premiumEnvDiagnostic } from './marketdata/marketdata-backfill-lib.js';
 premiumEnvDiagnostic(logger, 'COMMODITIES');
 
 type CommodityIndicator = 'gold' | 'silver' | 'platinum';
-const DEFAULT: CommodityIndicator[] = ['gold', 'silver', 'platinum'];
+const VALID_INDICATORS = [
+  'gold',
+  'silver',
+  'platinum'
+] as const satisfies readonly CommodityIndicator[];
 
-function parseIndicators(): CommodityIndicator[] {
-  const raw = process.env.COMMODITIES_BACKFILL_LIST;
-  if (!raw) return DEFAULT;
-  const valid: CommodityIndicator[] = ['gold', 'silver', 'platinum'];
-  return raw
-    .split(',')
-    .map((s) => s.trim().toLowerCase() as CommodityIndicator)
-    .filter((s) => valid.includes(s));
-}
+const indicators = parseList<CommodityIndicator>(process.env.COMMODITIES_BACKFILL_LIST, {
+  transform: (s) => s.toLowerCase() as CommodityIndicator,
+  validate: (s) => (VALID_INDICATORS as readonly string[]).includes(s),
+  fallback: ['gold', 'silver', 'platinum']
+});
 
 async function main(): Promise<void> {
   const currentYear = new Date().getUTCFullYear();
   const years = Number(process.env.COMMODITIES_BACKFILL_YEARS ?? '5');
   const startYear = currentYear - years;
   const endYear = currentYear;
-  const indicators = parseIndicators();
 
   const backfiller = new CommodityPriceBackfiller(logger);
   try {

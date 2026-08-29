@@ -43,7 +43,7 @@ These were executed and committed before this doc was written. Line numbers belo
 > Updated: 2026-08-29. Use this as the single source of truth for what is fixed.
 > Legend: ✅ Done · 🔄 In Progress · ⬜ Not executed · 🔒 Keep (legit, no change needed)
 > Waves: **W1** security+correctness · **W2** dedup (0 new deps) · **W3** structural/cleanup
-> **Status (2026-08-29):** W1 complete (P1, P2, P3, P6, P9, P10 done; P13 Redis-native deferred). Pre-commit validation: `tsc` build PASS, ESLint 0 errors, Prettier clean, `vitest` domain 44 + application 28 pass; api/infra integration tests fail only on `ECONNREFUSED` (no Postgres/Redis in sandbox).
+> **Status (2026-08-29):** W1 complete (P1, P2, P3, P6, P9, P10 done; P13 Redis-native deferred). **W2A (quick dedup) complete** (A2, A5, I3, W4, P7, P12, P17, P18, P19 done; P20 deferred — tangled health routes + locked test). Pre-commit validation: `tsc` build (all 7 projects) PASS, ESLint 0 errors, Prettier clean, `vitest` domain 44 + application 28 pass.
 
 | Finding | Area | Status |
 |---------|------|--------|
@@ -61,21 +61,21 @@ These were executed and committed before this doc was written. Line numbers belo
 | P10 (LogController) | api | ✅ Done (W1) — `ApiLogController` subclass in `server.ts`, `onResponse` hook removed |
 | P2 (SSE frame dup) | api | ✅ Done (W1) — shared `sseFrame()` helper in `sse.plugin.ts`, used by hub + `chat.routes` |
 | A1 (Value.Decode) | app | ⬜ Not executed — W2 (high) |
-| A2 (UUID regex) | app | ⬜ Not executed — W2 |
-| A5 (switch→table) | app | ⬜ Not executed — W2 |
+| A2 (UUID regex) | app | ✅ Done (W2A) — shared `isUuid()` in `@betrix/core`; `FormatRegistry.Set('uuid')` registered in `common.schema.ts` |
+| A5 (switch→table) | app | ✅ Done (W2A) — `Record<WorkerAction, …>` lookup tables in `WorkerManagerService`; new actions fail the build |
 | I1 (SSE parser dup) | infra | ⬜ Not executed — W2 |
-| I3 (process.env) | infra | ⬜ Not executed — W2 |
+| I3 (process.env) | infra | ✅ Done (W2A) — `redis-keys.ts` / `AiGatewayClient` / `RedisMarketDataRepository` now read `env` from `@betrix/config` |
 | W3 (backfillers) | worker | ⬜ Not executed — W2 (high) |
-| W4 (env parsers) | worker | ⬜ Not executed — W2 |
-| P7 (query defaults) | api | ⬜ Not executed — W2 |
+| W4 (env parsers) | worker | ✅ Done (W2A) — shared `parseList()` in `apps/worker/src/shared/parseList.ts`; 3 backfill scripts use it (cot/fx/commodities) |
+| P7 (query defaults) | api | ✅ Done (W2A) — `page||1;limit||20` → `{ page = 1, limit = 20 } = request.query` in admin + me routes |
 | P8 (error handler) | api | ⬜ Not executed — W2 |
 | P11 (rate-limit store) | api | ⬜ Not executed — W2 (brute-force) |
-| P12 (CORS) | api | ⬜ Not executed — W2 |
+| P12 (CORS) | api | ✅ Done (W2A) — `origin: isDev || isWildcard ? true : allowedOrigins` (native `@fastify/cors` matching) |
 | P14 (2nd redis) | api | ⬜ Not executed — W2 |
-| P17 (any types) | api | ⬜ Not executed — W2 |
-| P18 (authUser cast) | api | ⬜ Not executed — W2 |
-| P19 (jwt bound) | api | ⬜ Not executed — W2 |
-| P20 (health) | api | ⬜ Not executed — W2 |
+| P17 (any types) | api | ✅ Done (W2A) — `pgPool`/`redis` typed via `ReturnType<typeof createPgPool/createRedisClient>`; Upstash REST has no `quit()` so teardown unchanged |
+| P18 (authUser cast) | api | ✅ Done (W2A) — `fastify.decorateRequest('authUser', null)` + typed `FastifyRequest.authUser` |
+| P19 (jwt bound) | api | ✅ Done (W2A) — `AuthService.toJwtPayload()` returns payload; routes sign via `fastify.jwt.sign(payload)` |
+| P20 (health) | api | ⬜ Deferred — health-route paths tangled (`/api/v1/health` and `/api/v1/health/deep` are both wrong: prefix is `/health` and the deep route uses `/health/deep` → `/health/health/deep` 404); `api.test.ts` pins the current behavior; full consolidation needs a separate bug fix + test update |
 | P21 (signals) | api | ⬜ Not executed — W2 |
 | C1 (config defaults) | config | ⬜ Not executed — W3 |
 | C2 (config Number bug) | config | ⬜ Not executed — W3 |

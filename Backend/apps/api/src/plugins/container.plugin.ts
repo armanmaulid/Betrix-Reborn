@@ -129,9 +129,9 @@ import { EventDispatcher, INotifier } from '@betrix/domain';
 
 export interface AppContainer {
   config: AppConfig;
-  pgPool: any;
+  pgPool: ReturnType<typeof createPgPool>;
   db: DrizzleDb;
-  redis: any;
+  redis: ReturnType<typeof createRedisClient>;
   stores: {
     captchaStore: RedisCaptchaStore;
     ticketStore: RedisStreamTicketStore;
@@ -783,10 +783,13 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
 
   fastify.decorate('container', container);
 
-  // Hook for graceful pool closing on fastify close
+  // P17 — close the Postgres pool on shutdown. The Upstash REST Redis client
+  // is request-scoped (no persistent socket), so there's no `quit()`/`close()`
+  // to call; `Promise.allSettled` keeps the hook resilient if a future
+  // Redis client does need explicit teardown.
   fastify.addHook('onClose', async () => {
     fastify.log.info('Closing PostgreSQL pool and disconnecting Redis...');
-    await pgPool.end();
+    await Promise.allSettled([pgPool.end()]);
   });
 };
 

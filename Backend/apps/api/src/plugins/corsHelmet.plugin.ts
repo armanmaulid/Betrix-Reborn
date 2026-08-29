@@ -18,28 +18,15 @@ const corsHelmetPluginCallback: FastifyPluginAsync = async (fastify) => {
   const allowedOrigins = env.CORS_ORIGIN.split(',')
     .map((o) => o.trim())
     .filter(Boolean);
+  const isDev = env.NODE_ENV === 'development' || env.NODE_ENV === 'test';
 
   // 1. Register CORS
+  // P12 — let `@fastify/cors` do the matching. `true` is allowed in non-prod
+  // (incl. dev/test and the `*` wildcard case); production gets an explicit
+  // allow-list. `!isWildcard` keeps credentials off when we're in wildcard
+  // mode to avoid the browser rejecting credentialed CORS.
   await fastify.register(fastifyCors, {
-    origin: (origin, cb) => {
-      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
-      if (!origin) return cb(null, true);
-
-      // Wildcard stays possible OUTSIDE production (dev/test convenience).
-      // Credentials are only sent for explicit allow-lists.
-      if (isWildcard && env.NODE_ENV !== 'production') {
-        return cb(null, true);
-      }
-      if (env.NODE_ENV === 'development' || env.NODE_ENV === 'test') {
-        return cb(null, true);
-      }
-
-      if (allowedOrigins.includes(origin)) {
-        return cb(null, true);
-      }
-
-      return cb(new Error('Origin not allowed by CORS policy'), false);
-    },
+    origin: isDev || isWildcard ? true : allowedOrigins,
     credentials: !isWildcard,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     exposedHeaders: ['Content-Disposition', 'Content-Type', 'X-Total-Count']

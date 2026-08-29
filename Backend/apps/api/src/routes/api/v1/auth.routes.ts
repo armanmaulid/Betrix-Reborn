@@ -51,10 +51,8 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       });
 
       // Sign JWT token containing session ID
-      const jwtToken = services.authService.signJwt(
-        result.user,
-        result.session,
-        fastify.jwt.sign.bind(fastify.jwt)
+      const jwtToken = fastify.jwt.sign(
+        services.authService.toJwtPayload(result.user, result.session)
       );
 
       return reply.status(201).send({
@@ -86,10 +84,8 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
         userAgent: request.headers['user-agent']
       });
 
-      const jwtToken = services.authService.signJwt(
-        result.user,
-        result.session,
-        fastify.jwt.sign.bind(fastify.jwt)
+      const jwtToken = fastify.jwt.sign(
+        services.authService.toJwtPayload(result.user, result.session)
       );
 
       return reply.send({
@@ -120,10 +116,8 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
           userAgent: request.headers['user-agent']
         });
 
-        const jwtToken = services.authService.signJwt(
-          result.user,
-          result.session,
-          fastify.jwt.sign.bind(fastify.jwt)
+        const jwtToken = fastify.jwt.sign(
+          services.authService.toJwtPayload(result.user, result.session)
         );
 
         return reply.send({

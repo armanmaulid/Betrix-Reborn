@@ -49,3 +49,12 @@ export function safeJsonParse<T>(jsonString: string | null | undefined, fallback
 export function sleep(ms: number): Promise<void> {
   return setTimeout(ms);
 }
+
+// A2 — single source of truth for UUID validation. Used by use-cases that
+// branch on "is this string a valid UUID" before joining keys; the same regex
+// is also registered with the TypeBox `FormatRegistry` so `Type.String({format:'uuid'})`
+// validates at the schema boundary in the future.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function isUuid(value: unknown): boolean {
+  return typeof value === 'string' && UUID_RE.test(value);
+}

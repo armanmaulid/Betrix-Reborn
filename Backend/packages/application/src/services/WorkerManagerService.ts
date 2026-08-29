@@ -142,27 +142,24 @@ export class WorkerManagerService {
       throw new Error(`Background worker with ID "${id}" not found.`);
     }
 
-    switch (action) {
-      case 'start':
-        w.entity.start();
-        if (w.definition.onStart) await w.definition.onStart();
-        break;
-
-      case 'pause':
-        w.entity.pause();
-        if (w.definition.onPause) await w.definition.onPause();
-        break;
-
-      case 'stop':
-        w.entity.stop();
-        if (w.definition.onStop) await w.definition.onStop();
-        break;
-
-      case 'restart':
-        w.entity.restart();
-        if (w.definition.onRestart) await w.definition.onRestart();
-        break;
-    }
+    // A5 — exhaustive lookup tables keyed by WorkerAction. Adding a new
+    // action without a corresponding entry will fail the build (the Record
+    // type enforces coverage), which is the whole point of replacing the
+    // earlier `switch` statement.
+    const entityAction: Record<WorkerAction, () => void> = {
+      start: () => w.entity.start(),
+      pause: () => w.entity.pause(),
+      stop: () => w.entity.stop(),
+      restart: () => w.entity.restart()
+    };
+    const hookFor: Record<WorkerAction, (() => Promise<void> | void) | undefined> = {
+      start: w.definition.onStart,
+      pause: w.definition.onPause,
+      stop: w.definition.onStop,
+      restart: w.definition.onRestart
+    };
+    entityAction[action]();
+    if (hookFor[action]) await hookFor[action]!();
 
     if (this.workerStateRepo) {
       const nextStatus = w.entity.toJSON().status;

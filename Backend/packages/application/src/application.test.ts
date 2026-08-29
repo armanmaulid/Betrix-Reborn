@@ -646,17 +646,13 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
     });
 
     // --- AUTH SERVICE ---
-    it('AuthService.signJwt centralizes JWT payload construction', () => {
-      const mockSignFn = vi.fn().mockReturnValue('mock-jwt-token-abc');
-
-      const token = authService.signJwt(
+    it('AuthService.toJwtPayload centralizes JWT payload construction', () => {
+      const payload = authService.toJwtPayload(
         { id: 'u1', email: 'test@betrix.io', isAdmin: false },
-        { token: 'session-tok-123' },
-        mockSignFn
+        { token: 'session-tok-123' }
       );
 
-      expect(token).toBe('mock-jwt-token-abc');
-      expect(mockSignFn).toHaveBeenCalledWith({
+      expect(payload).toEqual({
         userId: 'u1',
         sessionId: 'session-tok-123',
         email: 'test@betrix.io',
@@ -664,16 +660,13 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       });
     });
 
-    it('AuthService.signJwt includes isAdmin flag for admin users', () => {
-      const mockSignFn = vi.fn().mockReturnValue('admin-jwt-token');
-
-      authService.signJwt(
+    it('AuthService.toJwtPayload includes isAdmin flag for admin users', () => {
+      const payload = authService.toJwtPayload(
         { id: 'admin-1', email: 'admin@betrix.io', isAdmin: true },
-        { token: 'admin-session-tok' },
-        mockSignFn
+        { token: 'admin-session-tok' }
       );
 
-      expect(mockSignFn).toHaveBeenCalledWith(expect.objectContaining({ isAdmin: true }));
+      expect(payload).toEqual(expect.objectContaining({ isAdmin: true, userId: 'admin-1' }));
     });
 
     // --- IDENTITY ---

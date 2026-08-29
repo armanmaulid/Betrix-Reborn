@@ -128,8 +128,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const page = request.query.page || 1;
-      const limit = request.query.limit || 20;
+      const { page = 1, limit = 20 } = request.query;
       const paginated = await useCases.getAdminUsersUseCase.execute(
         { page, limit },
         request.query.search,
@@ -359,8 +358,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const page = request.query.page || 1;
-      const limit = request.query.limit || 20;
+      const { page = 1, limit = 20 } = request.query;
       const result = await useCases.getAdminUserChatHistoryUseCase.execute(
         request.user.userId,
         request.params.id,
@@ -553,8 +551,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const page = request.query.page || 1;
-      const limit = request.query.limit || 20;
+      const { page = 1, limit = 20 } = request.query;
       const action = request.query.actionType || request.query.action;
       const userId = request.query.userId;
       const paginated = await useCases.getAuditLogsUseCase.execute({ page, limit }, action, userId);

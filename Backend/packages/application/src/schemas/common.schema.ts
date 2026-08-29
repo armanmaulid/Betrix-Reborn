@@ -1,4 +1,5 @@
 import { Type, Static, TSchema, FormatRegistry } from '@sinclair/typebox';
+import { isUuid } from '@betrix/core';
 
 // Register standard formats for TypeBox runtime validation
 if (!FormatRegistry.Has('email')) {
@@ -10,6 +11,12 @@ if (!FormatRegistry.Has('date-time')) {
     'date-time',
     (value) => typeof value === 'string' && !isNaN(Date.parse(value))
   );
+}
+
+// A2 — also register 'uuid' so `Type.String({format:'uuid'})` validates at
+// schema boundaries in the future (used today via the shared `isUuid` helper).
+if (!FormatRegistry.Has('uuid')) {
+  FormatRegistry.Set('uuid', (value) => isUuid(value));
 }
 
 // Common Pagination Query Schema

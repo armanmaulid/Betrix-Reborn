@@ -19,7 +19,7 @@ import { redisKeys } from './redis-keys.js';
  * prunes fields for symbols that left the active universe.
  */
 export class RedisMarketCacheStore implements IMarketCacheStore {
-  private static readonly STALE_MS = Number(process.env.PRICE_STALE_MS ?? 120_000);
+  private static readonly STALE_MS = env.PRICE_STALE_MS;
 
   constructor(private readonly redis: Redis) {}
 

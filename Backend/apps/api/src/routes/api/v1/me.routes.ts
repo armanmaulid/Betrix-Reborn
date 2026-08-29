@@ -137,8 +137,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const page = request.query.page || 1;
-      const limit = request.query.limit || 20;
+      const { page = 1, limit = 20 } = request.query;
       const paginated = await useCases.getInboxUseCase.execute(request.user.userId, {
         page,
         limit
@@ -168,8 +167,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const page = request.query.page || 1;
-      const limit = request.query.limit || 20;
+      const { page = 1, limit = 20 } = request.query;
       const paginated = await useCases.getSentMessagesUseCase.execute(request.user.userId, {
         page,
         limit

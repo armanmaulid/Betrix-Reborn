@@ -9,6 +9,7 @@
 import pino from 'pino';
 import { env } from '@betrix/config';
 import { CotPositionBackfiller } from './marketdata/marketdata-backfill-lib.js';
+import { parseList } from '../shared/parseList.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -20,21 +21,16 @@ premiumEnvDiagnostic(logger, 'COT');
 
 const DEFAULT_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'];
 
-function parseCurrencies(): string[] {
-  const raw = process.env.COT_BACKFILL_CURRENCIES;
-  if (!raw) return DEFAULT_CURRENCIES;
-  return raw
-    .split(',')
-    .map((s) => s.trim().toUpperCase())
-    .filter(Boolean);
-}
+const currencies = parseList(process.env.COT_BACKFILL_CURRENCIES, {
+  transform: (s) => s.toUpperCase(),
+  fallback: DEFAULT_CURRENCIES
+});
 
 async function main(): Promise<void> {
   const currentYear = new Date().getUTCFullYear();
   const years = Number(process.env.COT_BACKFILL_YEARS ?? '5');
   const startYear = currentYear - years;
   const endYear = currentYear;
-  const currencies = parseCurrencies();
 
   const backfiller = new CotPositionBackfiller(logger);
   try {
