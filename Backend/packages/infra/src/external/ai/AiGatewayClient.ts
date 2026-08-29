@@ -61,19 +61,9 @@ export class AiGatewayClient implements IAiGateway {
     externalSignal?: AbortSignal
   ): Promise<void> {
     const startTime = Date.now();
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-
-    // Bug #5: abort the upstream fetch when the CLIENT disconnects, not only on
-    // our internal timeout. Without this, a user who closes the tab mid-stream
-    // keeps the (billed) generation running to completion while nobody receives
-    // the output. The controller's signal is what fetch() actually observes, so
-    // relaying the external abort through it is enough.
-    const onExternalAbort = () => controller.abort();
-    if (externalSignal) {
-      if (externalSignal.aborted) controller.abort();
-      externalSignal.addEventListener('abort', onExternalAbort, { once: true });
-    }
+    const signal = externalSignal
+      ? AbortSignal.any([externalSignal, AbortSignal.timeout(this.timeoutMs)])
+      : AbortSignal.timeout(this.timeoutMs);
 
     const targetBaseUrl = (request.baseUrl || this.baseUrl).replace(/\/+$/, '');
     const targetApiKey = request.apiKey || this.apiKey;
@@ -92,7 +82,7 @@ export class AiGatewayClient implements IAiGateway {
           temperature: request.temperature ?? 0.7,
           stream: true
         }),
-        signal: controller.signal
+        signal
       });
 
       if (!response.ok) {
@@ -187,9 +177,6 @@ export class AiGatewayClient implements IAiGateway {
         callbacks.onError?.(err);
       }
       throw err;
-    } finally {
-      if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
-      clearTimeout(timeout);
     }
   }
 }

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Logger } from 'pino';
+import { setTimeout } from 'node:timers/promises';
 import { env } from '@betrix/config';
 import {
   RedisWorkerCommandBus,
@@ -78,7 +79,7 @@ export abstract class ManagedWorkerBase {
       );
       // Standby deliberately does NOT heartbeat: the key is owned by the
       // active leader, and zero-counter standbys must not flap the panel.
-      await new Promise((r) => setTimeout(r, ManagedWorkerBase.LEASE_POLL_MS));
+      await setTimeout(ManagedWorkerBase.LEASE_POLL_MS);
     }
 
     this.startLeaseRenewLoop();

@@ -1,6 +1,7 @@
 import { generateSecureToken, ValidationError } from '@betrix/core';
 import { IUserRepository, IVerificationRepository } from '@betrix/domain';
 import { ResendVerificationDTO } from '../../schemas/auth.schema.js';
+import { logger } from '../../logger.js';
 import { IEmailDispatcher } from './RegisterUseCase.js';
 
 export class ResendVerificationUseCase {
@@ -39,9 +40,8 @@ export class ResendVerificationUseCase {
       await this.emailService
         .sendVerificationEmail(email, link, user.name || undefined)
         .catch((err) => {
-          console.warn(
-            '[ResendVerificationUseCase] Failed to send email (recipient omitted):',
-            err.message
+          logger.warn(
+            `[ResendVerificationUseCase] Failed to send email (recipient omitted): ${err.message}`
           );
         });
     }

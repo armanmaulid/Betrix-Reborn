@@ -40,10 +40,9 @@ export class DrizzleSymbolRepository implements ISymbolRepository {
     if (this.redis) {
       const key = `${redisKeys.cacheSymbols()}:${activeOnly ? 'active' : 'all'}`;
       try {
-        const raw = await this.redis.get<string>(key);
+        const raw = await this.redis.get<Record<string, unknown>[]>(key);
         if (raw) {
-          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          return parsed.map((o: Record<string, unknown>) => new Symbol(o as never));
+          return raw.map((o: Record<string, unknown>) => new Symbol(o as never));
         }
       } catch {
         // Cache read failure falls through to the DB query.
@@ -51,7 +50,11 @@ export class DrizzleSymbolRepository implements ISymbolRepository {
 
       const symbols = await this.findAllFromDb(activeOnly);
       try {
-        await this.redis.set(key, JSON.stringify(symbols.map((s) => s.toJSON())), { ex: 300 });
+        await this.redis.set(
+          key,
+          symbols.map((s) => s.toJSON()),
+          { ex: 300 }
+        );
       } catch {
         // Non-fatal.
       }

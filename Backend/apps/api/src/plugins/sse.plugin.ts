@@ -1,9 +1,6 @@
-import { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import { FastifyPluginAsync, FastifyReply, FastifyRequest, type FastifyBaseLogger } from 'fastify';
 import fp from 'fastify-plugin';
-import pino from 'pino';
 import { PriceTick, NewsArticle } from '@betrix/domain';
-
-const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
 export interface SseClient {
   id: string;
@@ -35,7 +32,7 @@ export class SseHub {
   private budgetDayUtc = new Date().getUTCDate();
   private budgetWarnedAt = 0;
 
-  constructor() {
+  constructor(private readonly logger: FastifyBaseLogger) {
     this.startHeartbeat();
   }
 
@@ -299,7 +296,7 @@ export class SseHub {
     if (!this.consumeRedisBudget(1)) {
       if (Date.now() - this.budgetWarnedAt > 3_600_000) {
         this.budgetWarnedAt = Date.now();
-        logger.warn(
+        this.logger.warn(
           `[MARKET TICKER] Daily Redis budget exhausted (${process.env.REDIS_DAILY_BUDGET || 6000}) — pausing price pushes until UTC midnight.`
         );
       }
@@ -341,7 +338,7 @@ declare module 'fastify' {
 }
 
 const ssePluginCallback: FastifyPluginAsync = async (fastify) => {
-  const sseHub = new SseHub();
+  const sseHub = new SseHub(fastify.log.child({ plugin: 'sse' }));
   fastify.decorate('sseHub', sseHub);
 
   fastify.addHook('onClose', async () => {

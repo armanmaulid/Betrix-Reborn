@@ -14,6 +14,8 @@ import {
 } from '@betrix/infra';
 import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
 import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
+
+const utcDateKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' });
 import {
   joinWithAnnouncementsAndPredictions,
   toCalendarEvent,
@@ -235,7 +237,7 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
         // bounds a zero-row month would be partially seeded and miss past days.
         const [cy, cm] = currentYearMonth.split('-').map(Number);
         const monthStart = `${currentYearMonth}-01`;
-        const monthEnd = new Date(Date.UTC(cy!, cm! + 1, 0)).toISOString().slice(0, 10);
+        const monthEnd = utcDateKey.format(new Date(Date.UTC(cy!, cm! + 1, 0)));
         const rawEvents = await this.fxMacroData.fetchCalendar(currency, monthStart, monthEnd);
         const eventsThisMonth = rawEvents.filter((e) => e.date?.startsWith(currentYearMonth));
 
@@ -304,11 +306,9 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
    * pairs next time, with no separate tracking table needed.
    */
   private yearSyncRunning = false;
-  public async syncYearsIfMissing(scope: Array<'last' | 'current' | 'next'> = [
-    'last',
-    'current',
-    'next'
-  ]): Promise<void> {
+  public async syncYearsIfMissing(
+    scope: Array<'last' | 'current' | 'next'> = ['last', 'current', 'next']
+  ): Promise<void> {
     if (this.yearSyncRunning) return;
     this.yearSyncRunning = true;
     try {
@@ -318,9 +318,7 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
     }
   }
 
-  private async syncYearsIfMissingInner(
-    scope: Array<'last' | 'current' | 'next'>
-  ): Promise<void> {
+  private async syncYearsIfMissingInner(scope: Array<'last' | 'current' | 'next'>): Promise<void> {
     const thisYear = new Date().getUTCFullYear();
     const yearFor = { last: thisYear - 1, current: thisYear, next: thisYear + 1 } as const;
     const targetYears = [...new Set(scope.map((s) => yearFor[s]))].sort((a, b) => a - b);

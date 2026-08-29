@@ -14,6 +14,7 @@ import {
   User,
   Session
 } from '@betrix/domain';
+import { setTimeout } from 'node:timers/promises';
 import { AuthService } from '../../services/AuthService.js';
 import { CaptchaService } from '../../services/CaptchaService.js';
 import { LoginDTO } from '../../schemas/auth.schema.js';
@@ -73,7 +74,7 @@ export class LoginUseCase {
     // 2. Progressive delay if applicable
     const delayMs = LoginPolicy.calculateDelayMs(recentFailures);
     if (delayMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      await setTimeout(delayMs);
     }
 
     // 3. Find User

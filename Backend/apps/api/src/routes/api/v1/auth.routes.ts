@@ -37,6 +37,7 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
   fastify.post(
     '/register',
     {
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
       schema: {
         tags: ['Auth'],
         summary: 'Register new user account',
@@ -72,6 +73,7 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
   fastify.post(
     '/login',
     {
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
       schema: {
         tags: ['Auth'],
         summary: 'Authenticate trader account',
@@ -170,6 +172,7 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
   fastify.post(
     '/resend-verification',
     {
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
       schema: {
         tags: ['Auth'],
         summary: 'Resend email verification token',
@@ -189,6 +192,7 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
   fastify.post(
     '/forgot-password',
     {
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
       schema: {
         tags: ['Auth'],
         summary: 'Request password reset email',
@@ -208,6 +212,7 @@ export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
   fastify.post(
     '/reset-password',
     {
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
       schema: {
         tags: ['Auth'],
         summary: 'Reset password with token',

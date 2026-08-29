@@ -262,7 +262,7 @@ export class DrizzleAnalyticsRepository implements IAnalyticsRepository {
       const raw = await this.redis.get(redisKeys.opsGauges());
       if (!raw) return fallback();
 
-      const cached = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      const cached = raw as SystemMetrics;
 
       let redisStatus = 'healthy';
       let redisLatencyMs = 0;
@@ -290,7 +290,7 @@ export class DrizzleAnalyticsRepository implements IAnalyticsRepository {
   async writeGauges(metrics: SystemMetrics): Promise<void> {
     if (!this.redis) return;
     try {
-      await this.redis.set(redisKeys.opsGauges(), JSON.stringify(metrics), { ex: 120 });
+      await this.redis.set(redisKeys.opsGauges(), metrics, { ex: 120 });
     } catch {
       // Cache write failure is non-fatal.
     }
@@ -302,9 +302,9 @@ export class DrizzleAnalyticsRepository implements IAnalyticsRepository {
     const isDefault = !options || (!options.startDate && !options.endDate);
     if (!isDefault || !this.redis) return null;
     try {
-      const raw = await this.redis.get(redisKeys.opsAnalyticsCache());
+      const raw = (await this.redis.get(redisKeys.opsAnalyticsCache())) as UserAnalytics | null;
       if (!raw) return null;
-      return typeof raw === 'string' ? JSON.parse(raw) : (raw as UserAnalytics);
+      return raw;
     } catch {
       return null;
     }
@@ -313,7 +313,7 @@ export class DrizzleAnalyticsRepository implements IAnalyticsRepository {
   async writeAnalyticsCache(analytics: UserAnalytics): Promise<void> {
     if (!this.redis) return;
     try {
-      await this.redis.set(redisKeys.opsAnalyticsCache(), JSON.stringify(analytics), { ex: 90 });
+      await this.redis.set(redisKeys.opsAnalyticsCache(), analytics, { ex: 90 });
     } catch {
       // Non-fatal.
     }

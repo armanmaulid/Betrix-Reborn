@@ -1,4 +1,5 @@
 import pino from 'pino';
+import { setTimeout } from 'node:timers/promises';
 import { env } from '@betrix/config';
 import { FinnhubWsWorker } from './ws-worker.js';
 import { NewsWorker } from './news-worker.js';
@@ -40,7 +41,7 @@ async function startMasterWorker() {
 
     // T6.7 — grace window so in-flight ticks finish their final DB writes
     // before pools are torn down underneath them.
-    await new Promise((r) => setTimeout(r, 3000));
+    await setTimeout(3000);
     logger.info('All workers stopped. Exiting cleanly.');
     process.exit(0);
   };

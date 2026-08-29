@@ -6,7 +6,6 @@ import {
   Nullable,
   BrokerTimeCalculator
 } from '@betrix/domain';
-import { safeJsonParse } from '@betrix/core';
 import { env } from '@betrix/config';
 import { redisKeys } from './redis-keys.js';
 
@@ -20,7 +19,7 @@ import { redisKeys } from './redis-keys.js';
  * prunes fields for symbols that left the active universe.
  */
 export class RedisMarketCacheStore implements IMarketCacheStore {
-  private static readonly STALE_MS = Number(process.env.PRICE_STALE_MS) || 120_000;
+  private static readonly STALE_MS = Number(process.env.PRICE_STALE_MS ?? 120_000);
 
   constructor(private readonly redis: Redis) {}
 
@@ -41,41 +40,35 @@ export class RedisMarketCacheStore implements IMarketCacheStore {
   }
 
   async cachePrice(tick: PriceTick): Promise<void> {
-    const json = JSON.stringify({
-      symbol: tick.symbol,
-      bid: tick.bid,
-      ask: tick.ask,
-      spread: tick.spread,
-      volume: tick.volume,
-      timestamp: tick.timestamp
-    });
-
     await this.redis.hset(redisKeys.marketPricesAll(), {
-      [tick.symbol]: json
+      [tick.symbol]: {
+        symbol: tick.symbol,
+        bid: tick.bid,
+        ask: tick.ask,
+        spread: tick.spread,
+        volume: tick.volume,
+        timestamp: tick.timestamp
+      }
     });
   }
 
   async getPrice(symbol: string): Promise<Nullable<PriceTick>> {
-    const raw = await this.redis.hget<string>(redisKeys.marketPricesAll(), symbol.toUpperCase());
+    const raw = await this.redis.hget<any>(redisKeys.marketPricesAll(), symbol.toUpperCase());
     if (!raw) return null;
 
-    const parsed = typeof raw === 'string' ? safeJsonParse<any>(raw, null) : raw;
-    const tick = RedisMarketCacheStore.toTick(symbol.toUpperCase(), parsed);
+    const tick = RedisMarketCacheStore.toTick(symbol.toUpperCase(), raw);
     if (!tick) return null;
 
     return RedisMarketCacheStore.isFresh(tick) ? tick : null;
   }
 
   async getAllPrices(): Promise<PriceTick[]> {
-    const all = await this.redis.hgetall<Record<string, string | object>>(
-      redisKeys.marketPricesAll()
-    );
+    const all = await this.redis.hgetall<Record<string, any>>(redisKeys.marketPricesAll());
     if (!all) return [];
 
     const ticks: PriceTick[] = [];
     for (const [sym, val] of Object.entries(all)) {
-      const parsed = typeof val === 'string' ? safeJsonParse<any>(val, null) : val;
-      const tick = RedisMarketCacheStore.toTick(sym, parsed);
+      const tick = RedisMarketCacheStore.toTick(sym, val);
       if (tick && RedisMarketCacheStore.isFresh(tick)) ticks.push(tick);
     }
 
@@ -111,16 +104,15 @@ export class RedisMarketCacheStore implements IMarketCacheStore {
         ttlSeconds && ttlSeconds > 0
           ? ttlSeconds
           : BrokerTimeCalculator.calculateTtlToNextBrokerRollover(env.BROKER_UTC_OFFSET);
-      await this.redis.set(key, JSON.stringify(bars), { ex: ttl });
+      await this.redis.set(key, bars, { ex: ttl });
     }
   }
 
   async getOHLC(symbol: string, timeframe: string): Promise<Nullable<OHLCBar[]>> {
     const key = redisKeys.marketOhlc(symbol, timeframe);
-    const raw = await this.redis.get<string | OHLCBar[]>(key);
+    const raw = await this.redis.get<OHLCBar[]>(key);
     if (!raw) return null;
 
-    const parsed = typeof raw === 'string' ? safeJsonParse<any[]>(raw, []) : raw;
-    return (parsed || []).map((b) => new OHLCBar(b));
+    return (raw || []).map((b) => new OHLCBar(b));
   }
 }

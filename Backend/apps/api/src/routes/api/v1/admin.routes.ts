@@ -1,4 +1,5 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
+import { randomUUID } from 'node:crypto';
 import { env } from '@betrix/config';
 import { createRedisClient, redisKeys } from '@betrix/infra';
 import {
@@ -81,7 +82,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const userId = request.user.userId;
-      const clientId = `ops-${userId}-${Date.now()}`;
+      const clientId = `ops-${userId}-${randomUUID()}`;
       fastify.sseHub.addClient(clientId, userId, 'ops', request, reply);
     }
   );

@@ -22,11 +22,7 @@ type UpstashLike = ReturnType<typeof createRedisClient>;
  * instance, and not a bare counter. This factory returns a class matching that
  * contract.
  */
-function createRedisRateLimitStore(
-  redis: UpstashLike,
-  scope: string,
-  onBackendError: () => void
-) {
+function createRedisRateLimitStore(redis: UpstashLike, scope: string, onBackendError: () => void) {
   return class RedisRateLimitStore {
     incr(
       key: string,
@@ -95,20 +91,10 @@ const rateLimitPluginCallback: FastifyPluginAsync = async (fastify) => {
 
   await fastify.register(fastifyRateLimit, baseOptions as never);
 
-  // Credential endpoints get a much tighter bucket so IP rotation is the only
-  // way around brute-force defense — and one noisy consumer of public market
-  // data can never lock everyone out of login (shared global bucket).
-  const AUTH_RATE_LIMIT = { max: 10, timeWindow: '1 minute' } as const;
-  // NOTE: onRoute sees the pre-prefix url ('/login'), hence the optional
-  // 'auth/' segment in the pattern.
-  const CREDENTIAL_ENDPOINT =
-    /\/(auth\/)?(login|register|forgot-password|reset-password|resend-verification)$/;
-  fastify.addHook('onRoute', (routeOptions) => {
-    const url = routeOptions.url || '';
-    if (CREDENTIAL_ENDPOINT.test(url)) {
-      routeOptions.config = { ...routeOptions.config, rateLimit: { ...AUTH_RATE_LIMIT } };
-    }
-  });
+  // Credential endpoints (/login, /register, /forgot-password, /reset-password,
+  // /resend-verification) get a tighter per-route bucket declared directly on
+  // each route via `config.rateLimit` (see auth.routes.ts) so the brute-force
+  // defense can never silently vanish on a route rename.
 };
 
 export const rateLimitPlugin = fp(rateLimitPluginCallback, {

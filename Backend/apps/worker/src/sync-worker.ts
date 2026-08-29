@@ -1,5 +1,6 @@
 import cron, { ScheduledTask } from 'node-cron';
 import pino from 'pino';
+import { setTimeout } from 'node:timers/promises';
 import { env } from '@betrix/config';
 import { BrokerTimeCalculator, type OHLCBar } from '@betrix/domain';
 import {
@@ -17,6 +18,7 @@ import {
 import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
 import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
 
+const utcDateKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' });
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
   transport: {
@@ -221,7 +223,7 @@ export class SyncWorker extends ManagedWorkerBase implements IManagedWorker {
     } else if (expectedDayOfWeek === 0) {
       expectedBrokerDate.setUTCDate(expectedBrokerDate.getUTCDate() - 2); // Sun -> Fri
     }
-    const expectedKey = expectedBrokerDate.toISOString().slice(0, 10); // YYYY-MM-DD
+    const expectedKey = utcDateKey.format(expectedBrokerDate); // YYYY-MM-DD
 
     let lastBarKey = '';
 
@@ -239,7 +241,7 @@ export class SyncWorker extends ManagedWorkerBase implements IManagedWorker {
         new Date(d1Bar.time * 1000),
         this.brokerUtcOffset
       );
-      const barKey = barBrokerDate.toISOString().slice(0, 10);
+      const barKey = utcDateKey.format(barBrokerDate);
 
       if (barKey === expectedKey) {
         return d1Bar;
@@ -251,7 +253,7 @@ export class SyncWorker extends ManagedWorkerBase implements IManagedWorker {
         logger.warn(
           `[D1 SYNC] ${sym} returned bar dated ${barKey}, expected ${expectedKey} (Dukascopy likely hasn't published yet) — retrying in ${retryDelayMs / 1000}s (attempt ${attempt}/${maxAttempts})...`
         );
-        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+        await setTimeout(retryDelayMs);
       }
     }
 

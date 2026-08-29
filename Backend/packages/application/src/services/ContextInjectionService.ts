@@ -2,6 +2,7 @@ import { IndicatorCalculator, RawCandle } from '@betrix/domain';
 import { MarketDataService } from './MarketDataService.js';
 import { NewsService } from './NewsService.js';
 import { MarketContextOptionsDTO } from '../schemas/chat.schema.js';
+import { logger } from '../logger.js';
 
 export interface InjectedContextResult {
   contextBlock: string;
@@ -60,9 +61,8 @@ export class ContextInjectionService {
       }));
     } catch (err: any) {
       marketFetchError = err.message || 'Market data provider temporarily unavailable';
-      console.warn(
-        `[ContextInjectionService] Fallback triggered for ${symbol} (${timeframe}):`,
-        marketFetchError
+      logger.warn(
+        `[ContextInjectionService] Fallback triggered for ${symbol} (${timeframe}): ${marketFetchError}`
       );
     }
 
@@ -85,7 +85,7 @@ export class ContextInjectionService {
           time: new Date(a.datetime * 1000).toISOString()
         }));
       } catch (err: any) {
-        console.warn(`[ContextInjectionService] News fetch fallback for ${symbol}:`, err.message);
+        logger.warn(`[ContextInjectionService] News fetch fallback for ${symbol}: ${err.message}`);
       }
     }
 

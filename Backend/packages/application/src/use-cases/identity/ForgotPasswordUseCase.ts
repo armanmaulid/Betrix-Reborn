@@ -1,6 +1,7 @@
 import { generateSecureToken } from '@betrix/core';
 import { IUserRepository, IVerificationRepository } from '@betrix/domain';
 import { ForgotPasswordDTO } from '../../schemas/auth.schema.js';
+import { logger } from '../../logger.js';
 
 export interface IResetPasswordEmailDispatcher {
   sendPasswordResetEmail(to: string, resetLink: string): Promise<boolean>;
@@ -36,9 +37,8 @@ export class ForgotPasswordUseCase {
     if (this.emailService) {
       const resetLink = `https://betrix.io/reset-password?token=${resetToken}`;
       await this.emailService.sendPasswordResetEmail(email, resetLink).catch((err) => {
-        console.warn(
-          '[ForgotPasswordUseCase] Failed to send password reset email (recipient omitted):',
-          err.message
+        logger.warn(
+          `[ForgotPasswordUseCase] Failed to send password reset email (recipient omitted): ${err.message}`
         );
       });
     }

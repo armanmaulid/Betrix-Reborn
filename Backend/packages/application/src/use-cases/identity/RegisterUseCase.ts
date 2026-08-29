@@ -12,6 +12,7 @@ import {
 import { AuthService } from '../../services/AuthService.js';
 import { RegisterDTO } from '../../schemas/auth.schema.js';
 import { resolveServerFingerprint } from './resolveDeviceFingerprint.js';
+import { logger } from '../../logger.js';
 
 export interface IEmailDispatcher {
   sendVerificationEmail(to: string, link: string, name?: string): Promise<boolean>;
@@ -98,9 +99,8 @@ export class RegisterUseCase {
       await this.emailService
         .sendVerificationEmail(email, verificationLink, savedUser.name || undefined)
         .catch((err) => {
-          console.warn(
-            '[RegisterUseCase] Failed to send verification email (recipient omitted):',
-            err.message
+          logger.warn(
+            `[RegisterUseCase] Failed to send verification email (recipient omitted): ${err.message}`
           );
         });
     }

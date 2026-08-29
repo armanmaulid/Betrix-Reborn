@@ -47,7 +47,7 @@ export class RedisWorkerCommandBus {
 
   /** Called from `apps/api` when an admin issues a lifecycle command. */
   public async publishCommand(workerId: string, message: WorkerCommandMessage): Promise<void> {
-    await this.redis.publish(commandChannel(workerId), JSON.stringify(message));
+    await this.redis.publish(commandChannel(workerId), message);
   }
 
   /**
@@ -61,11 +61,10 @@ export class RedisWorkerCommandBus {
     const subscriber = this.redis.subscribe(commandChannel(workerId));
     subscriber.on('message', ({ message }) => {
       try {
-        const parsed: WorkerCommandMessage =
-          typeof message === 'string' ? JSON.parse(message) : message;
-        void onCommand(parsed);
+        void onCommand(message as WorkerCommandMessage);
       } catch {
-        // Malformed command payload — ignore rather than crash the worker process.
+        // Malformed command payload or handler error — ignore rather than
+        // crash the worker's subscription.
       }
     });
     return () => {
@@ -75,6 +74,6 @@ export class RedisWorkerCommandBus {
 
   /** Called from `apps/worker` after executing a command or on periodic heartbeat. */
   public async publishReport(workerId: string, message: WorkerReportMessage): Promise<void> {
-    await this.redis.publish(reportChannel(workerId), JSON.stringify(message));
+    await this.redis.publish(reportChannel(workerId), message);
   }
 }

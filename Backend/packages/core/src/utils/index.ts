@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import { setTimeout } from 'node:timers/promises';
 
 export function hashString(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -46,5 +47,5 @@ export function safeJsonParse<T>(jsonString: string | null | undefined, fallback
 }
 
 export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return setTimeout(ms);
 }

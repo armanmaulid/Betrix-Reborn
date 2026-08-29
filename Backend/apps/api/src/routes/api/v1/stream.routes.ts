@@ -1,5 +1,6 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { Type } from '@sinclair/typebox';
+import { randomUUID } from 'node:crypto';
 import { UnauthorizedError } from '@betrix/core';
 
 export const streamRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
@@ -34,7 +35,7 @@ export const streamRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       const symbolList = symbols
         ? symbols.split(',').map((s) => s.trim().toUpperCase())
         : undefined;
-      const clientId = `market-${userId}-${Date.now()}`;
+      const clientId = `market-${userId}-${randomUUID()}`;
 
       fastify.sseHub.addClient(clientId, userId, 'market', request, reply, symbolList);
     }
@@ -62,7 +63,7 @@ export const streamRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
         throw new UnauthorizedError('Invalid or expired SSE stream ticket.');
       }
 
-      const clientId = `news-${userId}-${Date.now()}`;
+      const clientId = `news-${userId}-${randomUUID()}`;
       fastify.sseHub.addClient(clientId, userId, 'news', request, reply);
     }
   );

@@ -143,8 +143,8 @@ export class DrizzleNewsRepository implements INewsRepository {
       !!this.redis && pagination.page === 1 && !category && !tag && !search && sortOrder === 'desc';
     if (canReadCache) {
       try {
-        const raw = await this.redis!.get<string>(redisKeys.cacheNewsPage1());
-        if (raw) return typeof raw === 'string' ? JSON.parse(raw) : raw;
+        const raw = await this.redis!.get<PaginatedResult<NewsArticle>>(redisKeys.cacheNewsPage1());
+        if (raw) return raw;
       } catch {
         // Cache read failure falls through to the DB query.
       }
@@ -195,7 +195,7 @@ export class DrizzleNewsRepository implements INewsRepository {
       this.redis && pagination.page === 1 && !category && !tag && !search && sortOrder === 'desc';
     if (canCache) {
       try {
-        await this.redis.set(redisKeys.cacheNewsPage1(), JSON.stringify(result), { ex: 30 });
+        await this.redis.set(redisKeys.cacheNewsPage1(), result, { ex: 30 });
       } catch {
         // Cache write failure is non-fatal.
       }

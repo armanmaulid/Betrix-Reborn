@@ -1,4 +1,5 @@
 import { env } from '@betrix/config';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 export interface FxMacroDataCalendarEvent {
   release: string;
@@ -215,7 +216,7 @@ export class FxMacroDataClient {
       }
 
       const delay = this.retryBaseDelayMs * Math.pow(2, attempt);
-      await new Promise((resolve) => setTimeout(resolve, delay));
+      await sleep(delay);
     }
 
     throw lastError;

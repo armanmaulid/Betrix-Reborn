@@ -108,10 +108,9 @@ export class DrizzleCalendarRepository implements ICalendarRepository {
       const ver = await this.calendarCacheVersion();
       const key = `${ver}:${redisKeys.cacheCalendarMonth(currency, yearMonth)}`;
       try {
-        const raw = await this.redis.get<string>(key);
+        const raw = await this.redis.get<Record<string, unknown>[]>(key);
         if (raw) {
-          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          return parsed.map((o: Record<string, unknown>) => new CalendarEvent(o as never));
+          return raw.map((o: Record<string, unknown>) => new CalendarEvent(o as never));
         }
       } catch {
         // Cache read failure falls through to the DB query.
@@ -119,7 +118,11 @@ export class DrizzleCalendarRepository implements ICalendarRepository {
 
       const events = await this.findMonthFromDb(currency, yearMonth);
       try {
-        await this.redis.set(key, JSON.stringify(events.map((e) => e.toJSON())), { ex: 3600 });
+        await this.redis.set(
+          key,
+          events.map((e) => e.toJSON()),
+          { ex: 3600 }
+        );
       } catch {
         // Non-fatal.
       }
