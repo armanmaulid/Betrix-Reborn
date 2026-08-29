@@ -1,4 +1,5 @@
 import { FastifyPluginAsync, FastifyReply, FastifyRequest, type FastifyBaseLogger } from 'fastify';
+import { PassThrough } from 'node:stream';
 import fp from 'fastify-plugin';
 import { PriceTick, NewsArticle } from '@betrix/domain';
 
@@ -6,7 +7,10 @@ export interface SseClient {
   id: string;
   userId: string;
   channel: 'market' | 'news' | 'ops';
-  reply: FastifyReply;
+  stream: PassThrough;
+  /** True while the kernel/downstream buffer is full — frames are dropped, the
+   *  client is NOT (P3: a transient burst must never kill a healthy socket). */
+  paused?: boolean;
   symbols?: Set<string>;
   connectedAt: Date;
 }
@@ -14,6 +18,16 @@ export interface SseClient {
 export interface OpsSnapshot {
   metrics: unknown;
   analytics: unknown;
+}
+
+/**
+ * P2 — single SSE frame serializer, shared by the hub and the chat route so
+ * the `event:/data:` wire format lives in exactly one place. `JSON.stringify`
+ * already invokes `toJSON()` on domain objects, so callers pass the raw value.
+ */
+export function sseFrame(event: string, data: unknown): string {
+  const payload = typeof data === 'string' ? data : JSON.stringify(data);
+  return `event: ${event}\ndata: ${payload}\n\n`;
 }
 
 export class SseHub {
@@ -27,7 +41,10 @@ export class SseHub {
   private opsTickerTimer: NodeJS.Timeout | null = null;
   private opsFetcher: (() => Promise<OpsSnapshot>) | null = null;
 
-  /** T2.5 — daily Upstash command budget for the SSE tickers (fail-safe). */
+  /** T2.5 — daily command budget for the SSE tickers (fail-safe, in-process).
+   *  NOTE (P13): this is per-process, so N replicas each get their own budget.
+   *  A Redis-native self-expiring counter is the correct shared implementation
+   *  (the redis client isn't decorated yet when this plugin boots) — deferred. */
   private redisBudgetUsedToday = 0;
   private budgetDayUtc = new Date().getUTCDate();
   private budgetWarnedAt = 0;
@@ -91,19 +108,21 @@ export class SseHub {
     reply: FastifyReply,
     symbols?: string[]
   ): void {
-    // Set standard SSE Headers
-    reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no'
-    });
+    // P1 — hand the stream to Fastify's lifecycle (reply.send) instead of
+    // poking reply.raw directly. This restores CORS/helmet hooks, content-type
+    // negotiation, and onClose teardown for SSE responses.
+    const stream = new PassThrough();
+    reply.header('Content-Type', 'text/event-stream');
+    reply.header('Cache-Control', 'no-cache, no-transform');
+    reply.header('Connection', 'keep-alive');
+    reply.header('X-Accel-Buffering', 'no');
+    reply.send(stream);
 
     const client: SseClient = {
       id,
       userId,
       channel,
-      reply,
+      stream,
       symbols:
         symbols && symbols.length > 0 ? new Set(symbols.map((s) => s.toUpperCase())) : undefined,
       connectedAt: new Date()
@@ -124,10 +143,10 @@ export class SseHub {
       this.removeClient(id);
     });
     // CRITICAL: socket errors (EPIPE / write-after-end) are emitted
-    // ASYNCHRONOUSLY — a synchronous try/catch around res.write() never sees
+    // ASYNCHRONOUSLY — a synchronous try/catch around stream.write() never sees
     // them. Without this listener a burst of disconnects during broadcast can
     // crash the whole process with an unhandled 'error' event.
-    reply.raw.on('error', () => {
+    stream.on('error', () => {
       this.removeClient(id);
     });
   }
@@ -136,7 +155,7 @@ export class SseHub {
     const client = this.clients.get(id);
     if (client) {
       try {
-        client.reply.raw.end();
+        client.stream.end();
       } catch {
         // ignore if already closed
       }
@@ -144,25 +163,22 @@ export class SseHub {
     }
   }
 
-  public broadcastMarketTick(tick: PriceTick | any): void {
-    const symbol = (tick.symbol || '').toUpperCase();
-    const payload = tick.toJSON ? tick.toJSON() : tick;
+  public broadcastMarketTick(tick: PriceTick | unknown): void {
+    const symbol = ((tick as PriceTick).symbol || '').toUpperCase();
 
     for (const client of this.clients.values()) {
       if (client.channel !== 'market') continue;
 
       if (!client.symbols || client.symbols.has(symbol)) {
-        this.sendEvent(client, 'tick', payload);
+        this.sendEvent(client, 'tick', tick);
       }
     }
   }
 
-  public broadcastNews(article: NewsArticle | any): void {
-    const payload = article.toJSON ? article.toJSON() : article;
-
+  public broadcastNews(article: NewsArticle | unknown): void {
     for (const client of this.clients.values()) {
       if (client.channel !== 'news') continue;
-      this.sendEvent(client, 'news', payload);
+      this.sendEvent(client, 'news', article);
     }
   }
 
@@ -193,7 +209,7 @@ export class SseHub {
     for (const client of this.clients.values()) {
       try {
         this.sendEvent(client, 'close', { message: 'Server shutting down' });
-        client.reply.raw.end();
+        client.stream.end();
       } catch {
         // ignore
       }
@@ -214,39 +230,38 @@ export class SseHub {
   }
 
   private sendEvent(client: SseClient, event: string, data: unknown): void {
-    try {
-      const dataStr = typeof data === 'string' ? data : JSON.stringify(data);
-      const writable = client.reply.raw;
-      // write() returning false means the kernel buffer is full — the client
-      // is too slow (or already gone). Drop it instead of buffering without
-      // bound and building memory pressure on the process.
-      if (writable.destroyed || writable.writableEnded) {
-        this.removeClient(client.id);
-        return;
-      }
-      const ok = writable.write(`event: ${event}\ndata: ${dataStr}\n\n`);
-      if (!ok) {
-        this.removeClient(client.id);
-      }
-    } catch {
+    this.writeFrame(client, sseFrame(event, data));
+  }
+
+  /**
+   * P3 — backpressure-correct frame writer. `write()` returning false only
+   * means the downstream buffer is momentarily full; we pause (drop frames)
+   * and resume on 'drain' rather than tearing down a perfectly healthy client.
+   */
+  private writeFrame(client: SseClient, frame: string): void {
+    const w = client.stream;
+    if (w.destroyed || w.writableEnded) {
       this.removeClient(client.id);
+      return;
+    }
+    if (client.paused) return;
+    const ok = w.write(frame);
+    if (!ok) {
+      client.paused = true;
+      w.once('drain', () => {
+        client.paused = false;
+      });
     }
   }
 
   private startHeartbeat(): void {
     this.heartbeatTimer = setInterval(() => {
       for (const client of this.clients.values()) {
-        try {
-          const writable = client.reply.raw;
-          if (writable.destroyed || writable.writableEnded) {
-            this.removeClient(client.id);
-            continue;
-          }
-          const ok = writable.write(`event: ping\ndata: ${Date.now()}\n\n`);
-          if (!ok) this.removeClient(client.id);
-        } catch {
+        if (client.stream.destroyed || client.stream.writableEnded) {
           this.removeClient(client.id);
+          continue;
         }
+        this.writeFrame(client, sseFrame('ping', Date.now()));
       }
     }, 25000); // 25s heartbeat
   }

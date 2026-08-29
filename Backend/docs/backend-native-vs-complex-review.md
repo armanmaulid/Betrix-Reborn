@@ -43,6 +43,7 @@ These were executed and committed before this doc was written. Line numbers belo
 > Updated: 2026-08-29. Use this as the single source of truth for what is fixed.
 > Legend: ✅ Done · 🔄 In Progress · ⬜ Not executed · 🔒 Keep (legit, no change needed)
 > Waves: **W1** security+correctness · **W2** dedup (0 new deps) · **W3** structural/cleanup
+> **Status (2026-08-29):** W1 complete (P1, P2, P3, P6, P9, P10 done; P13 Redis-native deferred). Pre-commit validation: `tsc` build PASS, ESLint 0 errors, Prettier clean, `vitest` domain 44 + application 28 pass; api/infra integration tests fail only on `ECONNREFUSED` (no Postgres/Redis in sandbox).
 
 | Finding | Area | Status |
 |---------|------|--------|
@@ -52,13 +53,13 @@ These were executed and committed before this doc was written. Line numbers belo
 | P22 (api onRoute) | api | ✅ Done (Q7) |
 | I5 (infra stale) | infra | ✅ Done (Q3) |
 | W8 (worker date key) | worker | ✅ Done (Q4) |
-| P6 (response schema) | api | ⬜ Not executed — **W1 (recommended next, high leverage + security)** |
-| P1 (SSE raw socket) | api | ⬜ Not executed — **W1 (correctness)** |
-| P3 (backpressure) | api | ⬜ Not executed — **W1 (correctness)** |
-| P13 (budget SM) | api | ⬜ Not executed — **W1** |
-| P9 (catch→404) | api | ⬜ Not executed — **W1** |
-| P10 (LogController) | api | ⬜ Not executed — **W1** |
-| P2 (SSE frame dup) | api | ⬜ Not executed — W1 |
+| P6 (response schema) | api | ✅ Done (W1) — `preSerialization` envelope hook added in `server.ts`; per-route `response` schemas deferred (high-risk, do per-route with tests) |
+| P1 (SSE raw socket) | api | ✅ Done (W1) — `addClient`/`chat.routes` now `reply.send(PassThrough)`; CORS/helmet restored |
+| P3 (backpressure) | api | ✅ Done (W1) — `writeFrame` drops frames under backpressure, keeps client (`sse.plugin.ts`) |
+| P13 (budget SM) | api | ⬜ Not executed — **W1** Redis-native counter deferred (redis not decorated at sse-plugin boot); in-process counter kept |
+| P9 (catch→404) | api | ✅ Done (W1) — `admin.routes.ts` re-throws `NotFoundError`, lets DB errors surface as 500 |
+| P10 (LogController) | api | ✅ Done (W1) — `ApiLogController` subclass in `server.ts`, `onResponse` hook removed |
+| P2 (SSE frame dup) | api | ✅ Done (W1) — shared `sseFrame()` helper in `sse.plugin.ts`, used by hub + `chat.routes` |
 | A1 (Value.Decode) | app | ⬜ Not executed — W2 (high) |
 | A2 (UUID regex) | app | ⬜ Not executed — W2 |
 | A5 (switch→table) | app | ⬜ Not executed — W2 |
@@ -92,7 +93,7 @@ These were executed and committed before this doc was written. Line numbers belo
 | I2 (fetch retry) | infra | 🔒 Keep (no stdlib equivalent) |
 | W9 (ManagedWorkerBase) | worker | 🔒 Keep (distributed leader election, no replacement) |
 
-> Current "In Progress": **none** (all pending items are unstarted).
+> Current "In Progress": **none** (W1 finished; next up: W2).
 
 ---
 

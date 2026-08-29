@@ -1,6 +1,7 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { randomUUID } from 'node:crypto';
 import { env } from '@betrix/config';
+import { NotFoundError } from '@betrix/core';
 import { createRedisClient, redisKeys } from '@betrix/infra';
 import {
   AdminUsersQuerySchema,
@@ -199,11 +200,13 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
           success: true,
           data: result
         });
-      } catch {
-        return reply.status(404).send({
-          success: false,
-          error: { message: 'Session not found or already revoked' }
-        });
+      } catch (err) {
+        // P9 — let genuine infra failures surface as 500; only re-wrap a real
+        // not-found as a friendly 404 instead of masking every error as 404.
+        if (err instanceof NotFoundError) {
+          throw new NotFoundError('Session not found or already revoked');
+        }
+        throw err;
       }
     }
   );
@@ -258,11 +261,11 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
           success: true,
           data: result
         });
-      } catch {
-        return reply.status(404).send({
-          success: false,
-          error: { message: 'Device not found or already removed' }
-        });
+      } catch (err) {
+        if (err instanceof NotFoundError) {
+          throw new NotFoundError('Device not found or already removed');
+        }
+        throw err;
       }
     }
   );

@@ -1,5 +1,7 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
+import { PassThrough } from 'node:stream';
 import { SendMessageSchema, StreamMessageSchema, SessionIdParamSchema } from '@betrix/application';
+import { sseFrame } from '../../../plugins/sse.plugin.js';
 import { Type } from '@sinclair/typebox';
 
 export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
@@ -41,18 +43,19 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      // Set SSE headers
-      reply.raw.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no'
-      });
+      // P1 — hand the SSE stream to Fastify's lifecycle (reply.send) so CORS/
+      // helmet hooks and onClose teardown apply, instead of poking reply.raw.
+      const stream = new PassThrough();
+      reply.header('Content-Type', 'text/event-stream');
+      reply.header('Cache-Control', 'no-cache, no-transform');
+      reply.header('Connection', 'keep-alive');
+      reply.header('X-Accel-Buffering', 'no');
+      reply.send(stream);
 
+      // P2 — one frame serializer, shared with the SSE hub.
       const writeEvent = (event: string, data: unknown) => {
         try {
-          const payload = typeof data === 'string' ? data : JSON.stringify(data);
-          reply.raw.write(`event: ${event}\ndata: ${payload}\n\n`);
+          stream.write(sseFrame(event, data));
         } catch {
           // Stream interrupted
         }
@@ -61,9 +64,7 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       // Bug #5: abort the generation the moment the client disconnects so we
       // stop paying the upstream AI provider for tokens nobody will receive.
       const abortController = new AbortController();
-      request.raw.on('close', () => {
-        if (!reply.raw.writableEnded) abortController.abort();
-      });
+      request.raw.on('close', () => abortController.abort());
 
       try {
         await useCases.streamMessageUseCase.execute(
@@ -78,18 +79,18 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
             },
             onDone: (meta) => {
               writeEvent('done', meta);
-              reply.raw.end();
+              stream.end();
             },
             onError: (err: Error) => {
               writeEvent('error', { message: err.message });
-              reply.raw.end();
+              stream.end();
             }
           },
           abortController.signal
         );
       } catch (err: any) {
         writeEvent('error', { message: err.message || 'Stream processing failed' });
-        reply.raw.end();
+        stream.end();
       }
     }
   );
