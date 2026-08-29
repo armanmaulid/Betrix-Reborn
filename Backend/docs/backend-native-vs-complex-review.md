@@ -38,6 +38,64 @@ These were executed and committed before this doc was written. Line numbers belo
 
 ---
 
+## 2b. Implementation Status Tracker (Done / In Progress / Not Executed)
+
+> Updated: 2026-08-29. Use this as the single source of truth for what is fixed.
+> Legend: ✅ Done · 🔄 In Progress · ⬜ Not executed · 🔒 Keep (legit, no change needed)
+> Waves: **W1** security+correctness · **W2** dedup (0 new deps) · **W3** structural/cleanup
+
+| Finding | Area | Status |
+|---------|------|--------|
+| Q1–Q7 | all layers | ✅ Done (commit `b5180aa`) |
+| P4 (api pino) | api | ✅ Done (Q6) |
+| P5 (api clientId) | api | ✅ Done (Q5) |
+| P22 (api onRoute) | api | ✅ Done (Q7) |
+| I5 (infra stale) | infra | ✅ Done (Q3) |
+| W8 (worker date key) | worker | ✅ Done (Q4) |
+| P6 (response schema) | api | ⬜ Not executed — **W1 (recommended next, high leverage + security)** |
+| P1 (SSE raw socket) | api | ⬜ Not executed — **W1 (correctness)** |
+| P3 (backpressure) | api | ⬜ Not executed — **W1 (correctness)** |
+| P13 (budget SM) | api | ⬜ Not executed — **W1** |
+| P9 (catch→404) | api | ⬜ Not executed — **W1** |
+| P10 (LogController) | api | ⬜ Not executed — **W1** |
+| P2 (SSE frame dup) | api | ⬜ Not executed — W1 |
+| A1 (Value.Decode) | app | ⬜ Not executed — W2 (high) |
+| A2 (UUID regex) | app | ⬜ Not executed — W2 |
+| A5 (switch→table) | app | ⬜ Not executed — W2 |
+| I1 (SSE parser dup) | infra | ⬜ Not executed — W2 |
+| I3 (process.env) | infra | ⬜ Not executed — W2 |
+| W3 (backfillers) | worker | ⬜ Not executed — W2 (high) |
+| W4 (env parsers) | worker | ⬜ Not executed — W2 |
+| P7 (query defaults) | api | ⬜ Not executed — W2 |
+| P8 (error handler) | api | ⬜ Not executed — W2 |
+| P11 (rate-limit store) | api | ⬜ Not executed — W2 (brute-force) |
+| P12 (CORS) | api | ⬜ Not executed — W2 |
+| P14 (2nd redis) | api | ⬜ Not executed — W2 |
+| P17 (any types) | api | ⬜ Not executed — W2 |
+| P18 (authUser cast) | api | ⬜ Not executed — W2 |
+| P19 (jwt bound) | api | ⬜ Not executed — W2 |
+| P20 (health) | api | ⬜ Not executed — W2 |
+| P21 (signals) | api | ⬜ Not executed — W2 |
+| C1 (config defaults) | config | ⬜ Not executed — W3 |
+| C2 (config Number bug) | config | ⬜ Not executed — W3 |
+| A3 (temperature) | app | ⬜ Not executed — W3 |
+| A4 (CSV) | app | ⬜ Not executed — W3 |
+| A6 (credit retry) | app | ⬜ Not executed — W3 (or keep) |
+| I4 (legacy scaffolding) | infra | ⬜ Not executed — W3 |
+| W1 (retry helper) | worker | ⬜ Not executed — W3 |
+| W2 (month math) | worker | ⬜ Not executed — W3 |
+| W5 (indicator parse) | worker | ⬜ Not executed — W3 |
+| W6 (backoff) | worker | ⬜ Not executed — W3 |
+| W7 (daily budget) | worker | ⬜ Not executed — W3 |
+| P15 (DI container) | api | ⬜ Not executed — W3 (structural) |
+| P16 (bg loops) | api | ⬜ Not executed — W3 |
+| I2 (fetch retry) | infra | 🔒 Keep (no stdlib equivalent) |
+| W9 (ManagedWorkerBase) | worker | 🔒 Keep (distributed leader election, no replacement) |
+
+> Current "In Progress": **none** (all pending items are unstarted).
+
+---
+
 ## 3. `packages/core` + `packages/config`
 
 | ID | File:line | Issue | Native / stdlib fix | Effort | Risk |
