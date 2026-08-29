@@ -10,7 +10,7 @@ import { StatusBadge } from '@/shared/presentation/ui/status-badge';
 import { Badge } from '@/shared/presentation/ui/badge';
 import { TableShell, type TableColumn } from '@/shared/presentation/ui/table-shell';
 import { useSession } from '@/shared/presentation/hooks/use-session';
-import type { User } from '@identity/domain/entities/User';
+import type { User } from '@/modules/identity/domain/entities/User';
 
 const COLUMNS: TableColumn[] = [
   { key: 'trader', label: 'Trader / Email' },

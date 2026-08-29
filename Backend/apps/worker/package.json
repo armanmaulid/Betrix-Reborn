@@ -18,6 +18,7 @@
     "start:sync": "node dist/sync-worker.js",
     "start:cleanup": "node dist/cleanup-worker.js",
     "start:calendar": "node dist/calendar-worker.js",
+    "d1:test": "tsx src/scripts/d1-sync-test.ts",
     "calendar:backfill": "tsx src/scripts/calendar-backfill.ts",
     "fx:backfill": "tsx src/scripts/fx-backfill.ts",
     "cot:backfill": "tsx src/scripts/cot-backfill.ts",

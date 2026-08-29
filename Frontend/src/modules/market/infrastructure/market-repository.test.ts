@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MarketMapper } from './mappers/MarketMapper';
 import { HttpMarketRepository } from './repositories/HttpMarketRepository';
-import { HttpClient } from '@shared/infrastructure/http/api-client';
+import { HttpClient } from '@/shared/infrastructure/http/api-client';
 
 describe('Market Infrastructure: MarketMapper & HttpMarketRepository', () => {
   let mockHttpClient: HttpClient;

@@ -1,15 +1,15 @@
 'use client';
 
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { agentRepository } from '@intelligence/infrastructure/repositories/HttpAgentRepository';
-import { intelligenceKeys } from '@intelligence/application/intelligence.keys';
-import { useAdminMutation } from '@shared/application/useAdminMutation';
-import type { AiAgent } from '@intelligence/domain/entities/AiAgent';
+import { agentRepository } from '@/modules/intelligence/infrastructure/repositories/HttpAgentRepository';
+import { intelligenceKeys } from '@/modules/intelligence/application/intelligence.keys';
+import { useAdminMutation } from '@/shared/application/useAdminMutation';
+import type { AiAgent } from '@/modules/intelligence/domain/entities/AiAgent';
 import type {
   CreateAgentInput,
   UpdateAgentInput,
   AgentTestPayload
-} from '@intelligence/domain/repositories/IAgentRepository';
+} from '@/modules/intelligence/domain/repositories/IAgentRepository';
 
 export function useAgentsQuery() {
   return useQuery<AiAgent[]>({

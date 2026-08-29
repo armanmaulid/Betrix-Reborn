@@ -15,7 +15,7 @@ import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { formatFinancialNumber } from '@/shared/utils';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
 import { AUDIT_ACTIONS } from '@/shared/utils/constants';
-import type { AuditLog } from '@operations/domain/entities/AuditLog';
+import type { AuditLog } from '@/modules/operations/domain/entities/AuditLog';
 
 export function AuditLogsContainer() {
   usePageTitle('SECURITY AUDIT LOGS');

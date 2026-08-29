@@ -1,7 +1,7 @@
-import { SystemMetrics } from '../../domain/entities/SystemMetrics';
+import { SystemMetrics, type SystemMetricsProps } from '../../domain/entities/SystemMetrics';
 
 export class AnalyticsMapper {
-  public static toSystemMetrics(dto: any): SystemMetrics {
+  public static toSystemMetrics(dto: SystemMetricsProps): SystemMetrics {
     return new SystemMetrics({
       totalUsers: dto.totalUsers,
       activeSessions: dto.activeSessions,

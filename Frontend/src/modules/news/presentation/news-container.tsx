@@ -34,7 +34,7 @@ import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { formatFinancialNumber } from '@/shared/utils';
 import { formatUtcNewsDate } from '@/shared/utils/formatters';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
-import type { NewsArticle } from '@news/domain/entities/NewsArticle';
+import type { NewsArticle } from '@/modules/news/domain/entities/NewsArticle';
 
 const CATEGORIES = [
   { id: 'all', label: 'ALL NEWS' },

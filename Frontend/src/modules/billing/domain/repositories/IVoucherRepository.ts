@@ -1,5 +1,5 @@
-import { CreditVoucher } from '@billing/domain/entities/CreditVoucher';
-import type { PaginatedResult, PaginationQueryParams } from '@shared/domain/types/Pagination';
+import { CreditVoucher } from '@/modules/billing/domain/entities/CreditVoucher';
+import type { PaginatedResult, PaginationQueryParams } from '@/shared/domain/types/Pagination';
 
 export interface CreateVoucherInput {
   code?: string;

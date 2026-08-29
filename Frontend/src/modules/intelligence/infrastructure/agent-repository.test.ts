@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AgentMapper } from './mappers/AgentMapper';
 import { HttpAgentRepository } from './repositories/HttpAgentRepository';
-import { HttpClient } from '@shared/infrastructure/http/api-client';
+import { HttpClient } from '@/shared/infrastructure/http/api-client';
 
 describe('Intelligence Infrastructure: AgentMapper & HttpAgentRepository', () => {
   let mockHttpClient: HttpClient;

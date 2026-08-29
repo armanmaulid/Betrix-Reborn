@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { UserMapper } from './mappers/UserMapper';
 import { HttpUserRepository } from './repositories/HttpUserRepository';
-import { HttpClient } from '@shared/infrastructure/http/api-client';
+import { HttpClient } from '@/shared/infrastructure/http/api-client';
 
 describe('Identity Infrastructure: UserMapper & HttpUserRepository', () => {
   let mockHttpClient: HttpClient;

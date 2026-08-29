@@ -1,10 +1,10 @@
 'use client';
 
 import type { SystemCleanupInput } from '@/modules/operations/application/schemas/admin.schema';
-import { apiFetch } from '@shared/infrastructure/http/api-client';
-import { useAdminMutation } from '@shared/application/useAdminMutation';
-import { operationsKeys } from '@operations/application/operations.keys';
-import { analyticsKeys } from '@analytics/application/analytics.keys';
+import { operationsRepository } from '@/modules/operations/infrastructure/repositories/HttpOperationsRepository';
+import { useAdminMutation } from '@/shared/application/useAdminMutation';
+import { operationsKeys } from '@/modules/operations/application/operations.keys';
+import { analyticsKeys } from '@/modules/analytics/application/analytics.keys';
 
 export interface CleanupResult {
   expiredSessionsDeleted: number;
@@ -14,13 +14,7 @@ export interface CleanupResult {
 
 export function useCleanupMutation() {
   return useAdminMutation<CleanupResult, SystemCleanupInput>(
-    async (data) => {
-      const json = await apiFetch<any>('/api/admin/cleanup', {
-        method: 'POST',
-        body: JSON.stringify(data)
-      });
-      return json.data || json;
-    },
+    (data) => operationsRepository.runSystemCleanup(data),
     [operationsKeys.auditLogs(), operationsKeys.workers(), analyticsKeys.metrics()]
   );
 }

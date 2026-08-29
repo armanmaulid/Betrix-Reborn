@@ -24,15 +24,16 @@ export interface PaginationQueryParams {
  * Usage: `toDomainPaginated(raw, MyMapper.toDomain)`
  */
 export function toDomainPaginated<TDto, TDomain>(
-  paginatedDto: { data?: TDto[]; meta?: PaginationMeta } | TDto[] | any,
+  paginatedDto: { data?: TDto[]; meta?: PaginationMeta } | TDto[],
   mapItem: (dto: TDto) => TDomain
 ): PaginatedResult<TDomain> {
-  const rawItems: TDto[] = Array.isArray(paginatedDto?.data)
-    ? paginatedDto.data
+  const wrapped = Array.isArray(paginatedDto) ? undefined : paginatedDto;
+  const rawItems: TDto[] = Array.isArray(wrapped?.data)
+    ? wrapped.data
     : Array.isArray(paginatedDto)
       ? paginatedDto
       : [];
-  const meta: PaginationMeta = paginatedDto?.meta || {
+  const meta: PaginationMeta = wrapped?.meta || {
     page: 1,
     limit: rawItems.length,
     total: rawItems.length,

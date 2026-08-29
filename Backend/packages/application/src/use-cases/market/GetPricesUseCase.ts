@@ -60,7 +60,7 @@ export class GetPricesUseCase {
       try {
         const d1Cached = await this.marketDataService.getOHLC(symUpper, 'd1', 1);
         if (d1Cached && d1Cached.length > 0) {
-          d1Open = d1Cached[d1Cached.length - 1]!.open;
+          d1Open = d1Cached[d1Cached.length - 1]!.close; // baseline = previous close (industry standard)
         }
       } catch {
         d1Open = tick.last;
@@ -91,7 +91,7 @@ export class GetPricesUseCase {
         try {
           const d1Cached = await this.marketDataService.getOHLC(tick.symbol, 'd1', 1);
           if (d1Cached && d1Cached.length > 0) {
-            d1Open = d1Cached[d1Cached.length - 1]!.open;
+            d1Open = d1Cached[d1Cached.length - 1]!.close; // baseline = previous close (industry standard)
           }
         } catch {
           // Use tick.last as fallback

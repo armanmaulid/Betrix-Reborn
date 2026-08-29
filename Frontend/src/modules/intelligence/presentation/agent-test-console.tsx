@@ -19,8 +19,8 @@ import { TestAgentSchema } from '@/modules/intelligence/application/schemas/agen
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { formatFinancialNumber } from '@/shared/utils';
 import { useCopyFeedback } from '@/shared/presentation/hooks/use-copy-feedback';
-import type { AiAgent, AgentDetail } from '@intelligence/domain/entities/AiAgent';
-import type { AgentTestResult } from '@intelligence/domain/repositories/IAgentRepository';
+import type { AiAgent, AgentDetail } from '@/modules/intelligence/domain/entities/AiAgent';
+import type { AgentTestResult } from '@/modules/intelligence/domain/repositories/IAgentRepository';
 
 interface AgentTestConsoleProps {
   agent: AiAgent | AgentDetail;

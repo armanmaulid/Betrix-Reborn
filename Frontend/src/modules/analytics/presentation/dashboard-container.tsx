@@ -95,7 +95,7 @@ export function DashboardContainer() {
 
       {/* 1. Live Real-time System Gauges (Top Row) */}
       <LiveGauges
-        metrics={metrics as any}
+        metrics={metrics}
         deltas={deltas}
         isLoading={isMetricsLoading}
         isError={isMetricsError}

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Copy, Check, Trash2, ExternalLink } from 'lucide-react';
-import type { CreditVoucher } from '@billing/domain/entities/CreditVoucher';
+import type { CreditVoucher } from '@/modules/billing/domain/entities/CreditVoucher';
 import { formatFinancialNumber } from '@/shared/utils';
 import { formatDate, formatDateTime } from '@/shared/utils/formatters';
 import { StatusBadge } from '@/shared/presentation/ui/status-badge';
@@ -151,6 +151,7 @@ export function VoucherTable({
             <button
               onClick={() => onSelectForRevoke(v)}
               title="Revoke and Purge Voucher"
+              aria-label="Revoke and Purge Voucher"
               className="p-1 border border-border bg-black hover:border-negative hover:text-negative text-muted-foreground transition-colors cursor-pointer"
             >
               <Trash2 className="w-3 h-3" />

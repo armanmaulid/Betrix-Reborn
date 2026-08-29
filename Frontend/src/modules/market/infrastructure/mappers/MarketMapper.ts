@@ -1,13 +1,37 @@
 import {
   MarketInstrument,
   StreamSymbolEntity,
-  OhlcSymbolEntity
+  OhlcSymbolEntity,
+  type MarketInstrumentProps,
+  type StreamSymbolEntityProps,
+  type OhlcSymbolEntityProps
 } from '../../domain/entities/MarketInstrument';
 import { PriceTick, coerceFinite } from '../../domain/value-objects/PriceTick';
 
+/**
+ * Raw DTO shapes coming off the wire. The SSE/price payloads use short field
+ * aliases (p/s/v/t) and `unknown`-typed numerics; everything else maps 1:1 to
+ * the domain `*Props` types.
+ */
+export interface PriceTickDto {
+  symbol?: unknown;
+  s?: unknown;
+  p?: unknown;
+  bid?: unknown;
+  ask?: unknown;
+  spread?: unknown;
+  change24h?: unknown;
+  change24hPercent?: unknown;
+  c24p?: unknown;
+  volume24h?: unknown;
+  v?: unknown;
+  timestamp?: unknown;
+  t?: unknown;
+}
+
 export class MarketMapper {
-  public static toPriceTick(dto: any, existing?: Partial<PriceTick>): PriceTick {
-    const symbol = (dto.symbol || dto.s || '').toUpperCase();
+  public static toPriceTick(dto: PriceTickDto, existing?: Partial<PriceTick>): PriceTick {
+    const symbol = String(dto.symbol ?? dto.s ?? '').toUpperCase();
     const rawPrice = coerceFinite(dto.p, 0);
     const bidFallback = rawPrice > 0 ? rawPrice : coerceFinite(existing?.bid, 0);
     const askFallback = rawPrice > 0 ? rawPrice : coerceFinite(existing?.ask, 0);
@@ -30,7 +54,7 @@ export class MarketMapper {
     });
   }
 
-  public static toInstrumentEntity(dto: any): MarketInstrument {
+  public static toInstrumentEntity(dto: MarketInstrumentProps): MarketInstrument {
     return new MarketInstrument({
       symbol: String(dto.symbol || '').toUpperCase(),
       name: dto.name || dto.symbol,
@@ -44,7 +68,7 @@ export class MarketMapper {
     });
   }
 
-  public static toStreamSymbolEntity(dto: any): StreamSymbolEntity {
+  public static toStreamSymbolEntity(dto: StreamSymbolEntityProps): StreamSymbolEntity {
     return new StreamSymbolEntity({
       symbol: String(dto.symbol || '').toUpperCase(),
       finnhubSymbol: String(dto.finnhubSymbol || '').toUpperCase(),
@@ -56,7 +80,7 @@ export class MarketMapper {
     });
   }
 
-  public static toOhlcSymbolEntity(dto: any): OhlcSymbolEntity {
+  public static toOhlcSymbolEntity(dto: OhlcSymbolEntityProps): OhlcSymbolEntity {
     return new OhlcSymbolEntity({
       symbol: String(dto.symbol || '').toUpperCase(),
       dukascopySymbol: String(dto.dukascopySymbol || ''),

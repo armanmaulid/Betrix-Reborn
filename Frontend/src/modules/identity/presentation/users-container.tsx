@@ -17,8 +17,8 @@ import { PaginationBar } from '@/shared/presentation/ui/pagination-bar';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { formatFinancialNumber } from '@/shared/utils';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
-import type { User } from '@identity/domain/entities/User';
-import type { UserTierLevel } from '@identity/domain/value-objects/UserTier';
+import type { User } from '@/modules/identity/domain/entities/User';
+import type { UserTierLevel } from '@/modules/identity/domain/value-objects/UserTier';
 
 export function UsersContainer() {
   usePageTitle('USER DIRECTORY');

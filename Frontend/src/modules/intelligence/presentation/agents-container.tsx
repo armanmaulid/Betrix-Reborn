@@ -10,7 +10,7 @@ import { AgentsFleetGrid } from './agents-fleet-grid';
 import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-confirm-dialog';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
-import type { AiAgent } from '@intelligence/domain/entities/AiAgent';
+import type { AiAgent } from '@/modules/intelligence/domain/entities/AiAgent';
 
 export function AgentsContainer() {
   usePageTitle('AI FLEET');

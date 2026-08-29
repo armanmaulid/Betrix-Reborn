@@ -1,5 +1,6 @@
 import { User } from '../entities/User';
-import type { PaginatedResult, PaginationQueryParams } from '@shared/domain/types/Pagination';
+import type { AdminUserDetail, AdminChatMessage, AdminChatHistoryQuery } from '../entities/User';
+import type { PaginatedResult, PaginationQueryParams } from '@/shared/domain/types/Pagination';
 
 export interface UserQueryParams extends PaginationQueryParams {
   status?: 'active' | 'suspended' | 'banned';
@@ -37,6 +38,11 @@ export interface UpdateUserInput {
 export interface IUserRepository {
   getUsers(params?: UserQueryParams): Promise<PaginatedResult<User>>;
   getUserById(id: string): Promise<User>;
+  getUserDetail(id: string): Promise<AdminUserDetail>;
+  getUserChatHistory(
+    id: string,
+    params?: AdminChatHistoryQuery
+  ): Promise<PaginatedResult<AdminChatMessage>>;
   createUser(input: CreateUserInput): Promise<CreateUserResult>;
   updateUser(id: string, input: UpdateUserInput): Promise<User>;
   deleteUser(id: string): Promise<void>;

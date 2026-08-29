@@ -11,7 +11,7 @@ import {
   type CreateAgentInput,
   type UpdateAgentInput
 } from '@/modules/intelligence/application/schemas/agent.schema';
-import type { AgentDetail, AiAgent } from '@intelligence/domain/entities/AiAgent';
+import type { AgentDetail, AiAgent } from '@/modules/intelligence/domain/entities/AiAgent';
 
 export interface AgentFormProps {
   initialData?: AgentDetail | AiAgent | null;
@@ -66,7 +66,7 @@ export function AgentForm({ initialData, onSubmit, isPending = false }: AgentFor
         };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const form = useForm<any>({
+  const form = useForm<CreateAgentInput | UpdateAgentInput>({
     resolver: zodResolver(isEdit ? UpdateAgentSchema : CreateAgentSchema),
     defaultValues
   });
@@ -79,7 +79,7 @@ export function AgentForm({ initialData, onSubmit, isPending = false }: AgentFor
 
   const temperatureValue = watch('temperature', initialData?.temperature ?? 0.7);
 
-  const handleFormSubmit = async (data: any) => {
+  const handleFormSubmit = async (data: CreateAgentInput | UpdateAgentInput) => {
     await onSubmit(data);
   };
 
@@ -120,7 +120,7 @@ export function AgentForm({ initialData, onSubmit, isPending = false }: AgentFor
                 className="w-full bg-black border border-border px-3 py-2 text-foreground focus:outline-none focus:border-accent font-bold"
               />
             )}
-            {errors.id && (
+            {'id' in errors && errors.id && (
               <p className="text-[10px] text-negative">{errors.id.message as string}</p>
             )}
           </div>

@@ -27,7 +27,7 @@ import { DestructiveConfirmDialog } from '@/shared/presentation/ui/destructive-c
 import { formatFinancialNumber } from '@/shared/utils';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
 import { PageHeader } from '@/shared/presentation/ui/page-header';
-import type { User } from '@identity/domain/entities/User';
+import type { User } from '@/modules/identity/domain/entities/User';
 
 export function BroadcastContainer() {
   usePageTitle('SYSTEM BROADCAST');
@@ -149,9 +149,9 @@ export function BroadcastContainer() {
 
             {/* Target Audience Mode */}
             <div className="space-y-1.5">
-              <label className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider">
+              <div className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider">
                 TARGET AUDIENCE SCOPE
-              </label>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -281,10 +281,14 @@ export function BroadcastContainer() {
 
             {/* Subject */}
             <div className="space-y-1">
-              <label className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider">
+              <label
+                htmlFor="broadcast-subject"
+                className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider"
+              >
                 SUBJECT HEADLINE *
               </label>
               <input
+                id="broadcast-subject"
                 type="text"
                 placeholder="e.g. URGENT: Scheduled Database Maintenance at 02:00 UTC"
                 {...register('subject')}
@@ -301,10 +305,14 @@ export function BroadcastContainer() {
 
             {/* Body */}
             <div className="space-y-1">
-              <label className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider">
+              <label
+                htmlFor="broadcast-body"
+                className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider"
+              >
                 TRANSMISSION MESSAGE BODY *
               </label>
               <textarea
+                id="broadcast-body"
                 rows={6}
                 placeholder="Enter complete bulletin message for institutional broadcast..."
                 {...register('body')}

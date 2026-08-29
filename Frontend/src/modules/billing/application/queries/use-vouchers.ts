@@ -1,12 +1,12 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { voucherRepository } from '@billing/infrastructure/repositories/HttpVoucherRepository';
-import { billingKeys } from '@billing/application/billing.keys';
-import { useAdminMutation } from '@shared/application/useAdminMutation';
-import type { CreditVoucher } from '@billing/domain/entities/CreditVoucher';
-import type { CreateVoucherInput } from '@billing/application/schemas/voucher.schema';
-import type { PaginatedResult } from '@shared/domain/types/Pagination';
+import { voucherRepository } from '@/modules/billing/infrastructure/repositories/HttpVoucherRepository';
+import { billingKeys } from '@/modules/billing/application/billing.keys';
+import { useAdminMutation } from '@/shared/application/useAdminMutation';
+import type { CreditVoucher } from '@/modules/billing/domain/entities/CreditVoucher';
+import type { CreateVoucherInput } from '@/modules/billing/application/schemas/voucher.schema';
+import type { PaginatedResult } from '@/shared/domain/types/Pagination';
 
 export interface VouchersQueryParams {
   page?: number;
@@ -19,7 +19,7 @@ export interface VouchersQueryParams {
 export function useVouchersQuery(params: VouchersQueryParams = {}) {
   return useQuery<PaginatedResult<CreditVoucher>>({
     queryKey: billingKeys.vouchers(params as Record<string, unknown>),
-    queryFn: () => voucherRepository.getVouchers(params as any)
+    queryFn: () => voucherRepository.getVouchers(params)
   });
 }
 

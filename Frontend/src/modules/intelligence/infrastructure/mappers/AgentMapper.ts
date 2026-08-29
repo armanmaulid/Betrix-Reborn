@@ -1,30 +1,31 @@
-import { AiAgent } from '../../domain/entities/AiAgent';
+import { AiAgent, type AiAgentProps } from '../../domain/entities/AiAgent';
 
 export class AgentMapper {
-  public static toDomain(dto: any): AiAgent {
+  public static toDomain(dto: unknown): AiAgent {
+    const d = dto as AiAgentProps;
     return new AiAgent({
-      id: dto.id,
-      name: dto.name,
-      modelName: dto.modelName,
-      baseUrl: dto.baseUrl,
-      apiKey: dto.apiKey,
-      taskType: dto.taskType || 'chat',
-      systemPrompt: dto.systemPrompt,
-      tier: dto.tier || 'balanced',
-      creditsPer1kTokens: Number(dto.creditsPer1kTokens || 10),
-      maxTokens: Number(dto.maxTokens || 4096),
-      temperature: Number(dto.temperature ?? 0.7),
-      supportsThinking: Boolean(dto.supportsThinking),
-      isDefault: Boolean(dto.isDefault),
-      isActive: Boolean(dto.isActive ?? true),
-      visibility: dto.visibility || 'public',
-      description: dto.description,
-      createdAt: dto.createdAt || new Date(),
-      updatedAt: dto.updatedAt
+      id: d.id,
+      name: d.name,
+      modelName: d.modelName,
+      baseUrl: d.baseUrl,
+      apiKey: d.apiKey,
+      taskType: d.taskType || 'chat',
+      systemPrompt: d.systemPrompt,
+      tier: d.tier || 'balanced',
+      creditsPer1kTokens: Number(d.creditsPer1kTokens || 10),
+      maxTokens: Number(d.maxTokens || 4096),
+      temperature: Number(d.temperature ?? 0.7),
+      supportsThinking: Boolean(d.supportsThinking),
+      isDefault: Boolean(d.isDefault),
+      isActive: Boolean(d.isActive ?? true),
+      visibility: d.visibility || 'public',
+      description: d.description,
+      createdAt: d.createdAt || new Date(),
+      updatedAt: d.updatedAt
     });
   }
 
-  public static toDomainList(list: any[]): AiAgent[] {
+  public static toDomainList(list: unknown[]): AiAgent[] {
     if (!Array.isArray(list)) return [];
     return list.map(AgentMapper.toDomain);
   }

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Bot, PlusCircle, RefreshCw } from 'lucide-react';
 import { AgentCard } from './agent-card';
 import { PageHeader } from '@/shared/presentation/ui/page-header';
-import type { AiAgent } from '@intelligence/domain/entities/AiAgent';
+import type { AiAgent } from '@/modules/intelligence/domain/entities/AiAgent';
 
 export interface AgentsFleetGridProps {
   agents: AiAgent[];

@@ -1,7 +1,7 @@
 import cron, { ScheduledTask } from 'node-cron';
 import pino from 'pino';
 import { env } from '@betrix/config';
-import { BrokerTimeCalculator } from '@betrix/domain';
+import { BrokerTimeCalculator, type OHLCBar } from '@betrix/domain';
 import {
   createPgPool,
   createDrizzleClient,
@@ -26,6 +26,15 @@ const logger = pino({
 });
 
 export class SyncWorker extends ManagedWorkerBase implements IManagedWorker {
+  /**
+   * Minutes after Broker Midnight Rollover before the D1 baseline sync fires.
+   * Dukascopy needs real processing time after a D1 candle closes before it's
+   * queryable — firing right at rollover risks reading the not-yet-published
+   * candle and silently caching yesterday's-yesterday as today's baseline.
+   * syncD1Baselines() also date-validates the returned bar and retries as a
+   * safety net in case this delay still isn't enough on a slow day.
+   */
+  private static readonly D1_PUBLISH_DELAY_MINUTES = 8;
   private dailyCronJob: ScheduledTask | null = null;
   private weeklyCatalogCronJob: ScheduledTask | null = null;
   private isShuttingDown = false;
@@ -74,7 +83,14 @@ export class SyncWorker extends ManagedWorkerBase implements IManagedWorker {
 
   protected async doStart(): Promise<void> {
     const rolloverUtcHour = BrokerTimeCalculator.getBrokerRolloverUtcHour(this.brokerUtcOffset);
-    const cronExpr = BrokerTimeCalculator.getBrokerRolloverCronExpression(this.brokerUtcOffset, 3);
+    // Publish delay is worker-specific stagger (3) plus a real buffer for
+    // Dukascopy to actually publish the D1 candle that just closed at
+    // rollover — see getBrokerRolloverCronExpression's doc comment.
+    const cronExpr = BrokerTimeCalculator.getBrokerRolloverCronExpression(
+      this.brokerUtcOffset,
+      3,
+      SyncWorker.D1_PUBLISH_DELAY_MINUTES
+    );
 
     logger.info(
       `Starting Symbol & D1 Baseline Sync Worker (Broker Offset: UTC+${this.brokerUtcOffset}, Rollover: ${rolloverUtcHour}:00 UTC / 00:00 Broker Time)...`
@@ -132,7 +148,10 @@ export class SyncWorker extends ManagedWorkerBase implements IManagedWorker {
 
   public async syncD1Baselines(): Promise<void> {
     const ttlToNextRollover = BrokerTimeCalculator.calculateTtlToNextBrokerRollover(
-      this.brokerUtcOffset
+      this.brokerUtcOffset,
+      60,
+      new Date(),
+      SyncWorker.D1_PUBLISH_DELAY_MINUTES
     );
 
     const symbols = await this.loadDukascopySymbols();
@@ -144,20 +163,17 @@ export class SyncWorker extends ManagedWorkerBase implements IManagedWorker {
       try {
         // Dukascopy is the single source of truth (SSOT) for D1 baselines.
         // No fallback: if it fails, surface the error instead of caching stale data.
-        const now = new Date();
-        const lookback = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
-        const bars = await this.dukascopy.fetchHistory(sym, 'd1', lookback, now);
-        const d1Bar = bars[bars.length - 1];
+        const d1Bar = await this.fetchValidatedD1Bar(sym);
 
-        if (!d1Bar) {
-          throw new Error(`No D1 bar returned for ${sym}`);
-        }
-
-        // Cache D1 bar in Redis strictly for 24h change calculation (ADR-27 & ADR-47)
+        // Cache D1 bar in Redis strictly for 24h change calculation (ADR-27 & ADR-47).
+        // Its .close (previous daily close) is used as the baseline for "today's" %
+        // change — matches the industry-standard "current - previous close" convention,
+        // and is much closer to "24h ago" than .open (which can be 24-48h stale
+        // depending on time of day). See GetPricesUseCase for the read side.
         await this.marketDataRepo.cacheOHLC(sym, 'd1', [d1Bar], ttlToNextRollover);
         this.processedCount += 1;
         logger.info(
-          `[D1 SYNC] ${sym} baseline open cached: ${d1Bar.open} (close: ${d1Bar.close}) [TTL: ${ttlToNextRollover}s]`
+          `[D1 SYNC] ${sym} baseline (prev close) cached: ${d1Bar.close} (open: ${d1Bar.open}) [TTL: ${ttlToNextRollover}s]`
         );
       } catch (err: any) {
         this.errorCount += 1;
@@ -167,6 +183,83 @@ export class SyncWorker extends ManagedWorkerBase implements IManagedWorker {
     }
 
     logger.info('D1 Baseline Synchronization completed.');
+  }
+
+  /**
+   * Fetches the D1 bar for `sym` and validates it actually represents
+   * yesterday's broker-date candle before returning it.
+   *
+   * Why this exists: Dukascopy needs processing time after a D1 candle
+   * closes before it's queryable. If the sync runs before that candle is
+   * published, fetchHistory's date range still returns *something* — just
+   * with the not-yet-published candle missing, so the last bar in the
+   * response silently becomes the day before instead. The publish-delay cron
+   * buffer (SyncWorker.D1_PUBLISH_DELAY_MINUTES) makes this rare, but a slow
+   * publish on Dukascopy's side can still outlast that buffer, so this is
+   * the safety net: check the date, retry with backoff if it's wrong, and
+   * only give up (surfacing an error instead of caching wrong data) after
+   * exhausting retries.
+   */
+  private async fetchValidatedD1Bar(sym: string): Promise<OHLCBar> {
+    const maxAttempts = 4;
+    const retryDelayMs = 30_000;
+
+    // The calendar day the D1 baseline is supposed to represent, in
+    // broker-local terms. Normally "yesterday" — but Dukascopy (like the
+    // broker) publishes no D1 candle for Saturday or Sunday, since the
+    // market is closed. So if "yesterday" lands on a weekend day, the last
+    // candle that actually exists is Friday's, and that's what
+    // fetchHistory's own weekend snapping (see DukascopyHistoryClient) will
+    // return. Expecting a weekend date here would mean this never matches
+    // and burns through every retry for a candle that structurally can't
+    // exist — so we snap the expectation to Friday the same way.
+    const expectedBrokerDate = BrokerTimeCalculator.getBrokerDate(new Date(), this.brokerUtcOffset);
+    expectedBrokerDate.setUTCDate(expectedBrokerDate.getUTCDate() - 1);
+    const expectedDayOfWeek = expectedBrokerDate.getUTCDay(); // 0 = Sunday, 6 = Saturday
+    if (expectedDayOfWeek === 6) {
+      expectedBrokerDate.setUTCDate(expectedBrokerDate.getUTCDate() - 1); // Sat -> Fri
+    } else if (expectedDayOfWeek === 0) {
+      expectedBrokerDate.setUTCDate(expectedBrokerDate.getUTCDate() - 2); // Sun -> Fri
+    }
+    const expectedKey = expectedBrokerDate.toISOString().slice(0, 10); // YYYY-MM-DD
+
+    let lastBarKey = '';
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const now = new Date();
+      const lookback = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+      const bars = await this.dukascopy.fetchHistory(sym, 'd1', lookback, now);
+      const d1Bar = bars[bars.length - 1];
+
+      if (!d1Bar) {
+        throw new Error(`No D1 bar returned for ${sym}`);
+      }
+
+      const barBrokerDate = BrokerTimeCalculator.getBrokerDate(
+        new Date(d1Bar.time * 1000),
+        this.brokerUtcOffset
+      );
+      const barKey = barBrokerDate.toISOString().slice(0, 10);
+
+      if (barKey === expectedKey) {
+        return d1Bar;
+      }
+
+      lastBarKey = barKey;
+
+      if (attempt < maxAttempts) {
+        logger.warn(
+          `[D1 SYNC] ${sym} returned bar dated ${barKey}, expected ${expectedKey} (Dukascopy likely hasn't published yet) — retrying in ${retryDelayMs / 1000}s (attempt ${attempt}/${maxAttempts})...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
+    }
+
+    // Exhausted retries — surface a clear error rather than silently caching
+    // a bar dated earlier than expected as if it were yesterday's baseline.
+    throw new Error(
+      `D1 bar for ${sym} still dated ${lastBarKey} after ${maxAttempts} attempts, expected ${expectedKey} — Dukascopy has not published yesterday's candle yet`
+    );
   }
 
   /**

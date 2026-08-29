@@ -34,7 +34,7 @@ import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { formatFinancialNumber } from '@/shared/utils';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
 import { PageHeader } from '@/shared/presentation/ui/page-header';
-import type { WorkerAction } from '@operations/domain/entities/BackgroundWorker';
+import type { WorkerAction } from '@/modules/operations/domain/entities/BackgroundWorker';
 
 export function MaintenanceContainer() {
   usePageTitle('FLEET MAINTENANCE');

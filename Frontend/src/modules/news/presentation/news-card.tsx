@@ -1,7 +1,7 @@
 import React from 'react';
 import { ExternalLink, Clock, Globe, Trash2 } from 'lucide-react';
 import { formatUtcNewsDate } from '@/shared/utils/formatters';
-import type { NewsArticle } from '@news/domain/entities/NewsArticle';
+import type { NewsArticle } from '@/modules/news/domain/entities/NewsArticle';
 
 export interface NewsCardProps {
   article: NewsArticle;

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { CalendarDays, RefreshCw } from 'lucide-react';
-import { useCalendarQuery } from '@calendar/application/queries/use-calendar';
+import { useCalendarQuery } from '@/modules/calendar/application/queries/use-calendar';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
 import { formatFinancialNumber } from '@/shared/utils';
 import { Badge, type BadgeTone } from '@/shared/presentation/ui/badge';
@@ -12,8 +12,8 @@ import { TableShell, type TableColumn } from '@/shared/presentation/ui/table-she
 import type {
   CalendarEvent,
   CalendarEventImportance
-} from '@calendar/domain/entities/CalendarEvent';
-import type { CalendarQueryParams } from '@calendar/domain/repositories/ICalendarRepository';
+} from '@/modules/calendar/domain/entities/CalendarEvent';
+import type { CalendarQueryParams } from '@/modules/calendar/domain/repositories/ICalendarRepository';
 
 const IMPORTANCE_TONE: Record<CalendarEventImportance, BadgeTone> = {
   high: 'negative',
@@ -250,7 +250,7 @@ export function CalendarContainer() {
   // backfill is supposed to cover).
   const initialYear = new Date().getFullYear() - 1;
   const [customYear, setCustomYear] = useState<number>(initialYear);
-  const [customMonth, setCustomMonth] = useState<string>(''); // 'YYYY-MM' or ''
+  const [customMonth, setCustomMonth] = useState<string>(''); // committed 'YYYY-MM' or ''
   // Raw input strings (controlled) for the custom form, plus a validation msg.
   const [customYearInput, setCustomYearInput] = useState<string>(String(initialYear));
   const [customMonthInput, setCustomMonthInput] = useState<string>('');
@@ -273,23 +273,26 @@ export function CalendarContainer() {
 
   const { data, isLoading, isError, isRefetching, refetch } = useCalendarQuery(queryParams);
 
-  // Validate the custom form and commit on APPLY. Month takes precedence over
-  // year (month = single YYYY-MM; empty month = full year).
+  // Validate the custom form and commit on APPLY. The year is always required;
+  // an optional month (1–12) narrows it to a single month, otherwise the whole
+  // year is queried.
   const applyCustom = (): void => {
-    const m = customMonthInput.trim();
-    if (m) {
-      if (!/^\d{4}-\d{2}$/.test(m)) {
-        setCustomError('Month must be YYYY-MM (e.g. 2025-03).');
-        return;
-      }
-      setCustomMonth(m);
-      setCustomError(null);
-      setMode('custom');
-      return;
-    }
     const y = Number(customYearInput);
     if (!Number.isInteger(y) || y < 1990 || y > 2100) {
       setCustomError('Year must be an integer between 1990 and 2100.');
+      return;
+    }
+    const mRaw = customMonthInput.trim();
+    if (mRaw) {
+      const m = Number(mRaw);
+      if (!Number.isInteger(m) || m < 1 || m > 12) {
+        setCustomError('Month must be a number between 1 and 12.');
+        return;
+      }
+      setCustomYear(y);
+      setCustomMonth(`${y}-${String(m).padStart(2, '0')}`);
+      setCustomError(null);
+      setMode('custom');
       return;
     }
     setCustomYear(y);
@@ -442,12 +445,13 @@ export function CalendarContainer() {
             <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               MONTH
               <input
-                type="text"
-                placeholder="YYYY-MM"
-                pattern="\d{4}-\d{2}"
+                type="number"
+                min={1}
+                max={12}
+                placeholder="1–12"
                 value={customMonthInput}
                 onChange={(e) => setCustomMonthInput(e.target.value)}
-                className="w-28 bg-surface border border-border px-2 py-1 text-xs text-foreground focus:outline-none focus:border-accent tabular-nums"
+                className="w-16 bg-surface border border-border px-2 py-1 text-xs text-foreground focus:outline-none focus:border-accent tabular-nums"
               />
             </label>
             <button

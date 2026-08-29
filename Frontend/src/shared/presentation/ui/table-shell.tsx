@@ -13,6 +13,8 @@ export interface TableColumn {
   align?: ColumnAlign;
   /** Extra th utility classes (widths, nowrap, …). */
   className?: string;
+  /** Current sort state for this column — surfaces `aria-sort` on the <th>. */
+  sortDirection?: 'ascending' | 'descending' | 'none';
 }
 
 export interface TableShellProps {
@@ -97,6 +99,7 @@ export function TableShell({
             {columns.map((column) => (
               <th
                 key={column.key}
+                aria-sort={column.sortDirection}
                 className={`p-3 ${ALIGN_CLASS[column.align ?? 'left']} ${column.className ?? ''}`}
               >
                 {column.header ?? column.label}

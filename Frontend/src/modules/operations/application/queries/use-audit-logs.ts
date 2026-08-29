@@ -1,10 +1,10 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { operationsRepository } from '@operations/infrastructure/repositories/HttpOperationsRepository';
-import { operationsKeys } from '@operations/application/operations.keys';
-import type { AuditLog } from '@operations/domain/entities/AuditLog';
-import type { PaginatedResult } from '@shared/domain/types/Pagination';
+import { operationsRepository } from '@/modules/operations/infrastructure/repositories/HttpOperationsRepository';
+import { operationsKeys } from '@/modules/operations/application/operations.keys';
+import type { AuditLog } from '@/modules/operations/domain/entities/AuditLog';
+import type { PaginatedResult } from '@/shared/domain/types/Pagination';
 import { downloadBlob, fileTimestamp } from '@/shared/utils/download';
 
 export interface AuditLogQueryParams {

@@ -6,47 +6,79 @@ import type {
   UpdateUserInput
 } from '../../domain/repositories/IUserRepository';
 import { User } from '../../domain/entities/User';
+import type {
+  AdminUser,
+  AdminUserDetail,
+  AdminChatMessage,
+  AdminChatHistoryQuery
+} from '../../domain/entities/User';
 import { UserMapper } from '../mappers/UserMapper';
-import { HttpClient } from '@shared/infrastructure/http/api-client';
-import type { PaginatedResult } from '@shared/domain/types/Pagination';
+import { HttpClient, unwrapData } from '@/shared/infrastructure/http/api-client';
+import type { PaginatedResult, PaginationMeta } from '@/shared/domain/types/Pagination';
 
 export class HttpUserRepository implements IUserRepository {
   constructor(private client: HttpClient = new HttpClient()) {}
 
   async getUsers(params?: UserQueryParams): Promise<PaginatedResult<User>> {
-    const res = await this.client.get<{ data: any[]; meta: any }>('/api/admin/users', {
-      queryParams: params as Record<string, any>
-    });
+    const res = await this.client.get<{ data: AdminUser[]; meta: PaginationMeta }>(
+      '/api/admin/users',
+      {
+        queryParams: params as Record<string, string | number | boolean | undefined>
+      }
+    );
     return UserMapper.toDomainPaginated(res);
   }
 
   async getUserById(id: string): Promise<User> {
-    const res = await this.client.get<{ data: { user: any } }>(
+    const res = await this.client.get<{ data: { user: AdminUser } }>(
       `/api/admin/users/${encodeURIComponent(id)}`
     );
-    const userData = res.data?.user || res.data || res;
+    const userData = res.data?.user || unwrapData<AdminUser>(res);
     return UserMapper.toDomain(userData);
+  }
+
+  async getUserDetail(id: string): Promise<AdminUserDetail> {
+    const res = await this.client.get<{ data: AdminUserDetail }>(
+      `/api/admin/users/${encodeURIComponent(id)}`
+    );
+    return res.data || (res as unknown as AdminUserDetail);
+  }
+
+  async getUserChatHistory(
+    id: string,
+    params?: AdminChatHistoryQuery
+  ): Promise<PaginatedResult<AdminChatMessage>> {
+    const queryParams: Record<string, string | number | undefined> = {
+      page: params?.page,
+      limit: params?.limit,
+      sessionId: params?.sessionId
+    };
+    const res = await this.client.get<{
+      data: AdminChatMessage[] | AdminChatMessage;
+      meta?: PaginatedResult<AdminChatMessage>['meta'];
+    }>(`/api/admin/users/${encodeURIComponent(id)}/chat-history`, { queryParams });
+    return UserMapper.toChatHistoryPaginated(res, params);
   }
 
   async createUser(input: CreateUserInput): Promise<CreateUserResult> {
     const res = await this.client.post<{
-      data?: { user?: any; generatedPassword?: string };
-      user?: any;
+      data?: { user?: AdminUser; generatedPassword?: string };
+      user?: AdminUser;
       generatedPassword?: string;
     }>('/api/admin/users', input);
     const body = res.data ?? res;
     return {
-      user: UserMapper.toDomain(body.user ?? body),
+      user: UserMapper.toDomain(body.user ?? (body as unknown as AdminUser)),
       generatedPassword: body.generatedPassword
     };
   }
 
   async updateUser(id: string, input: UpdateUserInput): Promise<User> {
-    const res = await this.client.patch<{ data: any }>(
+    const res = await this.client.patch<{ data: AdminUser }>(
       `/api/admin/users/${encodeURIComponent(id)}`,
       input
     );
-    return UserMapper.toDomain(res.data || res);
+    return UserMapper.toDomain(unwrapData<AdminUser>(res));
   }
 
   async deleteUser(id: string): Promise<void> {

@@ -8,28 +8,30 @@ import type {
 } from '../../domain/repositories/IAgentRepository';
 import { AiAgent } from '../../domain/entities/AiAgent';
 import { AgentMapper } from '../mappers/AgentMapper';
-import { HttpClient, unwrapData, unwrapListData } from '@shared/infrastructure/http/api-client';
+import { HttpClient, unwrapData, unwrapListData } from '@/shared/infrastructure/http/api-client';
 
 export class HttpAgentRepository implements IAgentRepository {
   constructor(private client: HttpClient = new HttpClient()) {}
 
   async getAgents(): Promise<AiAgent[]> {
-    const res = await this.client.get<{ data: any[] }>('/api/admin/agents');
+    const res = await this.client.get<{ data: unknown[] }>('/api/admin/agents');
     return AgentMapper.toDomainList(unwrapListData(res));
   }
 
   async getAgentById(id: string): Promise<AiAgent> {
-    const res = await this.client.get<{ data: any }>(`/api/admin/agents/${encodeURIComponent(id)}`);
+    const res = await this.client.get<{ data: unknown }>(
+      `/api/admin/agents/${encodeURIComponent(id)}`
+    );
     return AgentMapper.toDomain(unwrapData(res));
   }
 
   async createAgent(input: CreateAgentInput): Promise<AiAgent> {
-    const res = await this.client.post<{ data: any }>('/api/admin/agents', input);
+    const res = await this.client.post<{ data: unknown }>('/api/admin/agents', input);
     return AgentMapper.toDomain(unwrapData(res));
   }
 
   async updateAgent(id: string, input: UpdateAgentInput): Promise<AiAgent> {
-    const res = await this.client.patch<{ data: any }>(
+    const res = await this.client.patch<{ data: unknown }>(
       `/api/admin/agents/${encodeURIComponent(id)}`,
       input
     );

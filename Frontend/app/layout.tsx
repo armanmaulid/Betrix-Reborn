@@ -7,6 +7,10 @@ export const metadata: Metadata = {
     template: 'BETRIX // %s'
   },
   description: 'Institutional-grade Market Intelligence & Analysis Admin Terminal',
+  robots: {
+    index: false,
+    follow: false
+  },
   icons: {
     icon: '/favicon.ico'
   }

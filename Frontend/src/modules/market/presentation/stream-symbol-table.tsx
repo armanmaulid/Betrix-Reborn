@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
-import type { StreamSymbolEntity } from '@market/domain/entities/MarketInstrument';
-import type { PriceTick } from '@market/domain/value-objects/PriceTick';
+import type { StreamSymbolEntity } from '@/modules/market/domain/entities/MarketInstrument';
+import type { PriceTick } from '@/modules/market/domain/value-objects/PriceTick';
 import { TableShell, type TableColumn } from '@/shared/presentation/ui/table-shell';
 
 const COLUMNS: TableColumn[] = [

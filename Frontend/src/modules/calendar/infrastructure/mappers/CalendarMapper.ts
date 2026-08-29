@@ -1,32 +1,33 @@
-import { CalendarEvent } from '../../domain/entities/CalendarEvent';
+import { CalendarEvent, type CalendarEventProps } from '../../domain/entities/CalendarEvent';
 
 export class CalendarMapper {
-  public static toDomain(dto: any): CalendarEvent {
+  public static toDomain(dto: unknown): CalendarEvent {
+    const d = dto as CalendarEventProps;
     return new CalendarEvent({
-      id: dto.id,
-      currency: dto.currency || 'USD',
-      eventCode: dto.eventCode,
-      eventName: dto.eventName || '',
-      referencePeriodDate: dto.referencePeriodDate,
-      announcementUnix: dto.announcementUnix,
-      announcementDatetimeUtc: dto.announcementDatetimeUtc,
-      announcementDatetimeLocal: dto.announcementDatetimeLocal,
-      importance: dto.importance || 'low',
-      marketTier: dto.marketTier ?? 3,
-      isTopTier: dto.isTopTier,
-      sourceName: dto.sourceName,
-      sourceUrl: dto.sourceUrl,
-      beforeValue: dto.beforeValue,
-      forecastValue: dto.forecastValue,
-      forecastType: dto.forecastType,
-      actualValue: dto.actualValue,
-      hasOfficialForecast: dto.hasOfficialForecast,
-      createdAt: dto.createdAt,
-      updatedAt: dto.updatedAt
+      id: d.id,
+      currency: d.currency || 'USD',
+      eventCode: d.eventCode,
+      eventName: d.eventName || '',
+      referencePeriodDate: d.referencePeriodDate,
+      announcementUnix: d.announcementUnix,
+      announcementDatetimeUtc: d.announcementDatetimeUtc,
+      announcementDatetimeLocal: d.announcementDatetimeLocal,
+      importance: d.importance || 'low',
+      marketTier: d.marketTier ?? 3,
+      isTopTier: d.isTopTier,
+      sourceName: d.sourceName,
+      sourceUrl: d.sourceUrl,
+      beforeValue: d.beforeValue,
+      forecastValue: d.forecastValue,
+      forecastType: d.forecastType,
+      actualValue: d.actualValue,
+      hasOfficialForecast: d.hasOfficialForecast,
+      createdAt: d.createdAt,
+      updatedAt: d.updatedAt
     });
   }
 
-  public static toDomainList(dtos: any[]): CalendarEvent[] {
+  public static toDomainList(dtos: unknown[]): CalendarEvent[] {
     return (dtos || []).map(CalendarMapper.toDomain);
   }
 }

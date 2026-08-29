@@ -9,7 +9,7 @@ import {
   buildSymbolSchema,
   SYMBOL_CATEGORIES,
   type SymbolFormValues
-} from '@market/application/schemas/symbol.schema';
+} from '@/modules/market/application/schemas/symbol.schema';
 
 export interface SymbolFormData {
   symbol: string;
@@ -147,13 +147,13 @@ export function SymbolModal({
         {mode === 'ohlc' ? (
           <div className="space-y-1">
             <label
-              htmlFor="symbol-modal-provider"
+              htmlFor="symbol-modal-dukascopy-provider"
               className="text-[10px] text-muted-foreground uppercase"
             >
               DUKASCOPY TICKER (E.G. eurusd, xauusd, btcusd) *
             </label>
             <input
-              id="symbol-modal-provider"
+              id="symbol-modal-dukascopy-provider"
               type="text"
               placeholder="eurusd"
               {...register('dukascopySymbol')}
@@ -166,13 +166,13 @@ export function SymbolModal({
         ) : (
           <div className="space-y-1">
             <label
-              htmlFor="symbol-modal-provider"
+              htmlFor="symbol-modal-finnhub-provider"
               className="text-[10px] text-muted-foreground uppercase"
             >
               FINNHUB TICKER (E.G. OANDA:EUR_USD, BINANCE:BTCUSDT){mode === 'stream' ? ' *' : ''}
             </label>
             <input
-              id="symbol-modal-provider"
+              id="symbol-modal-finnhub-provider"
               type="text"
               placeholder="OANDA:EUR_USD"
               {...register('finnhubSymbol')}

@@ -1,5 +1,5 @@
 import { NewsArticle } from '../entities/NewsArticle';
-import type { PaginatedResult, PaginationQueryParams } from '@shared/domain/types/Pagination';
+import type { PaginatedResult, PaginationQueryParams } from '@/shared/domain/types/Pagination';
 
 export interface NewsQueryParams extends PaginationQueryParams {
   category?: string;
@@ -9,6 +9,7 @@ export interface NewsQueryParams extends PaginationQueryParams {
 
 export interface INewsRepository {
   getNews(params?: NewsQueryParams): Promise<PaginatedResult<NewsArticle>>;
+  pollNews(category?: string): Promise<unknown>;
   deleteNews(id: string): Promise<boolean>;
   batchDeleteNews(ids: string[]): Promise<number>;
 }

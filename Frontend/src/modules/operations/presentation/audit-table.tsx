@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Eye, User, Globe } from 'lucide-react';
 import { formatDateTime } from '@/shared/utils/formatters';
-import type { AuditLog } from '@operations/domain/entities/AuditLog';
+import type { AuditLog } from '@/modules/operations/domain/entities/AuditLog';
 import { Badge } from '@/shared/presentation/ui/badge';
 import { TableShell, type TableColumn } from '@/shared/presentation/ui/table-shell';
 

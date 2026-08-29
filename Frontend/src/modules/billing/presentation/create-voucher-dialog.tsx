@@ -7,7 +7,7 @@ import { Ticket, Sparkles } from 'lucide-react';
 import {
   CreateVoucherSchema,
   type CreateVoucherInput
-} from '@billing/application/schemas/voucher.schema';
+} from '@/modules/billing/application/schemas/voucher.schema';
 import { useCreateVoucherMutation } from '@/modules/billing/application/queries/use-vouchers';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { TerminalModal } from '@/shared/presentation/ui/terminal-modal';
@@ -139,10 +139,14 @@ export function CreateVoucherDialog({ isOpen, onClose }: CreateVoucherDialogProp
 
         {/* Expiration Date */}
         <div className="space-y-1">
-          <label className="text-[10px] uppercase text-muted-foreground tracking-wider block">
+          <label
+            htmlFor="voucher-expires-at"
+            className="text-[10px] uppercase text-muted-foreground tracking-wider block"
+          >
             EXPIRATION TIMESTAMP (OPTIONAL — SENT AS UTC)
           </label>
           <input
+            id="voucher-expires-at"
             type="datetime-local"
             {...register('expiresAt')}
             className="w-full bg-black border border-border px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-accent"

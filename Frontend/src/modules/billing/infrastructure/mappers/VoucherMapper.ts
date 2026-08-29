@@ -1,23 +1,30 @@
-import { CreditVoucher } from '@billing/domain/entities/CreditVoucher';
-import { toDomainPaginated } from '@shared/domain/types/Pagination';
+import {
+  CreditVoucher,
+  type CreditVoucherProps
+} from '@/modules/billing/domain/entities/CreditVoucher';
+import { toDomainPaginated } from '@/shared/domain/types/Pagination';
+import type { PaginationMeta } from '@/shared/domain/types/Pagination';
 
 export class VoucherMapper {
-  public static toDomain(dto: any): CreditVoucher {
+  public static toDomain(dto: unknown): CreditVoucher {
+    const d = dto as CreditVoucherProps;
     return new CreditVoucher({
-      id: dto.id,
-      code: dto.code,
-      amount: Number(dto.amount || 0),
-      isRedeemed: Boolean(dto.isRedeemed),
-      redeemedById: dto.redeemedById,
-      redeemedAt: dto.redeemedAt,
-      expiresAt: dto.expiresAt,
-      createdById: dto.createdById,
-      createdAt: dto.createdAt || new Date(),
-      updatedAt: dto.updatedAt
+      id: d.id,
+      code: d.code,
+      amount: Number(d.amount || 0),
+      isRedeemed: Boolean(d.isRedeemed),
+      redeemedById: d.redeemedById,
+      redeemedAt: d.redeemedAt,
+      expiresAt: d.expiresAt,
+      createdById: d.createdById,
+      createdAt: d.createdAt || new Date(),
+      updatedAt: d.updatedAt
     });
   }
 
-  public static toDomainPaginated(paginatedDto: any) {
+  public static toDomainPaginated(
+    paginatedDto: { data?: unknown[]; meta?: PaginationMeta } | unknown[]
+  ) {
     return toDomainPaginated(paginatedDto, VoucherMapper.toDomain);
   }
 }

@@ -1,6 +1,6 @@
 import { AuditLog } from '../entities/AuditLog';
 import { BackgroundWorker, type WorkerAction } from '../entities/BackgroundWorker';
-import type { PaginatedResult, PaginationQueryParams } from '@shared/domain/types/Pagination';
+import type { PaginatedResult, PaginationQueryParams } from '@/shared/domain/types/Pagination';
 
 export interface AuditLogQueryParams extends PaginationQueryParams {
   userId?: string;

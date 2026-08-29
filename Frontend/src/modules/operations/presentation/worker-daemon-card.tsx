@@ -4,7 +4,10 @@ import React from 'react';
 import { Play, Pause, Square, RotateCw } from 'lucide-react';
 import { formatFinancialNumber, formatUptime } from '@/shared/utils';
 import { StatusBadge } from '@/shared/presentation/ui/status-badge';
-import type { BackgroundWorker, WorkerAction } from '@operations/domain/entities/BackgroundWorker';
+import type {
+  BackgroundWorker,
+  WorkerAction
+} from '@/modules/operations/domain/entities/BackgroundWorker';
 
 export interface WorkerDaemonCardProps {
   worker: BackgroundWorker;

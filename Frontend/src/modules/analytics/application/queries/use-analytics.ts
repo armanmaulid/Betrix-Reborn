@@ -1,8 +1,8 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { analyticsRepository } from '@analytics/infrastructure/repositories/HttpAnalyticsRepository';
-import { analyticsKeys } from '@analytics/application/analytics.keys';
+import { analyticsRepository } from '@/modules/analytics/infrastructure/repositories/HttpAnalyticsRepository';
+import { analyticsKeys } from '@/modules/analytics/application/analytics.keys';
 import type {
   UserAnalytics,
   AnalyticsQueryParams

@@ -2,26 +2,32 @@ import type { IMarketRepository } from '../../domain/repositories/IMarketReposit
 import {
   MarketInstrument,
   StreamSymbolEntity,
-  OhlcSymbolEntity
+  OhlcSymbolEntity,
+  type MarketInstrumentProps,
+  type StreamSymbolEntityProps,
+  type OhlcSymbolEntityProps
 } from '../../domain/entities/MarketInstrument';
 import { PriceTick } from '../../domain/value-objects/PriceTick';
-import { HttpClient, unwrapData, unwrapListData } from '@shared/infrastructure/http/api-client';
-import { MarketMapper } from '../mappers/MarketMapper';
+import { HttpClient, unwrapData, unwrapListData } from '@/shared/infrastructure/http/api-client';
+import { MarketMapper, type PriceTickDto } from '../mappers/MarketMapper';
 
 export class HttpMarketRepository implements IMarketRepository {
   constructor(private http: HttpClient = new HttpClient()) {}
 
   public async getSymbols(activeOnly: boolean = false): Promise<MarketInstrument[]> {
-    const res = await this.http.get<{ data: any[] }>('/api/market/symbols', {
+    const res = await this.http.get<{ data: MarketInstrumentProps[] }>('/api/market/symbols', {
       queryParams: { activeOnly }
     });
-    return unwrapListData(res).map(MarketMapper.toInstrumentEntity);
+    return unwrapListData<MarketInstrumentProps>(res).map(MarketMapper.toInstrumentEntity);
   }
 
   public async saveSymbol(
     instrument: Partial<MarketInstrument> & { symbol: string }
   ): Promise<MarketInstrument> {
-    const res = await this.http.post<{ data: any }>('/api/admin/symbols', instrument);
+    const res = await this.http.post<{ data: MarketInstrumentProps }>(
+      '/api/admin/symbols',
+      instrument
+    );
     return MarketMapper.toInstrumentEntity(unwrapData(res));
   }
 
@@ -31,16 +37,22 @@ export class HttpMarketRepository implements IMarketRepository {
   }
 
   public async getStreamSymbols(activeOnly: boolean = false): Promise<StreamSymbolEntity[]> {
-    const res = await this.http.get<{ data: any[] }>('/api/market/stream-symbols', {
-      queryParams: { activeOnly }
-    });
-    return unwrapListData(res).map(MarketMapper.toStreamSymbolEntity);
+    const res = await this.http.get<{ data: StreamSymbolEntityProps[] }>(
+      '/api/market/stream-symbols',
+      {
+        queryParams: { activeOnly }
+      }
+    );
+    return unwrapListData<StreamSymbolEntityProps>(res).map(MarketMapper.toStreamSymbolEntity);
   }
 
   public async saveStreamSymbol(
     streamData: Partial<StreamSymbolEntity> & { symbol: string; finnhubSymbol: string }
   ): Promise<StreamSymbolEntity> {
-    const res = await this.http.post<{ data: any }>('/api/admin/stream-symbols', streamData);
+    const res = await this.http.post<{ data: StreamSymbolEntityProps }>(
+      '/api/admin/stream-symbols',
+      streamData
+    );
     return MarketMapper.toStreamSymbolEntity(unwrapData(res));
   }
 
@@ -50,10 +62,10 @@ export class HttpMarketRepository implements IMarketRepository {
   }
 
   public async getOhlcSymbols(activeOnly: boolean = false): Promise<OhlcSymbolEntity[]> {
-    const res = await this.http.get<{ data: any[] }>('/api/admin/ohlc-symbols', {
+    const res = await this.http.get<{ data: OhlcSymbolEntityProps[] }>('/api/admin/ohlc-symbols', {
       queryParams: { activeOnly }
     });
-    return unwrapListData(res).map(MarketMapper.toOhlcSymbolEntity);
+    return unwrapListData<OhlcSymbolEntityProps>(res).map(MarketMapper.toOhlcSymbolEntity);
   }
 
   public async saveOhlcSymbol(data: {
@@ -62,7 +74,10 @@ export class HttpMarketRepository implements IMarketRepository {
     description?: string;
     isActive?: boolean;
   }): Promise<OhlcSymbolEntity> {
-    const res = await this.http.post<{ data: any }>('/api/admin/ohlc-symbols', data);
+    const res = await this.http.post<{ data: OhlcSymbolEntityProps }>(
+      '/api/admin/ohlc-symbols',
+      data
+    );
     return MarketMapper.toOhlcSymbolEntity(unwrapData(res));
   }
 
@@ -72,8 +87,8 @@ export class HttpMarketRepository implements IMarketRepository {
   }
 
   public async getPricesSnapshot(): Promise<PriceTick[]> {
-    const res = await this.http.get<{ data: any[] }>('/api/market/prices');
-    return unwrapListData(res).map((dto) => MarketMapper.toPriceTick(dto));
+    const res = await this.http.get<{ data: PriceTickDto[] }>('/api/market/prices');
+    return unwrapListData<PriceTickDto>(res).map((dto) => MarketMapper.toPriceTick(dto));
   }
 }
 

@@ -7,7 +7,7 @@ import { KeyRound, AlertTriangle } from 'lucide-react';
 import {
   ResetUserPasswordSchema,
   type ResetUserPasswordInput
-} from '@identity/application/schemas/admin-user.schema';
+} from '@/modules/identity/application/schemas/admin-user.schema';
 import { useResetPasswordMutation } from '@/modules/identity/application/queries/use-users';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { TerminalModal } from '@/shared/presentation/ui/terminal-modal';

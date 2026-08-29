@@ -1,9 +1,24 @@
-import { AuditLog } from '../../domain/entities/AuditLog';
-import { BackgroundWorker } from '../../domain/entities/BackgroundWorker';
-import { toDomainPaginated } from '@shared/domain/types/Pagination';
+import { AuditLog, type AuditLogProps } from '../../domain/entities/AuditLog';
+import {
+  BackgroundWorker,
+  type BackgroundWorkerProps
+} from '../../domain/entities/BackgroundWorker';
+import { toDomainPaginated } from '@/shared/domain/types/Pagination';
+import type { PaginationMeta } from '@/shared/domain/types/Pagination';
+
+/** Raw backend audit-log DTO — the backend enriches user/action fields with admin aliases. */
+export interface AuditLogDto extends Partial<AuditLogProps> {
+  id: string;
+  adminId?: string;
+  adminEmail?: string;
+  adminName?: string;
+  targetType?: string;
+  targetId?: string;
+  ip?: string;
+}
 
 export class AuditLogMapper {
-  public static toDomain(dto: any): AuditLog {
+  public static toDomain(dto: AuditLogDto): AuditLog {
     return new AuditLog({
       id: dto.id,
       userId: dto.adminId ?? dto.userId,
@@ -21,11 +36,13 @@ export class AuditLogMapper {
     });
   }
 
-  public static toDomainPaginated(paginatedDto: any) {
+  public static toDomainPaginated(
+    paginatedDto: { data?: AuditLogDto[]; meta?: PaginationMeta } | AuditLogDto[]
+  ) {
     return toDomainPaginated(paginatedDto, AuditLogMapper.toDomain);
   }
 
-  public static toWorkerDomain(dto: any): BackgroundWorker {
+  public static toWorkerDomain(dto: BackgroundWorkerProps): BackgroundWorker {
     return new BackgroundWorker({
       id: dto.id,
       name: dto.name,

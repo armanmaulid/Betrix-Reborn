@@ -5,18 +5,25 @@ import type {
   SystemCleanupInput
 } from '../../domain/repositories/IOperationsRepository';
 import { AuditLog } from '../../domain/entities/AuditLog';
-import { BackgroundWorker, type WorkerAction } from '../../domain/entities/BackgroundWorker';
-import { AuditLogMapper } from '../mappers/AuditLogMapper';
-import { HttpClient, unwrapData, unwrapListData } from '@shared/infrastructure/http/api-client';
-import type { PaginatedResult } from '@shared/domain/types/Pagination';
+import {
+  BackgroundWorker,
+  type WorkerAction,
+  type BackgroundWorkerProps
+} from '../../domain/entities/BackgroundWorker';
+import { AuditLogMapper, type AuditLogDto } from '../mappers/AuditLogMapper';
+import { HttpClient, unwrapData, unwrapListData } from '@/shared/infrastructure/http/api-client';
+import type { PaginatedResult, PaginationMeta } from '@/shared/domain/types/Pagination';
 
 export class HttpOperationsRepository implements IOperationsRepository {
   constructor(private http: HttpClient = new HttpClient()) {}
 
   async getAuditLogs(params?: AuditLogQueryParams): Promise<PaginatedResult<AuditLog>> {
-    const res = await this.http.get<{ data: any[]; meta: any }>('/api/admin/audit-logs', {
-      queryParams: params as Record<string, any>
-    });
+    const res = await this.http.get<{ data: AuditLogDto[]; meta: PaginationMeta }>(
+      '/api/admin/audit-logs',
+      {
+        queryParams: params as Record<string, string | number | boolean | undefined>
+      }
+    );
     return AuditLogMapper.toDomainPaginated(res);
   }
 
@@ -29,12 +36,12 @@ export class HttpOperationsRepository implements IOperationsRepository {
   }
 
   async getWorkers(): Promise<BackgroundWorker[]> {
-    const res = await this.http.get<{ data: any[] }>('/api/admin/workers');
-    return unwrapListData(res).map(AuditLogMapper.toWorkerDomain);
+    const res = await this.http.get<{ data: BackgroundWorkerProps[] }>('/api/admin/workers');
+    return unwrapListData<BackgroundWorkerProps>(res).map(AuditLogMapper.toWorkerDomain);
   }
 
   async controlWorker(workerId: string, action: WorkerAction): Promise<BackgroundWorker> {
-    const res = await this.http.post<{ data: any }>(
+    const res = await this.http.post<{ data: BackgroundWorkerProps }>(
       `/api/admin/workers/${encodeURIComponent(workerId)}/control`,
       { action }
     );

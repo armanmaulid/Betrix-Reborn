@@ -77,6 +77,24 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
 
     // Daily job is the safety net, not the primary channel — see connectSSE() below.
     await this.syncIfMonthMissing();
+
+    // Full 3-year coverage (last year + this year + next year) is a much
+    // bigger job than the monthly safety net above — it's expected to run
+    // for a long time on a fresh DB and to span multiple worker restarts
+    // once the daily FXMacroData call budget is hit partway through (no
+    // separate daily cron for this: it's idempotent per currency+year via
+    // countByCurrencyAndYear, so simply re-running it — which happens
+    // naturally on every worker restart — picks up wherever it left off).
+    // Fire-and-forget rather than awaited: doStart() must still register
+    // cron jobs and the command listener promptly, not block on however
+    // long this takes. Errors are caught and logged inside — this must
+    // never crash startup.
+    void this.syncYearsIfMissing().catch((err: any) => {
+      this.errorCount += 1;
+      this.lastError = err.message;
+      logger.error({ err: err.message }, '[CALENDAR YEAR SYNC] Startup year-coverage pass failed');
+    });
+
     this.dailyCronJob = cron.schedule(cronExpr, async () => {
       if (this.isPaused) return;
       logger.info('[CRON] Executing daily calendar sync check...');
@@ -258,6 +276,159 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
           `Failed to sync calendar for ${cur} ${currentYearMonth}`
         );
       }
+    }
+  }
+
+  /**
+   * Full-year coverage backfill: for each active currency and each target
+   * year, insert that year's calendar (schedule + Before/Actual/Forecast)
+   * IF-AND-ONLY-IF the currency+year combination has zero rows already —
+   * mirrors syncIfMonthMissingInner's "insert only if missing" idempotency,
+   * scoped to a year instead of a month.
+   *
+   * Default scope is ['last', 'current', 'next'] (the 3-year window this
+   * exists for). Pass a narrower list (e.g. ['current']) to check just one.
+   *
+   * Currency order: non-USD ("premium", gated behind FXMACRODATA_API_KEY —
+   * see FxMacroDataClient) is processed BEFORE USD. USD's announcements/
+   * predictions stay free even after a trial key expires (see
+   * FxMacroDataClient's fetchAnnouncements/fetchPredictions doc comments),
+   * so it can always be backfilled later — premium currencies can't, once
+   * the trial window closes. Prioritizing them first maximizes what actually
+   * gets captured against a fixed, ticking trial clock.
+   *
+   * Idempotent and safe to call repeatedly (every worker restart re-runs
+   * this in doStart()): years already covered are skipped instantly via
+   * countByCurrencyAndYear, so a run that was cut short by the daily
+   * FXMacroData call budget simply picks up the remaining currency+year
+   * pairs next time, with no separate tracking table needed.
+   */
+  private yearSyncRunning = false;
+  public async syncYearsIfMissing(scope: Array<'last' | 'current' | 'next'> = [
+    'last',
+    'current',
+    'next'
+  ]): Promise<void> {
+    if (this.yearSyncRunning) return;
+    this.yearSyncRunning = true;
+    try {
+      await this.syncYearsIfMissingInner(scope);
+    } finally {
+      this.yearSyncRunning = false;
+    }
+  }
+
+  private async syncYearsIfMissingInner(
+    scope: Array<'last' | 'current' | 'next'>
+  ): Promise<void> {
+    const thisYear = new Date().getUTCFullYear();
+    const yearFor = { last: thisYear - 1, current: thisYear, next: thisYear + 1 } as const;
+    const targetYears = [...new Set(scope.map((s) => yearFor[s]))].sort((a, b) => a - b);
+
+    const allCurrencies = activeCalendarCurrencies().map((c) => c.toUpperCase());
+    // Premium (non-USD) first — see doc comment above for why.
+    const currencies = [
+      ...allCurrencies.filter((c) => c !== 'USD'),
+      ...allCurrencies.filter((c) => c === 'USD')
+    ];
+
+    logger.info(
+      `[CALENDAR YEAR SYNC] Checking ${currencies.length} currencies x ${targetYears.length} year(s) [${targetYears.join(', ')}] for coverage...`
+    );
+
+    let pendingCount = 0;
+
+    for (const cur of currencies) {
+      for (const year of targetYears) {
+        const yearStr = String(year);
+        const existingCount = await this.calendarRepo.countByCurrencyAndYear(cur, yearStr);
+        if (existingCount > 0) {
+          logger.info(
+            `[CALENDAR YEAR SYNC] ${cur} ${yearStr} already has ${existingCount} events, skip fetch.`
+          );
+          continue;
+        }
+
+        try {
+          // Full calendar year range. /v1/calendar only returns UPCOMING
+          // releases by default, so an explicit range is required to also
+          // pull already-released past days within the year — same reasoning
+          // as syncIfMonthMissingInner's monthStart/monthEnd bounds.
+          const yearStart = `${yearStr}-01-01`;
+          const yearEnd = `${yearStr}-12-31`;
+          const rawEvents = await this.fxMacroData.fetchCalendar(
+            cur.toLowerCase(),
+            yearStart,
+            yearEnd
+          );
+          const eventsThisYear = rawEvents.filter((e) => e.date?.startsWith(yearStr));
+
+          if (eventsThisYear.length === 0) {
+            logger.info(
+              `[CALENDAR YEAR SYNC] ${cur} ${yearStr}: FXMacroData returned no scheduled events for this year — nothing to insert (this is expected for a far-future year with nothing announced yet).`
+            );
+            continue;
+          }
+
+          // Same cost-control pattern as the monthly sync: the join costs 2
+          // calls per unique indicator code. If the shared daily budget can't
+          // cover it, fall back to a schedule-only insert (0 extra calls) so
+          // at least the event dates/names are captured — refreshRecentValues
+          // will backfill Before/Actual/Forecast once budget resets, though
+          // only for events inside its lookback/ahead window, so a schedule-
+          // only year far outside that window may stay schedule-only until
+          // this pass is re-run (which happens automatically on restart).
+          const uniqueCodes = new Set(eventsThisYear.map((e) => e.release));
+          const plannedCalls = uniqueCodes.size * 2;
+          if (!this.consumeDailyBudget(plannedCalls)) {
+            logger.warn(
+              `[CALENDAR YEAR SYNC] Daily FXMacroData budget exhausted — inserting schedule-only rows for ${cur} ${yearStr}. Remaining currency+year pairs will be picked up on the next worker restart or run.`
+            );
+            const scheduleOnly = eventsThisYear.map((raw) =>
+              toCalendarEvent(raw, cur, undefined, undefined)
+            );
+            const savedOnly = await this.calendarRepo.saveMany(scheduleOnly);
+            this.processedCount += savedOnly;
+            logger.info(
+              `[CALENDAR YEAR SYNC] Schedule-only insert: ${savedOnly} rows for ${cur} ${yearStr}.`
+            );
+            pendingCount += 1;
+            continue;
+          }
+
+          const events = await joinWithAnnouncementsAndPredictions(
+            this.fxMacroData,
+            eventsThisYear,
+            cur,
+            logger
+          );
+          const saved = await this.calendarRepo.saveMany(events);
+          this.processedCount += saved;
+          logger.info(
+            `[CALENDAR YEAR SYNC] Inserted ${saved} new events for ${cur} ${yearStr} (${uniqueCodes.size} unique indicators).`
+          );
+        } catch (err: any) {
+          // Log and continue — never throw, or one bad currency+year would
+          // abort the whole sweep (and, since this runs fire-and-forget from
+          // doStart(), an uncaught throw here would only surface as an
+          // unhandled rejection instead of a clean log line).
+          this.errorCount += 1;
+          this.lastError = err.message;
+          pendingCount += 1;
+          logger.error(
+            { err: err.message, currency: cur, year: yearStr },
+            `[CALENDAR YEAR SYNC] Failed to sync ${cur} ${yearStr}`
+          );
+        }
+      }
+    }
+
+    if (pendingCount > 0) {
+      logger.warn(
+        `[CALENDAR YEAR SYNC] ${pendingCount} currency+year pair(s) still incomplete (budget-limited or errored) — will retry on next worker restart.`
+      );
+    } else {
+      logger.info('[CALENDAR YEAR SYNC] 3-year coverage check complete — all pairs covered.');
     }
   }
 

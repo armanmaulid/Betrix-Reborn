@@ -2,23 +2,21 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useRef, useEffect } from 'react';
-import { analyticsRepository } from '@analytics/infrastructure/repositories/HttpAnalyticsRepository';
-import { analyticsKeys } from '@analytics/application/analytics.keys';
-import type { SystemMetrics } from '@analytics/domain/entities/SystemMetrics';
+import { analyticsRepository } from '@/modules/analytics/infrastructure/repositories/HttpAnalyticsRepository';
+import { analyticsKeys } from '@/modules/analytics/application/analytics.keys';
+import type { SystemMetrics } from '@/modules/analytics/domain/entities/SystemMetrics';
 
 /**
- * Metrics now arrive via the ops SSE stream (use-ops-stream writes straight
- * into this query's cache), so polling defaults OFF. The parameter stays for
- * manual opt-in / tests.
+ * Metrics arrive via the ops SSE stream (use-ops-stream writes straight into
+ * this query's cache), so this fetches once for the initial value and never
+ * polls — the stream is the only refresh source.
  */
-export function useSystemMetrics(refetchInterval: number | false = false) {
+export function useSystemMetrics() {
   const previousRef = useRef<SystemMetrics | null>(null);
 
   const query = useQuery<SystemMetrics>({
     queryKey: analyticsKeys.metrics(),
-    queryFn: () => analyticsRepository.getSystemMetrics(),
-    refetchInterval,
-    refetchIntervalInBackground: false
+    queryFn: () => analyticsRepository.getSystemMetrics()
   });
 
   const data = query.data;

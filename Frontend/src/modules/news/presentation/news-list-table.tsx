@@ -3,7 +3,7 @@
 import React from 'react';
 import { ExternalLink, Globe, Clock, Trash2, ArrowUpDown } from 'lucide-react';
 import { formatUtcNewsDate } from '@/shared/utils/formatters';
-import type { NewsArticle } from '@news/domain/entities/NewsArticle';
+import type { NewsArticle } from '@/modules/news/domain/entities/NewsArticle';
 import { TableShell, type TableColumn } from '@/shared/presentation/ui/table-shell';
 import { Badge } from '@/shared/presentation/ui/badge';
 
@@ -70,7 +70,12 @@ export function NewsListTable({
       ),
       className: 'w-10 text-center'
     },
-    { key: 'date', header: dateHeader, className: 'whitespace-nowrap' },
+    {
+      key: 'date',
+      header: dateHeader,
+      className: 'whitespace-nowrap',
+      sortDirection: onToggleSort ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined
+    },
     { key: 'source', label: 'Source', className: 'whitespace-nowrap' },
     { key: 'headline', label: 'Headline & Preview', className: 'min-w-[320px]' },
     { key: 'category', label: 'Category', className: 'whitespace-nowrap' },

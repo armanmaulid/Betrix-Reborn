@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NewsMapper } from './mappers/NewsMapper';
 import { HttpNewsRepository } from './repositories/HttpNewsRepository';
-import { HttpClient } from '@shared/infrastructure/http/api-client';
+import { HttpClient } from '@/shared/infrastructure/http/api-client';
 
 describe('News Infrastructure: NewsMapper & HttpNewsRepository', () => {
   let mockHttpClient: HttpClient;

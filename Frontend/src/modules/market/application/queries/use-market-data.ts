@@ -2,17 +2,17 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect, useRef } from 'react';
-import { marketRepository } from '@market/infrastructure/repositories/HttpMarketRepository';
-import { marketKeys } from '@market/application/market.keys';
-import { MarketMapper } from '@market/infrastructure/mappers/MarketMapper';
-import { useAdminMutation } from '@shared/application/useAdminMutation';
+import { marketRepository } from '@/modules/market/infrastructure/repositories/HttpMarketRepository';
+import { marketKeys } from '@/modules/market/application/market.keys';
+import { MarketMapper } from '@/modules/market/infrastructure/mappers/MarketMapper';
+import { useAdminMutation } from '@/shared/application/useAdminMutation';
 import type {
   MarketInstrument,
   StreamSymbolEntity,
   OhlcSymbolEntity
-} from '@market/domain/entities/MarketInstrument';
-import type { PriceTick } from '@market/domain/value-objects/PriceTick';
-import { apiFetch } from '@shared/infrastructure/http/api-client';
+} from '@/modules/market/domain/entities/MarketInstrument';
+import type { PriceTick } from '@/modules/market/domain/value-objects/PriceTick';
+import { apiFetch } from '@/shared/infrastructure/http/api-client';
 
 export function useMarketSymbolsQuery(activeOnly: boolean = false) {
   return useQuery<MarketInstrument[]>({

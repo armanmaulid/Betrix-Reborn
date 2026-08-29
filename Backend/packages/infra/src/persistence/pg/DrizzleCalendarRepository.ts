@@ -160,6 +160,21 @@ export class DrizzleCalendarRepository implements ICalendarRepository {
     return result[0]?.count ?? 0;
   }
 
+  async countByCurrencyAndYear(currency: string, year: string): Promise<number> {
+    const { startUnix, endUnix } = yearBoundsUnix(year);
+    const result = await this.db
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(calendarEvents)
+      .where(
+        and(
+          eq(calendarEvents.currency, currency.toUpperCase()),
+          gte(calendarEvents.announcementUnix, startUnix),
+          lte(calendarEvents.announcementUnix, endUnix)
+        )
+      );
+    return result[0]?.count ?? 0;
+  }
+
   async findUpcoming(
     currency: string,
     limit: number = 20,
@@ -236,5 +251,13 @@ function monthBoundsUnix(yearMonth: string): { startUnix: number; endUnix: numbe
   const [year, month] = yearMonth.split('-').map(Number);
   const start = Date.UTC(year!, month! - 1, 1, 0, 0, 0);
   const end = Date.UTC(year!, month!, 0, 23, 59, 59);
+  return { startUnix: Math.floor(start / 1000), endUnix: Math.floor(end / 1000) };
+}
+
+/** Returns the inclusive [start, end] unix-second bounds of a "YYYY" year, UTC. */
+function yearBoundsUnix(year: string): { startUnix: number; endUnix: number } {
+  const y = Number(year);
+  const start = Date.UTC(y, 0, 1, 0, 0, 0);
+  const end = Date.UTC(y, 11, 31, 23, 59, 59);
   return { startUnix: Math.floor(start / 1000), endUnix: Math.floor(end / 1000) };
 }

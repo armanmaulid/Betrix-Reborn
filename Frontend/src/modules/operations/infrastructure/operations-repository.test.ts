@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AuditLogMapper } from './mappers/AuditLogMapper';
 import { HttpOperationsRepository } from './repositories/HttpOperationsRepository';
-import { HttpClient } from '@shared/infrastructure/http/api-client';
+import { HttpClient } from '@/shared/infrastructure/http/api-client';
 
 describe('Operations Infrastructure: AuditLogMapper & HttpOperationsRepository', () => {
   let mockHttpClient: HttpClient;

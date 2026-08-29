@@ -7,7 +7,7 @@ import { UserPlus, KeyRound, Copy, Check, Eye, EyeOff } from 'lucide-react';
 import {
   CreateAdminUserSchema,
   type CreateAdminUserInput
-} from '@identity/application/schemas/admin-user.schema';
+} from '@/modules/identity/application/schemas/admin-user.schema';
 import { useCreateUserMutation } from '@/modules/identity/application/queries/use-users';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { useCopyFeedback } from '@/shared/presentation/hooks/use-copy-feedback';

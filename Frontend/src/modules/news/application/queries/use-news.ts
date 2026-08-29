@@ -1,13 +1,12 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { newsRepository } from '@news/infrastructure/repositories/HttpNewsRepository';
-import { newsKeys } from '@news/application/news.keys';
-import { useAdminMutation } from '@shared/application/useAdminMutation';
-import type { NewsArticle } from '@news/domain/entities/NewsArticle';
-import type { PaginatedResult } from '@shared/domain/types/Pagination';
-import type { NewsQueryParams } from '@news/domain/repositories/INewsRepository';
-import { apiFetch } from '@shared/infrastructure/http/api-client';
+import { newsRepository } from '@/modules/news/infrastructure/repositories/HttpNewsRepository';
+import { newsKeys } from '@/modules/news/application/news.keys';
+import { useAdminMutation } from '@/shared/application/useAdminMutation';
+import type { NewsArticle } from '@/modules/news/domain/entities/NewsArticle';
+import type { PaginatedResult } from '@/shared/domain/types/Pagination';
+import type { NewsQueryParams } from '@/modules/news/domain/repositories/INewsRepository';
 
 export function useNewsQuery(params?: NewsQueryParams & { search?: string }) {
   return useQuery<PaginatedResult<NewsArticle>>({
@@ -19,11 +18,7 @@ export function useNewsQuery(params?: NewsQueryParams & { search?: string }) {
 
 export function usePollNewsMutation() {
   return useAdminMutation(
-    (category: string = 'general') =>
-      apiFetch('/api/admin/news/poll', {
-        method: 'POST',
-        body: JSON.stringify({ category })
-      }),
+    (category: string = 'general') => newsRepository.pollNews(category),
     [newsKeys.all]
   );
 }

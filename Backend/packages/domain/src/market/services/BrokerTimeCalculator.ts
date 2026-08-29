@@ -15,34 +15,55 @@ export class BrokerTimeCalculator {
   }
 
   /**
-   * Returns a standard 5-part cron expression that triggers 5 seconds after Broker Midnight Rollover.
-   * Example: UTC+3 offset -> '5 0 21 * * *' (21:00:05 UTC every day)
+   * Returns a standard 5-part cron expression that triggers `publishDelayMinutes`
+   * after Broker Midnight Rollover, plus a small per-worker stagger so workers
+   * sharing the same rollover don't all fire in the same minute.
+   *
+   * `publishDelayMinutes` exists because the D1 candle for "yesterday" only
+   * closes at the rollover instant itself — Dukascopy (and most OHLC
+   * providers) need real processing time afterward before that candle is
+   * queryable. Firing right at rollover risks reading a not-yet-published
+   * candle, which silently returns the PREVIOUS available bar (i.e. two days
+   * ago) as the last element instead. See syncD1Baselines' date-validated
+   * retry for the safety net that catches this if the delay isn't enough.
+   *
+   * Example: UTC+3 offset, default delay -> '5 21 * * *' (21:05:00 UTC, i.e.
+   * 5 minutes after 21:00 UTC rollover).
    */
   public static getBrokerRolloverCronExpression(
     offsetHours: number = 3,
-    jitterMinutes: number = 0
+    jitterMinutes: number = 0,
+    publishDelayMinutes: number = 5
   ): string {
     const rolloverUtcHour = this.getBrokerRolloverUtcHour(offsetHours);
-    // T6.6 — stagger workers sharing the same rollover so they never fire in
-    // the same minute (0/3/7 passed by callers).
-    const minute = (5 + (Number(jitterMinutes) || 0)) % 60;
-    return `${minute} ${rolloverUtcHour} * * *`;
+    const totalDelay = (Number(publishDelayMinutes) || 0) + (Number(jitterMinutes) || 0);
+    const hourOffset = Math.floor(totalDelay / 60);
+    const minute = totalDelay % 60;
+    const hour = (rolloverUtcHour + hourOffset) % 24;
+    return `${minute} ${hour} * * *`;
   }
 
   /**
-   * Calculates the exact remaining seconds until the next Broker Midnight Rollover (+ optional buffer).
-   * This provides dynamic, accurate TTL for D1 baselines in Redis instead of rigid hardcoded 24h (86400s).
+   * Calculates the exact remaining seconds until the next Broker Midnight Rollover
+   * sync actually runs (i.e. rollover + publishDelayMinutes, matching
+   * getBrokerRolloverCronExpression), plus an optional safety buffer. This
+   * provides dynamic, accurate TTL for D1 baselines in Redis instead of a
+   * rigid hardcoded 24h (86400s) — and keeps the TTL anchored to when the
+   * sync actually writes fresh data, not to the raw calendar rollover instant.
    */
   public static calculateTtlToNextBrokerRollover(
     offsetHours: number = 3,
     bufferSeconds: number = 60,
-    fromDate: Date = new Date()
+    fromDate: Date = new Date(),
+    publishDelayMinutes: number = 5
   ): number {
     const rolloverUtcHour = this.getBrokerRolloverUtcHour(offsetHours);
 
-    // Target rollover point today in UTC
+    // Target: the actual sync run time today (rollover + publish delay), not
+    // the raw rollover instant — the two are no longer the same moment now
+    // that the sync itself waits for the provider to publish yesterday's candle.
     const target = new Date(fromDate);
-    target.setUTCHours(rolloverUtcHour, 0, 5, 0); // 5s past rollover hour
+    target.setUTCHours(rolloverUtcHour, Number(publishDelayMinutes) || 0, 5, 0);
 
     // If target has already passed today, target is next day
     if (target.getTime() <= fromDate.getTime()) {

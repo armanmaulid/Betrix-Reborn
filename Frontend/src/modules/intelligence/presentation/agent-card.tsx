@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Star, Edit2, Trash2, CheckCircle2, XCircle, Brain } from 'lucide-react';
 import { formatFinancialNumber } from '@/shared/utils';
-import type { AiAgent } from '@intelligence/domain/entities/AiAgent';
+import type { AiAgent } from '@/modules/intelligence/domain/entities/AiAgent';
 
 export interface AgentCardProps {
   agent: AiAgent;

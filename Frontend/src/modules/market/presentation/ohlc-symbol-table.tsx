@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
-import type { OhlcSymbolEntity } from '@market/domain/entities/MarketInstrument';
+import type { OhlcSymbolEntity } from '@/modules/market/domain/entities/MarketInstrument';
 import { TableShell, type TableColumn } from '@/shared/presentation/ui/table-shell';
 
 const COLUMNS: TableColumn[] = [

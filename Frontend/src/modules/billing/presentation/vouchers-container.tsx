@@ -17,7 +17,7 @@ import { useToast } from '@/shared/presentation/ui/terminal-toast';
 import { formatFinancialNumber } from '@/shared/utils';
 import { useCopyFeedback } from '@/shared/presentation/hooks/use-copy-feedback';
 import { usePageTitle } from '@/shared/presentation/hooks/use-page-title';
-import type { CreditVoucher } from '@billing/domain/entities/CreditVoucher';
+import type { CreditVoucher } from '@/modules/billing/domain/entities/CreditVoucher';
 
 export function VouchersContainer() {
   usePageTitle('CREDIT VOUCHERS');
