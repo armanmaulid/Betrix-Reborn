@@ -21,6 +21,10 @@ function loadEnvFile() {
 
 loadEnvFile();
 
+/**
+ * Canonical schema for the *core* infrastructure env vars — the ones the API
+ * needs at boot to bind a port, open a DB pool, sign JWTs, and emit logs.
+ */
 export const EnvSchema = Type.Object({
   NODE_ENV: Type.Optional(Type.String({ default: 'development' })),
   PORT: Type.Optional(Type.Number({ default: 3000 })),
@@ -40,64 +44,52 @@ export const EnvSchema = Type.Object({
 
 export type EnvConfig = Static<typeof EnvSchema>;
 
-const isProduction = process.env.NODE_ENV === 'production';
-
-// Fail fast: JWT_SECRET must be set and strong — never fall back to a known value.
-const jwtSecret = process.env.JWT_SECRET;
-if (!jwtSecret || jwtSecret.length < 32) {
-  throw new Error(
-    'JWT_SECRET must be set (min 32 chars) — refusing to start with a default secret'
-  );
-}
-
-// Fail fast on missing CRITICAL infrastructure config. Dev-only fallbacks keep
-// `docker-compose.dev.yml` ergonomics but must never silently mask a missing
-// DATABASE_URL / Redis in production.
-function requireEnv(name: string, devFallback: string): string {
-  const value = process.env[name];
-  if (value && value.length > 0) return value;
-  if (isProduction) {
-    throw new Error(
-      `${name} is required in production — refusing to start with the dev fallback (${devFallback})`
-    );
-  }
-  return devFallback;
-}
-
-// Resolve raw values first (dev fallbacks included), THEN validate — so the
-// schema judges what the app will actually run with.
-const resolvedEnv = {
-  NODE_ENV: process.env.NODE_ENV || 'development',
-  PORT: Number(process.env.PORT) || 3000,
-  HOST: process.env.HOST || '0.0.0.0',
-  DATABASE_URL: requireEnv(
-    'DATABASE_URL',
-    'postgresql://betrix:betrixpass@localhost:5432/betrix_reborn'
-  ),
-  UPSTASH_REDIS_REST_URL: requireEnv('UPSTASH_REDIS_REST_URL', 'http://localhost:8079'),
-  UPSTASH_REDIS_REST_TOKEN: requireEnv('UPSTASH_REDIS_REST_TOKEN', 'local_dev_token'),
-  JWT_SECRET: jwtSecret,
-  LOG_LEVEL: process.env.LOG_LEVEL || 'info',
-  DEVICE_ENFORCEMENT: process.env.DEVICE_ENFORCEMENT !== 'false',
-  BROKER_UTC_OFFSET: Number(process.env.BROKER_UTC_OFFSET) || 3,
-  FINNHUB_LOG_TICKS: process.env.FINNHUB_LOG_TICKS === 'true',
-  AI_BASE_URL: process.env.AI_BASE_URL,
-  AI_API_KEY: process.env.AI_API_KEY,
-  DEFAULT_MODEL: process.env.DEFAULT_MODEL
+/**
+ * Runtime-resolved type of the core env block. Differs from `EnvConfig` in
+ * that fields with `default` are typed as `T` (not `T | undefined`),
+ * because `Value.Parse` guarantees they're always populated after defaults
+ * are applied.
+ */
+type ResolvedCoreEnv = {
+  NODE_ENV: string;
+  PORT: number;
+  HOST: string;
+  DATABASE_URL: string;
+  UPSTASH_REDIS_REST_URL: string;
+  UPSTASH_REDIS_REST_TOKEN: string;
+  JWT_SECRET: string;
+  LOG_LEVEL: string;
+  DEVICE_ENFORCEMENT: boolean;
+  BROKER_UTC_OFFSET: number;
+  FINNHUB_LOG_TICKS: boolean;
+  AI_BASE_URL: string | undefined;
+  AI_API_KEY: string | undefined;
+  DEFAULT_MODEL: string | undefined;
 };
 
-// Validate the resolved environment so malformed values (e.g. PORT=abc)
-// surface at boot instead of deep inside request handling.
-{
-  const errors = Array.from(Value.Errors(EnvSchema, resolvedEnv));
-  if (errors.length > 0) {
-    const detail = errors.map((e) => `${e.path}: ${e.message}`).join('; ');
-    throw new Error(`Invalid environment configuration → ${detail}`);
+const isProduction = process.env.NODE_ENV === 'production';
+
+function buildInput(): Record<string, unknown> {
+  const input: Record<string, unknown> = { ...process.env };
+  if (!isProduction) {
+    input.DATABASE_URL ??= 'postgresql://betrix:betrixpass@localhost:5432/betrix_reborn';
+    input.UPSTASH_REDIS_REST_URL ??= 'http://localhost:8079';
+    input.UPSTASH_REDIS_REST_TOKEN ??= 'local_dev_token';
   }
+  return input;
 }
 
+/**
+ * D3 — replaces the hand-rolled `resolvedEnv` object + the manual JWT-secret
+ * length check + the `requireEnv` helper. `Value.Parse` is TypeBox's combined
+ * `Default` + `Check` + `Cast`:
+ *   C1 fix: schema `default` values are applied.
+ *   C2 fix: `Type.Number` coerces string env to number.
+ */
+const parsed = Value.Parse(EnvSchema, buildInput());
+
 export const env = {
-  ...resolvedEnv,
+  ...(parsed as unknown as ResolvedCoreEnv),
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
   RATE_LIMIT_MAX: Number(process.env.RATE_LIMIT_MAX) || 120,
@@ -116,14 +108,10 @@ export const env = {
   SMTP_PASS: process.env.SMTP_PASS || '',
   SMTP_FROM: process.env.SMTP_FROM || 'no-reply@betrix.io',
   FXMACRODATA_BASE_URL: process.env.FXMACRODATA_BASE_URL || 'https://api.fxmacrodata.com',
-  // Single-currency (legacy): used as a fallback when CURRENCIES is not set.
   FXMACRODATA_CALENDAR_CURRENCY: process.env.FXMACRODATA_CALENDAR_CURRENCY || 'usd',
-  // Multi-currency (Tier 2): comma-separated list. Takes precedence over
-  // FXMACRODATA_CALENDAR_CURRENCY. Default 'usd' preserves single-currency
-  // behavior. Example: 'usd,eur,gbp,jpy,aud,cad,chf,nzd'.
   FXMACRODATA_CALENDAR_CURRENCIES: process.env.FXMACRODATA_CALENDAR_CURRENCIES
     ? process.env.FXMACRODATA_CALENDAR_CURRENCIES.split(',')
-        .map((s) => s.trim().toLowerCase())
+        .map((s) => s.trim())
         .filter(Boolean)
     : undefined,
   FXMACRODATA_API_KEY: process.env.FXMACRODATA_API_KEY || '',
@@ -131,41 +119,18 @@ export const env = {
   FXMACRODATA_RETRY_BASE_DELAY_MS: Number(process.env.FXMACRODATA_RETRY_BASE_DELAY_MS) || 1000,
   FXMACRODATA_SSE_RECONNECT_DELAY_MS:
     Number(process.env.FXMACRODATA_SSE_RECONNECT_DELAY_MS) || 5000,
-  // Value-refresh pass (CalendarWorker.refreshRecentValues): backfills Actual
-  // for released events and re-pulls Forecast for upcoming ones even without a
-  // paid SSE key. The call budget keeps the free tier (100 req/day) safe — a
-  // tick with nothing to refresh makes zero HTTP calls.
   CALENDAR_REFRESH_CRON: process.env.CALENDAR_REFRESH_CRON || '*/30 * * * *',
   CALENDAR_REFRESH_LOOKBACK_HOURS: Number(process.env.CALENDAR_REFRESH_LOOKBACK_HOURS) || 72,
   CALENDAR_REFRESH_AHEAD_HOURS: Number(process.env.CALENDAR_REFRESH_AHEAD_HOURS) || 24,
   CALENDAR_REFRESH_MAX_CODES_PER_PASS: Number(process.env.CALENDAR_REFRESH_MAX_CODES_PER_PASS) || 8,
   FXMACRODATA_DAILY_CALL_BUDGET: Number(process.env.FXMACRODATA_DAILY_CALL_BUDGET) || 60,
-
-  // Fase 1 (DB/Redis plan): read admin analytics token series from the
-  // pre-aggregated usage_daily rollup instead of scanning chat_messages.
   USE_USAGE_DAILY: process.env.USE_USAGE_DAILY === 'true',
-
-  // Billing token source: 'provider' prefers real upstream usage numbers when
-  // the AI gateway reports them; 'estimate' forces the legacy chars/4 model.
   BILLING_SOURCE: process.env.BILLING_SOURCE || 'provider',
-
-  // Fase 2.5 — seeder crash-loop quota guard (T6.3): skip the startup
-  // FXMacroData fetch when a full seed completed within this window.
   CALENDAR_SEED_MIN_GAP_HOURS: Number(process.env.CALENDAR_SEED_MIN_GAP_HOURS) || 12,
-
-  // Fase 2.5 — leader lease for worker singleton enforcement (T6.1).
   WORKER_LEASE_TTL_MS: Number(process.env.WORKER_LEASE_TTL_MS) || 90000,
-
-  // Fase 3 — ops pipeline (T3.1): 'cache' reads Redis gauges written by the
-  // aggregator; 'pg' forces live aggregates (parity mode).
   OPS_SOURCE: process.env.OPS_SOURCE || 'cache',
   OPS_AGGREGATOR_INTERVAL_MS: Number(process.env.OPS_AGGREGATOR_INTERVAL_MS) || 60000,
-
-  // Fase 5 — Money split (T5.1): dedicated connection for the money schema.
-  // Falls back to DATABASE_URL when not set (dev/single-pool mode).
   DATABASE_URL_MONEY: process.env.DATABASE_URL_MONEY || process.env.DATABASE_URL || '',
-
-  // Fase 2 — Redis hygiene & quota (plan §D Fase 2 / T2.5):
   RATELIMIT_BACKEND: process.env.RATELIMIT_BACKEND || 'redis',
   MARKET_TICKER_INTERVAL_MS: Number(process.env.MARKET_TICKER_INTERVAL_MS) || 5000,
   REDIS_DAILY_BUDGET: Number(process.env.REDIS_DAILY_BUDGET) || 6000,

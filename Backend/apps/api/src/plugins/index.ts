@@ -1,3 +1,4 @@
+export * from './env.plugin.js';
 export * from './container.plugin.js';
 export * from './auth.plugin.js';
 export * from './errorHandler.plugin.js';

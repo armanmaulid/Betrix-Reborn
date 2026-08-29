@@ -8,7 +8,8 @@ import {
   swaggerPlugin,
   rateLimitPlugin,
   corsHelmetPlugin,
-  ssePlugin
+  ssePlugin,
+  envPlugin
 } from './plugins/index.js';
 import { v1Routes } from './routes/api/v1/index.js';
 
@@ -64,6 +65,11 @@ export async function createServer() {
   }).withTypeProvider<TypeBoxTypeProvider>();
 
   // 1. Register Core Security & Infrastructure Plugins
+  // D3 — env plugin first so other plugins can read `fastify.config` (typed
+  // EnvConfig). The actual validation already happened at `@betrix/config`
+  // import time via `Value.Parse` (fail-fast at module load); this just
+  // exposes the result on the Fastify instance.
+  await app.register(envPlugin);
   await app.register(corsHelmetPlugin);
   await app.register(rateLimitPlugin);
   await app.register(errorHandlerPlugin);
