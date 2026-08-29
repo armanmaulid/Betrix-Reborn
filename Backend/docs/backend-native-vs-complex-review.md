@@ -7,6 +7,75 @@
 
 ---
 
+## 0. Where We Are (Roadmap & Current Position)
+
+> **Read this first if context is lost.** This section is the entry point.
+
+### 0.1 Current state (2026-08-29)
+
+| Phase | Status | Commit / Evidence |
+|-------|--------|-------------------|
+| **Phase 1 — Native/stdlib quick wins (Q1–Q7)** | ✅ Done | `b5180aa` — 23 files, net −27 lines |
+| **Phase 2 — Wave 1 (security + correctness, no new deps)** | ✅ Done | `5710525` — P1, P2, P3, P6, P9, P10 done; P13 (Redis-native budget) deferred |
+| **Phase 3 — Wave 2A (quick dedup, 0 new deps)** | ✅ Done | `f25668f` — A2, A5, I3, W4, P7, P12, P17, P18, P19 done; P20 deferred (tangled health routes + locked test) |
+| **Phase 4 — Wave 2B / Wave 3 remaining** | ⬜ Not started | See §3–§7 for the full backlog |
+| **Phase 5 — Strategic dependency adoption** | ⬜ Open question | See §0.2 below |
+
+**Code removed so far (Phases 1–3):** ~250 lines net (with ~400 lines added for type-safe improvements and a shared `parseList`/`isUuid`/`sseFrame` helper). Build PASS, lint PASS, prettier PASS, vitest domain 44 + application 28 pass.
+
+**Key files already touched (so you don't re-explore them):**
+- `apps/api/src/server.ts` (LogController subclass, preSerialization envelope hook, `process.once` for signals)
+- `apps/api/src/plugins/sse.plugin.ts` (PassThrough, backpressure-correct `writeFrame`, shared `sseFrame()`)
+- `apps/api/src/plugins/auth.plugin.ts` (typed `FastifyRequest.authUser` via `decorateRequest`)
+- `apps/api/src/plugins/rateLimit.plugin.ts` (regex `onRoute` removed; per-route `config.rateLimit` in `auth.routes.ts`)
+- `apps/api/src/plugins/corsHelmet.plugin.ts` (native `origin: isDev ? true : allowedOrigins`)
+- `apps/api/src/plugins/container.plugin.ts` (typed `pgPool`/`redis` via `ReturnType`)
+- `packages/core/src/utils/index.ts` (new `isUuid`, `sleep` via `node:timers/promises`)
+- `packages/application/src/logger.ts` (new shared `pino` logger)
+- `packages/application/src/services/AuthService.ts` (`toJwtPayload` returns plain object; route signs via `fastify.jwt.sign`)
+- `packages/application/src/services/WorkerManagerService.ts` (exhaustive `Record<WorkerAction, …>`)
+- `apps/worker/src/shared/parseList.ts` (new shared env-list parser)
+- `packages/infra/src/messaging/RedisWorkerCommandBus.ts` + 5 repos (auto-serialize @upstash/redis)
+- `packages/infra/src/external/ai/AiGatewayClient.ts` (`AbortSignal.any([…, AbortSignal.timeout(ms)])`)
+
+**What this doc still tracks as Not Executed (backlog):**
+- A1 (`Value.Decode` at boundary — high leverage, 0 new dep)
+- I1 (SSE parser dedupe), W3 (4 backfillers → 1 generic), P8/P11/P14 (API correctness cluster)
+- C1/C2 (config defaults + Number bug), A3/A4/A6 (app cleanup), W1/W2/W5/W6/W7 (worker cleanup)
+- I4 (legacy scaffolding), P13 (Redis-native budget), P15/P16 (container + bg loops)
+- **Plus 4 strategic dependency options** (§0.2) — the open architectural question.
+
+### 0.2 Strategic Dependency Options (Open Question)
+
+> User is open to new dependencies for "minimum coding" (deleting complex code by leveraging battle-tested libraries instead of writing/maintaining it). Researched 2026-current (Better Auth docs, Fastify ecosystem, DI comparison, env validation). **No dep has been adopted yet** — these are pending user decision.
+
+**Why consider new deps at all?** The native-stdlib phases (1–3) already extracted ~250 lines, but the remaining backlog (especially A1, P15, the entire custom auth surface, C1/C2) has either high effort-to-payoff (A1: 8 use-cases, medium risk) or is structural (P15: 795-line container). Strategic deps can convert these from multi-day rewrites into a config + install, deleting orders of magnitude more code.
+
+| # | Candidate dep | Replaces (findings) | Effort | Risk | Why this dep (rationale) |
+|---|---------------|---------------------|--------|------|--------------------------|
+| **D1** | **`better-auth@1.x`** + **`@better-auth/drizzle-adapter`** + **`fastify-better-auth`** (community plugin, optional) | All custom auth: RegisterUseCase, LoginUseCase, ResendVerificationUseCase, ForgotPasswordUseCase, ResetPasswordUseCase, Google OAuth handler, captcha+voucher flows, custom `@fastify/jwt` + `authUser` decorate, manual rate-limit on login, `users`/`sessions`/`verifications` tables | **1–2 days** (rewrite + schema migration) | **Medium** (DB schema change, optional data migration) | **Massive "minimum coding" win.** Official Fastify integration (catch-all `/api/auth/*` + `fromNodeHeaders` + `auth.api.getSession`). Official Drizzle adapter (we already use Drizzle). Replaces 8+ use-cases, 5 routes, 4 Drizzle tables, captcha + voucher flow, custom rate-limit, custom JWT decorate. Adds for free: 2FA, passkeys (WebAuthn), magic links, organizations, admin plugin, built-in rate-limit, OAuth providers (Google/GitHub/etc.), email verification with HTML templates. Type-safe end-to-end. 50+ official plugins. Schema generated via CLI (`npx auth@latest generate`). We pay one dep, delete ~1000+ lines, gain features we'd otherwise build. |
+| **D2** | **`@fastify/awilix`** + **`awilix`** | **P15** — 795-line hand-rolled DI container in `apps/api/src/plugins/container.plugin.ts` | **1–2 hours** | **Low** | **Best-fit DI for THIS stack.** Awilix is convention-based (no `reflect-metadata`, no decorator metadata, no `experimentalDecorators`). TSyringe/Inversify require `emitDecoratorMetadata` which conflicts with our **TypeScript 7** toolchain. `@fastify/awilix` is an official Fastify-ecosystem plugin (128 stars, actively maintained). Replaces the largest single file in the repo with a battle-tested container + request-scoped cradle. |
+| **D3** | **`@fastify/env`** (wraps `env-schema`) | **C1 + C2** — env defaults duplicated 3×, `Number(x) \|\| default` falsy-0 bug, schema `default` never applied | **30 minutes** | **Low** | **Fastify-ecosystem native.** JSON Schema validation at boot, no new validation library (reuses our existing TypeBox/Ajv pipeline). `@t3-oss/env-core` / `envalid` are also valid but add a new validation paradigm; `@fastify/env` stays inside the Fastify-ecosystem pattern. Solves C1 and C2 in one file. |
+| **D4** | **No new dep** — internal discipline | **A1** — `Value.Decode` TypeBox never run at runtime; every use-case re-applies `\|\| default` that the schema already declares (drift bug, e.g. `includeNews` default `true` effectively ignored) | **Medium** (touches ~8 use-cases) | **Low–Medium** | TypeBox is already the right validation library for Fastify (native integration, fastest with Ajv, JSON Schema output for OpenAPI). The fix is **internal discipline**: call `Value.Decode(Schema, rawInput)` at the input boundary of each use-case and delete the manual `\|\| default` lines. No dep needed — adding Zod/Valibot/ArkType would discard all existing TypeBox schemas and require re-integrating with `@fastify/type-provider-typebox`. Pure loss. |
+
+**What I do NOT recommend (and why):**
+- **Swap TypeBox → Zod/Valibot/ArkType** — TypeBox wins for Fastify (native, Ajv-fastest, JSON Schema native). Switching discards all schemas + requires re-integrating with the type provider. No benefit.
+- **`t3-env`** over `@fastify/env` — great lib, but `@fastify/env` is more native to our stack (JSON Schema, no new validation vocabulary) and ecosystem-consistent.
+- **Lucia / Auth.js** — Better Auth won the 2025–2026 migration (Auth.js officially recommends Better Auth in their own docs).
+
+**Recommended execution order (if user wants to proceed):**
+1. **D2 (awilix) + D3 (@fastify/env)** — Low risk, ecosystem-native, fast, deletes hundreds of lines (P15 + C1/C2). One commit each.
+2. **D4 (A1 `Value.Decode`)** — Internal, 0 dep, medium effort but kills drift bugs across ~8 use-cases.
+3. **D1 (Better Auth)** — Strategic rewrite. Defer to dedicated sprint; treat as its own project, not a quick win.
+
+**Deferred items (no clear dep win):**
+- I1 (SSE parser dedupe) — 2 files, 1 helper, small win without any dep needed.
+- W3 (4 backfillers → 1 generic) — domain logic, no off-the-shelf lib fits.
+- P11 (rate-limit store 1 round-trip) — already on `@fastify/rate-limit`; the Redis store is a small refactor.
+- P8 (error handler), P14 (2nd redis client), A3/A4/A6, W1/W2/W5/W6/W7, I4, P13, P15 (if D2 not adopted), P16 — all small refactors, no dep needed.
+
+---
+
 ## 1. Verdict (TL;DR)
 
 The backend is **NOT** broadly reinventing libraries. Validation (`TypeBox`), JWT (`@fastify/jwt`), CORS/helmet/rate-limit (`@fastify/*`), tokens (`node:crypto`), scheduling (`node-cron`), and ORM (Drizzle) are already used correctly. The "kusut" is concentrated in **four hotspots**:
