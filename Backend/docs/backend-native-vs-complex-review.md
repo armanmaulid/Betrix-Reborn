@@ -18,9 +18,9 @@
 | **Phase 1 — Native/stdlib quick wins (Q1–Q7)** | ✅ Done | `b5180aa` — 23 files, net −27 lines |
 | **Phase 2 — Wave 1 (security + correctness, no new deps)** | ✅ Done | `5710525` — P1, P2, P3, P6, P9, P10 done; P13 (Redis-native budget) deferred |
 | **Phase 3 — Wave 2A (quick dedup, 0 new deps)** | ✅ Done | `f25668f` — A2, A5, I3, W4, P7, P12, P17, P18, P19 done; P20 deferred (tangled health routes + locked test) |
-| **Phase 4 — D3 (`@fastify/env` + `Value.Parse` for C1/C2)** | ✅ Done | (current commit) — `@fastify/env` plugin + `packages/config` refactored to `Value.Parse(EnvSchema, …)`; eliminates the `Number(x) \|\| default` falsy-0 bug, applies schema defaults at boot, exposes typed `fastify.config: EnvConfig` |
+| **Phase 4 — D3 (`@fastify/env` + `Value.Parse` for C1/C2)** | ✅ Done | `b80a193` — `@fastify/env` plugin + `packages/config` refactored to `Value.Parse(EnvSchema, …)`; eliminates the `Number(x) \|\| default` falsy-0 bug, applies schema defaults at boot, exposes typed `fastify.config: EnvConfig` |
 | **Phase 5 — Wave 2B / Wave 3 remaining** | ⬜ Not started | A1, I1, W3, P8/P11/P14, A3–A6, W1/W2/W5–W7, I4, P13, P15/P16 |
-| **Phase 6 — D1 (`better-auth`), D2 (`@fastify/awilix`), D4 (A1 internal)** | ⬜ Open | D3 ✅ done; D2 + D4 next; D1 is a separate sprint |
+| **Phase 6 — D2 (`@fastify/awilix` for P15), D1 (`better-auth`), D4 (A1 internal)** | 🔵 D2 ✅ done; D1 + D4 open | D2: `b5af856` — replaces 798-line hand-rolled container with `@fastify/awilix` + `awilix`; 448 lines, -44%, types derived via `InferCradleFromResolvers` (no manual 75-key interface), `pnpm -r build` passes all 7 packages |
 
 **Code removed so far (Phases 1–3):** ~250 lines net (with ~400 lines added for type-safe improvements and a shared `parseList`/`isUuid`/`sseFrame` helper). Build PASS, lint PASS, prettier PASS, vitest domain 44 + application 28 pass.
 
@@ -48,7 +48,8 @@
 - ~~C1/C2 (config defaults + Number bug)~~ — ✅ done in Phase 4 (D3), core 14 fields; the ~36 extended `env` fields (rate-limit, SMTP, FXMacroData, calendar refresh, ops pipeline) still have `|| default` and are a separate cleanup
 - A3/A4/A6 (app cleanup), W1/W2/W5/W6/W7 (worker cleanup)
 - I4 (legacy scaffolding), P13 (Redis-native budget), P15/P16 (container + bg loops)
-- **D1 (better-auth), D2 (@fastify/awilix), D4 (A1 internal)** — Phase 6 open (§0.2)
+- ~~**D2 (@fastify/awilix)** — P15 (798-line container). Low risk, 1–2 hours.~~ **D2 ✅ done (Phase 6): `b5af856`. 798 → 448 lines (-44%).**
+- **D1 (better-auth), D4 (A1 internal)** — Phase 6 open (§0.2)
 
 ### 0.2 Strategic Dependency Options (Open Question)
 
@@ -69,7 +70,7 @@
 - **Lucia / Auth.js** — Better Auth won the 2025–2026 migration (Auth.js officially recommends Better Auth in their own docs).
 
 **Recommended execution order (if user wants to proceed):**
-1. ~~**D2 (awilix) + D3 (@fastify/env)** — Low risk, ecosystem-native, fast, deletes hundreds of lines (P15 + C1/C2). One commit each.~~ **D3 done in Phase 4; D2 still next.**
+1. ~~**D2 (awilix) + D3 (@fastify/env)** — Low risk, ecosystem-native, fast, deletes hundreds of lines (P15 + C1/C2). One commit each.~~ **D3 done in Phase 4 (`b80a193`); D2 done in Phase 6 (`b5af856`).**
 2. **D2 (@fastify/awilix)** — P15 (795-line container). Low risk, 1–2 hours.
 3. **D4 (A1 `Value.Decode`)** — Internal, 0 dep, medium effort but kills drift bugs across ~8 use-cases.
 4. **D1 (Better Auth)** — Strategic rewrite. Defer to dedicated sprint; treat as its own project, not a quick win.
