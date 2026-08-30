@@ -4,6 +4,7 @@
 
 export * from './schemas.js';
 export * from './identity.schema.js';
+export * from './auth.schema.js';
 export * from './billing.schema.js';
 export * from './market.schema.js';
 export * from './intelligence.schema.js';

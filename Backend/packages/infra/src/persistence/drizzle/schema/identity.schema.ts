@@ -38,7 +38,10 @@ export const users = identitySchema.table(
     bio: text('bio'),
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
     lastActive: timestamp('last_active', { withTimezone: true }).defaultNow(),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    // D1 Phase 1 — BA requires these on the user table.
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    image: text('image')
   },
   (t) => [
     uniqueIndex('users_google_id_unique').on(t.googleId),
@@ -61,7 +64,9 @@ export const sessions = identitySchema.table(
     ip: varchar('ip', { length: 100 }),
     userAgent: text('user_agent'),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    // D1 Phase 1 — BA requires updatedAt on the session table.
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
   },
   (t) => [index('sessions_user_idx').on(t.userId), index('sessions_expires_at_idx').on(t.expiresAt)]
 );

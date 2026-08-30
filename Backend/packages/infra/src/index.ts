@@ -3,7 +3,9 @@ export * from './persistence/drizzle/schema.js';
 export * from './persistence/drizzle/client.js';
 export * from './persistence/drizzle/migrate.js';
 export * from './persistence/drizzle/seed.js';
+export { runD1Backfill } from './persistence/drizzle/d1-backfill-accounts.js';
 export { sql } from 'drizzle-orm';
+export * from './auth/index.js';
 
 // Repositories - PG
 export * from './persistence/pg/DrizzleUserRepository.js';
