@@ -19,7 +19,7 @@
 | **Phase 2 — Wave 1 (security + correctness, no new deps)** | ✅ Done | `5710525` — P1, P2, P3, P6, P9, P10 done; P13 (Redis-native budget) deferred |
 | **Phase 3 — Wave 2A (quick dedup, 0 new deps)** | ✅ Done | `f25668f` — A2, A5, I3, W4, P7, P12, P17, P18, P19 done; P20 deferred (tangled health routes + locked test) |
 | **Phase 4 — D3 (`@fastify/env` + `Value.Parse` for C1/C2)** | ✅ Done | `b80a193` — `@fastify/env` plugin + `packages/config` refactored to `Value.Parse(EnvSchema, …)`; eliminates the `Number(x) \|\| default` falsy-0 bug, applies schema defaults at boot, exposes typed `fastify.config: EnvConfig` |
-| **Phase 5 — Wave 2B / Wave 3 remaining** | 🔵 A1 done as D4 (`0c40e88`); P15 done as D2; ⬜ rest not started | I1, W3, P8/P11/P14, A3–A6, W1/W2/W5–W7, I4, P13, P16 (P15 folded into Phase 6) |
+| **Phase 5 — Wave 2B / Wave 3** | 🟢 Batch 1+2+3 done (10 items: I4, A4, W1, W2, W5, W6, W7, P11, P14, P16, I1, P21); P8/P13 deferred; ⬜ A3, W3, P20, A6 remaining | Commits `8dc008b`+`3e72b78`+`c163df5`. See §10.5 for per-batch breakdown. |
 | **Phase 6 — D2 (`@fastify/awilix` for P15), D4 (A1 `Value.Default`), D1 (`better-auth`)** | 🟢 D2 ✅ done; D4 ✅ done; D1 ✅ done (COMPLETE) | D2: `b5af856`+`e54bb2f`+`9b8bd36` — container 798 → 407 lines (-49%). D4: `0c40e88` — A1 `Value.Default` at 7 use-case boundaries. D1: Phase 0 (`d06677f`) + Phase 1 (`7af3616`) + Phase 2 Slice 1 (`c6d9564`) + Phase 2 Slice 2 (`466819f`) + Phase 3 (`0578588` — cutover flip USE_BETTER_AUTH=true) + **Phase 4 (`77a17e4` — all legacy auth code removed: 8 use-cases, AuthService, auth.routes, @fastify/jwt, JWT decorate, legacy schemas, legacy tests; routes migrated `request.user` → `request.authUser`)**. `pnpm -r build` PASS (7 pkgs), domain 44/44 PASS, api lint PASS. |
 
 **Code removed so far (Phases 1–3):** ~250 lines net (with ~400 lines added for type-safe improvements and a shared `parseList`/`isUuid`/`sseFrame` helper). Build PASS, lint PASS, prettier PASS, vitest domain 44 + application 28 pass.
@@ -139,26 +139,26 @@ These were executed and committed before this doc was written. Line numbers belo
 | A1 (Value.Decode) | app | ✅ Done (D4) — `0c40e88`: `Value.Default` (NOT `Decode`/`Cast` — those skip defaults) at 7 use-case boundaries; schema is now the single source of truth for `|| default`. UpdateAgentUseCase correctly left as partial-merge. |
 | A2 (UUID regex) | app | ✅ Done (W2A) — shared `isUuid()` in `@betrix/core`; `FormatRegistry.Set('uuid')` registered in `common.schema.ts` |
 | A5 (switch→table) | app | ✅ Done (W2A) — `Record<WorkerAction, …>` lookup tables in `WorkerManagerService`; new actions fail the build |
-| I1 (SSE parser dup) | infra | ⬜ Not executed — W2 |
+| I1 (SSE parser dup) | infra | ✅ Done (W3, `c163df5`) — `createSseParser` helper in `packages/infra/src/external/sse-parser.ts`; used by `AiGatewayClient` (OpenAI-style `data: [DONE]` sentinel) and `FxMacroDataClient` (no sentinel, multi-line events). Event-delimiter-agnostic. |
 | I3 (process.env) | infra | ✅ Done (W2A) — `redis-keys.ts` / `AiGatewayClient` / `RedisMarketDataRepository` now read `env` from `@betrix/config` |
 | W3 (backfillers) | worker | ⬜ Not executed — W2 (high) |
 | W4 (env parsers) | worker | ✅ Done (W2A) — shared `parseList()` in `apps/worker/src/shared/parseList.ts`; 3 backfill scripts use it (cot/fx/commodities) |
 | P7 (query defaults) | api | ✅ Done (W2A) — `page||1;limit||20` → `{ page = 1, limit = 20 } = request.query` in admin + me routes |
-| P8 (error handler) | api | ⬜ Not executed — W2 |
-| P11 (rate-limit store) | api | ⬜ Not executed — W2 (brute-force) |
+| P8 (error handler) | api | ⏸️ Deferred — error handler is already well-consolidated (5 branches: AppError, validation, rate-limit, HTTP 4xx, 500); the rate-limit `errorResponseBuilder` carries a different shape (`retryAfter` in `details`) so the global 429 branch is a fallback only. No safe dedup target. |
+| P11 (rate-limit store) | api | ✅ Done (W3, `c163df5`) — Redis store uses one `pipeline()` round-trip for `incr+pttl` (was: 2 calls), returns REAL `pttl` for `retryAfter` (was: full `windowMs` regardless of key age), and `child()` returns a NEW store with route-scoped key prefix (was: `this` — buckets collided). |
 | P12 (CORS) | api | ✅ Done (W2A) — `origin: isDev || isWildcard ? true : allowedOrigins` (native `@fastify/cors` matching) |
-| P14 (2nd redis) | api | ⬜ Not executed — W2 |
+| P14 (2nd redis) | api | ✅ Done (W2, `3e72b78`) — `admin.routes.ts` `overlayLiveHeartbeats` reuses the shared cradle `fastify.container.redis` (was: 2nd Upstash client per request) and batches per-worker GETs into one `mget` round-trip (was: N parallel `get`). |
 | P17 (any types) | api | ✅ Done (W2A) — `pgPool`/`redis` typed via `ReturnType<typeof createPgPool/createRedisClient>`; Upstash REST has no `quit()` so teardown unchanged |
 | P18 (authUser cast) | api | ✅ Done (W2A) — `fastify.decorateRequest('authUser', null)` + typed `FastifyRequest.authUser` |
 | P19 (jwt bound) | api | ✅ Done (W2A) — `AuthService.toJwtPayload()` returns payload; routes sign via `fastify.jwt.sign(payload)` |
 | P20 (health) | api | ⬜ Deferred — health-route paths tangled (`/api/v1/health` and `/api/v1/health/deep` are both wrong: prefix is `/health` and the deep route uses `/health/deep` → `/health/health/deep` 404); `api.test.ts` was deleted in D1 Phase 4 (`77a17e4`), so this P20 re-evaluation is now unblocked; full consolidation needs a separate bug fix + new tests |
-| P21 (signals) | api | ⬜ Not executed — W2 |
+| P21 (signals) | api | ✅ Done (W1, `8dc008b`) — `forceCloseConnections: 'idle'` on Fastify options (backstop for SSE sockets on shutdown); `process.once` was already in place. |
 | C1 (config defaults) | config | ✅ Done (D3) — `Value.Parse(EnvSchema, process.env)` in `packages/config` applies schema `default` at boot; the 3× duplication of defaults (schema → resolvedEnv → env) is gone for the core 14 fields. The ~36 extended `env` fields still have `|| default` (separate cleanup). |
 | C2 (config Number bug) | config | ✅ Done (D3) — `Type.Number` + `Value.Parse` coerces `"3000"` → `3000`; no more `Number(x) \|\| default` (the falsy-`0` bug). `env.PORT` is now `number` (via the `ResolvedCoreEnv` type, since `Type.Optional` + `default` keeps the static type as `T \| undefined` despite runtime being defined). |
 | A3 (temperature) | app | ⬜ Not executed — W3 |
-| A4 (CSV) | app | ⬜ Not executed — W3 |
+| A4 (CSV) | app | ✅ Done (W1, `8dc008b`) — RFC 4180 `escapeCsvField` + `toCsvRow` helpers in `@betrix/core`; `ExportAuditLogsUseCase` uses them (was: only one field escaped, others would break CSV on `,`/`"`/newline). |
 | A6 (credit retry) | app | ⬜ Not executed — W3 (or keep) |
-| I4 (legacy scaffolding) | infra | ⬜ Not executed — W3 |
+| I4 (legacy scaffolding) | infra | ✅ Done (W1, `8dc008b`) — removed `captchaLegacy`/`streamTicketLegacy` from `redis-keys.ts` and the `DUAL_READ_LEGACY` window in `RedisEphemeralStores.ts` (post-D1, all writes/reads use the namespaced keys). |
 | W1 (retry helper) | worker | ⬜ Not executed — W3 |
 | W2 (month math) | worker | ⬜ Not executed — W3 |
 | W5 (indicator parse) | worker | ⬜ Not executed — W3 |
