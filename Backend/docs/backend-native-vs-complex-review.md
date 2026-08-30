@@ -53,7 +53,7 @@
 
 ### 0.2 Strategic Dependency Options (Open Question)
 
-> User is open to new dependencies for "minimum coding" (deleting complex code by leveraging battle-tested libraries instead of writing/maintaining it). Researched 2026-current (Better Auth docs, Fastify ecosystem, DI comparison, env validation). **D3 ✅ done (Phase 4)**; D1, D2, D4 still pending.
+> User is open to new dependencies for "minimum coding" (deleting complex code by leveraging battle-tested libraries instead of writing/maintaining it). Researched 2026-current (Better Auth docs, Fastify ecosystem, DI comparison, env validation). **All four (D1, D2, D3, D4) done:** D3 ✅ (Phase 4, `b80a193`); D2 ✅ (Phase 6, `b5af856`+`e54bb2f`+`9b8bd36`); D4 ✅ (Phase 6, `0c40e88`); D1 ✅ COMPLETE (Phase 6, `d06677f` → `7af3616` → `c6d9564` → `466819f` → `0578588` → `77a17e4`).
 
 **Why consider new deps at all?** The native-stdlib phases (1–3) already extracted ~250 lines, but the remaining backlog (especially A1, P15, the entire custom auth surface, C1/C2) has either high effort-to-payoff (A1: 8 use-cases, medium risk) or is structural (P15: 795-line container). Strategic deps can convert these from multi-day rewrites into a config + install, deleting orders of magnitude more code.
 
@@ -151,7 +151,7 @@ These were executed and committed before this doc was written. Line numbers belo
 | P17 (any types) | api | ✅ Done (W2A) — `pgPool`/`redis` typed via `ReturnType<typeof createPgPool/createRedisClient>`; Upstash REST has no `quit()` so teardown unchanged |
 | P18 (authUser cast) | api | ✅ Done (W2A) — `fastify.decorateRequest('authUser', null)` + typed `FastifyRequest.authUser` |
 | P19 (jwt bound) | api | ✅ Done (W2A) — `AuthService.toJwtPayload()` returns payload; routes sign via `fastify.jwt.sign(payload)` |
-| P20 (health) | api | ⬜ Deferred — health-route paths tangled (`/api/v1/health` and `/api/v1/health/deep` are both wrong: prefix is `/health` and the deep route uses `/health/deep` → `/health/health/deep` 404); `api.test.ts` pins the current behavior; full consolidation needs a separate bug fix + test update |
+| P20 (health) | api | ⬜ Deferred — health-route paths tangled (`/api/v1/health` and `/api/v1/health/deep` are both wrong: prefix is `/health` and the deep route uses `/health/deep` → `/health/health/deep` 404); `api.test.ts` was deleted in D1 Phase 4 (`77a17e4`), so this P20 re-evaluation is now unblocked; full consolidation needs a separate bug fix + new tests |
 | P21 (signals) | api | ⬜ Not executed — W2 |
 | C1 (config defaults) | config | ✅ Done (D3) — `Value.Parse(EnvSchema, process.env)` in `packages/config` applies schema `default` at boot; the 3× duplication of defaults (schema → resolvedEnv → env) is gone for the core 14 fields. The ~36 extended `env` fields still have `|| default` (separate cleanup). |
 | C2 (config Number bug) | config | ✅ Done (D3) — `Type.Number` + `Value.Parse` coerces `"3000"` → `3000`; no more `Number(x) \|\| default` (the falsy-`0` bug). `env.PORT` is now `number` (via the `ResolvedCoreEnv` type, since `Type.Optional` + `default` keeps the static type as `T \| undefined` despite runtime being defined). |
