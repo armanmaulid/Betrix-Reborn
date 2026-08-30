@@ -161,11 +161,11 @@ These were executed and committed before this doc was written. Line numbers belo
 | I4 (legacy scaffolding) | infra | ✅ Done (W1, `8dc008b`) — removed `captchaLegacy`/`streamTicketLegacy` from `redis-keys.ts` and the `DUAL_READ_LEGACY` window in `RedisEphemeralStores.ts` (post-D1, all writes/reads use the namespaced keys). |
 | W1 (retry helper) | worker | ⚠️ Partial (W1, `8dc008b`) — shared `retry()` + `retrySleep()` in `apps/worker/src/shared/retry.ts`. `sync-worker.ts` keeps its custom-predicate loop (retry until bar date matches — not a throw-retry) so the helper isn't applied there; it's ready for future call sites. |
 | W2 (month math) | worker | ✅ Done (W1, `8dc008b`) — `BrokerTimeCalculator.getUtcMonthEnd(year, month)` (uses the `Date.UTC(y, m+1, 0)` trick); `calendar-worker.ts` calls it. |
-| W5 (indicator parse) | worker | ⬜ Not executed — W3 |
-| W6 (backoff) | worker | ⬜ Not executed — W3 |
-| W7 (daily budget) | worker | ⬜ Not executed — W3 |
+| W5 (indicator parse) | worker | ✅ Done (W1, `8dc008b`) — anchored regex `/_([^_]+)_(\d{4}-\d{2}-\d{2})$/` in `apps/worker/src/shared/calendar-mapping.ts` (was: fragile `lastIndexOf('_')` + slice). |
+| W6 (backoff) | worker | ✅ Done (W1, `8dc008b`) — `backoffDelay(attempt, baseMs, maxMs)` in `apps/worker/src/shared/retry.ts` (shared with W1); `ws-worker.ts` uses it. |
+| W7 (daily budget) | worker | ✅ Done (W2, `3e72b78`) — `DailyBudget` class in `apps/worker/src/shared/daily-budget.ts` (UTC-day rollover + `consume(n)` → boolean); `CalendarWorker` uses it via a thin shim. |
 | P15 (DI container) | api | ✅ Done (D2) — `b5af856` replaces 798-line hand-rolled container with `@fastify/awilix`; `e54bb2f` + `9b8bd36` dedup to 407 lines (-49%) |
-| P16 (bg loops) | api | ⬜ Not executed — W3 |
+| P16 (bg loops) | api | ⚠️ Partial (W3, `c163df5`) — news relay now uses a `lastSeenAt` watermark + `newsRepo.findSince()` (no unbounded `Set` leak). Ops aggregator timer still uses `setInterval` + `onClose` `clearInterval` (cancellable); a full cancellable-loop refactor is a separate effort. |
 | I2 (fetch retry) | infra | 🔒 Keep (no stdlib equivalent) |
 | W9 (ManagedWorkerBase) | worker | 🔒 Keep (distributed leader election, no replacement) |
 
