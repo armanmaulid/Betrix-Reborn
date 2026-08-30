@@ -24,7 +24,8 @@
     "test": "vitest run --exclude '**/dist/**' --passWithNoTests",
     "lint": "tsc --noEmit",
     "db:migrate": "tsx src/persistence/drizzle/migrate.ts",
-    "db:backfill:d1": "tsx src/persistence/drizzle/d1-backfill-accounts.ts"
+    "db:backfill:d1": "tsx src/persistence/drizzle/d1-backfill-accounts.ts",
+    "db:cutover:d1": "tsx src/persistence/drizzle/d1-cutover-invalidate.ts"
   },
   "dependencies": {
     "@betrix/config": "workspace:*",

@@ -44,7 +44,10 @@ export const EnvSchema = Type.Object({
   AI_BASE_URL: Type.Optional(Type.String()),
   AI_API_KEY: Type.Optional(Type.String()),
   DEFAULT_MODEL: Type.Optional(Type.String()),
-  USE_BETTER_AUTH: Type.Optional(Type.Boolean({ default: false })),
+  // Phase 3 cutover — D1 Better Auth is now the LIVE auth path. Legacy 8
+  // use-cases + /api/v1/auth routes remain in code (flag-gated fallback) but
+  // are superseded. Set to `false` to revert to the legacy JWT path.
+  USE_BETTER_AUTH: Type.Optional(Type.Boolean({ default: true })),
   BETTER_AUTH_SECRET: Type.Optional(Type.String()),
   BETTER_AUTH_URL: Type.Optional(Type.String())
 });
