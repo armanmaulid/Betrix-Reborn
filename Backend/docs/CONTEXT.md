@@ -3,7 +3,7 @@
 **Date:** 2026-08-30
 **Workspace:** `Backend/` (Fastify 5 + Drizzle + Pino + TypeBox + @upstash/redis + node-cron + dukascopy-node + ws)
 **Branch:** `session/agent_3e8f767d-86a4-4ebc-824b-ab97de21a28b`
-**HEAD:** `e54bb2f` (pushed)
+**HEAD:** `9b8bd36` (pushed)
 
 > **Read this file first if context is lost.** Full review in
 > `docs/backend-native-vs-complex-review.md` (SSOT). This file is the
@@ -20,7 +20,7 @@
 | 3 — Wave 2A (quick dedup) | ✅ | `f25668f` | A2/A5/I3/W4/P7/P12/P17/P18/P19 |
 | 4 — D3 `@fastify/env` + `Value.Parse` | ✅ | `b80a193` | Config C1/C2 — schema defaults applied at boot, `env.PORT` typed `number` |
 | 5 — Wave 2B / Wave 3 | ⬜ | — | A1, I1, W3, P8/P11/P14, A3–A6, W1/W2/W5–W7, I4, P13, P16 |
-| 6 — D2 `@fastify/awilix` | ✅ | `b5af856` + `e54bb2f` (dedup) | P15 — container 798 → 418 lines (-47%); `e54bb2f` prunes dedup (`Pick<AppCradle>`, `isNotTest()`, proper plugin cast, stale comments) |
+| 6 — D2 `@fastify/awilix` | ✅ | `b5af856` + `e54bb2f` + `9b8bd36` | P15 — container 798 → 407 lines (-49%); dedup commits collapse `Pick<AppCradle>`, `isNotTest()`, `pickGroup<R>` helper, proper plugin cast, prune stale comments |
 | 6 — D1 `better-auth`, D4 A1 `Value.Decode` | ⬜ | — | Next up (see §3) |
 
 **Net code removed (Phases 1–3):** ~250 lines. **Phase 6 (D2):** -350 lines.
