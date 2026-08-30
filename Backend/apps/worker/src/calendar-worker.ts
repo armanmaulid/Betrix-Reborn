@@ -14,6 +14,7 @@ import {
 } from '@betrix/infra';
 import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
 import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
+import { DailyBudget } from './shared/daily-budget.js';
 
 const utcDateKey = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' });
 import {
@@ -41,8 +42,7 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
   private errorCount = 0;
   private lastError: string | null = null;
   /** Daily FXMacroData call budget guard so refresh passes can never blow the free tier. */
-  private budgetUsedToday = 0;
-  private budgetDayUtc = new Date().getUTCDate();
+  private dailyBudget = new DailyBudget(env.FXMACRODATA_DAILY_CALL_BUDGET);
   private pool: ReturnType<typeof createPgPool>;
   private calendarRepo: DrizzleCalendarRepository;
   private fxMacroData = new FxMacroDataClient();
@@ -568,14 +568,7 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
 
   /** Resets at UTC midnight; returns false once today's quota would be exceeded. */
   private consumeDailyBudget(calls: number): boolean {
-    const todayUtc = new Date().getUTCDate();
-    if (todayUtc !== this.budgetDayUtc) {
-      this.budgetDayUtc = todayUtc;
-      this.budgetUsedToday = 0;
-    }
-    if (this.budgetUsedToday + calls > env.FXMACRODATA_DAILY_CALL_BUDGET) return false;
-    this.budgetUsedToday += calls;
-    return true;
+    return this.dailyBudget.consume(calls);
   }
 
   /**

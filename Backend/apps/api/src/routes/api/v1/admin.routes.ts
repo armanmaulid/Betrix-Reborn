@@ -2,7 +2,7 @@ import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { randomUUID } from 'node:crypto';
 import { env } from '@betrix/config';
 import { NotFoundError } from '@betrix/core';
-import { createRedisClient, redisKeys } from '@betrix/infra';
+import { redisKeys } from '@betrix/infra';
 import {
   AdminUsersQuerySchema,
   UpdateAdminUserSchema,
@@ -35,7 +35,8 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
 
   // T3.3 — live worker telemetry heartbeats (Redis, TTL 90s). Read-only here:
   // writers are the worker processes themselves via ManagedWorkerBase.
-  const wStateRedis = createRedisClient();
+  // P14 — reuse the shared cradle client (no 2nd Upstash connection) and
+  // batch the per-worker GETs into a single `mget` round-trip.
   interface HeartbeatOverlayable {
     workerId: string;
     processedCount?: number;
@@ -43,27 +44,30 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     lastError?: string | null;
     lastReportAt?: Date;
   }
-  const overlayLiveHeartbeats = async <T extends HeartbeatOverlayable>(rows: T[]) =>
-    Promise.all(
-      rows.map(async (row) => {
-        try {
-          const raw = await wStateRedis.get<string>(redisKeys.workerHeartbeat(row.workerId));
-          if (!raw) return row;
-          const hb = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          const ts = Number(hb?.ts) || 0;
-          if (!ts || Date.now() - ts >= 90_000) return row;
-          return {
-            ...row,
-            processedCount: hb.processedCount ?? row.processedCount,
-            errorCount: hb.errorCount ?? row.errorCount,
-            lastError: hb.lastError ?? row.lastError,
-            lastReportAt: new Date(ts)
-          };
-        } catch {
-          return row;
-        }
-      })
-    );
+  const overlayLiveHeartbeats = async <T extends HeartbeatOverlayable>(rows: T[]) => {
+    if (rows.length === 0) return rows;
+    const keys = rows.map((r) => redisKeys.workerHeartbeat(r.workerId));
+    const raws = await fastify.container.redis.mget<string[]>(...keys);
+    const now = Date.now();
+    return rows.map((row, i) => {
+      const raw = raws[i];
+      if (!raw) return row;
+      try {
+        const hb = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        const ts = Number(hb?.ts) || 0;
+        if (!ts || now - ts >= 90_000) return row;
+        return {
+          ...row,
+          processedCount: hb.processedCount ?? row.processedCount,
+          errorCount: hb.errorCount ?? row.errorCount,
+          lastError: hb.lastError ?? row.lastError,
+          lastReportAt: new Date(ts)
+        };
+      } catch {
+        return row;
+      }
+    });
+  };
 
   // Protect all /admin/* routes with Admin RBAC guard
   fastify.addHook('preHandler', fastify.requireAdmin);
