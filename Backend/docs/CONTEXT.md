@@ -3,7 +3,7 @@
 **Date:** 2026-08-30
 **Workspace:** `Backend/` (Fastify 5 + Drizzle + Pino + TypeBox + @upstash/redis + node-cron + dukascopy-node + ws)
 **Branch:** `session/agent_3e8f767d-86a4-4ebc-824b-ab97de21a28b`
-**HEAD:** `1c7372b` (pushed)
+**HEAD:** `e80105b` (pushed)
 
 > **Read this file first if context is lost.** Full review in
 > `docs/backend-native-vs-complex-review.md` (SSOT). This file is the
@@ -104,26 +104,28 @@ log) + Drizzle auth schema. 6 open questions answered (D1 plan §7).
 schema + data migration (zero-downtime sequence), hooks mapping table, phased
 execution plan, and 6 open questions for the user. **No code written.**
 
-### 3.3 Phase 5 / Wave 2B / Wave 3 backlog
+### 3.3 Phase 5 / Wave 2B / Wave 3 — Batch 1+2+3 done (commits `8dc008b`+`3e72b78`+`c163df5`)
 
-| ID | File | Effort |
-|----|------|--------|
-| A1 | 8 use-cases (D4 above) | 2–3h |
-| I1 | SSE parser dedupe (AiGateway + FxMacroData) | Med |
-| W3 | 4 backfillers → 1 generic `Backfiller<Row>` | Med |
-| P8 | errorHandler consolidation | Low |
-| P11 | rate-limit Redis store 1 round-trip | Low–Med |
-| P14 | 2nd redis client + heartbeat mget | Low |
-| A3 | temperature ×100 encoding dedupe | Med (migration) |
-| A4 | CSV escape helper | Low |
-| A6 | credit settle-retry (keep but clarify) | — |
-| I4 | legacy dual-read scaffolding | Low |
-| W1 | retry helper | Low |
-| W2 | month math into BrokerTimeCalculator | Low |
-| W5 | indicator regex | Low |
-| W6 | backoff helper | Low |
-| W7 | daily budget class | Low |
-| P13 | SSE budget → Redis native | Med |
+| ID | Status | Commit | Note |
+|----|--------|--------|------|
+| I4 | ✅ | `8dc008b` | `captchaLegacy`/`streamTicketLegacy`/`DUAL_READ_LEGACY` removed (post-D1) |
+| A4 | ✅ | `8dc008b` | `escapeCsvField` + `toCsvRow` in `@betrix/core`; `ExportAuditLogsUseCase` uses them |
+| W5 | ✅ | `8dc008b` | anchored regex `/_([^_]+)_(\d{4}-\d{2}-\d{2})$/` in `calendar-mapping.ts` |
+| W6 | ✅ | `8dc008b` | `backoffDelay(attempt, baseMs, maxMs)` in `apps/worker/src/shared/retry.ts`; `ws-worker.ts` uses it |
+| W1 | ⚠️ partial | `8dc008b` | shared `retry()` + `retrySleep()` helpers; `sync-worker.ts` keeps its custom-predicate loop (retry until bar date matches — not a throw-retry) |
+| W2 | ✅ | `8dc008b` | `BrokerTimeCalculator.getUtcMonthEnd(year, month)`; `calendar-worker.ts` uses it |
+| P21 | ✅ | `8dc008b` | `forceCloseConnections: 'idle'` on Fastify options (SSE backstop) |
+| P8 | ⏸️ deferred | — | error handler already well-consolidated (5 branches); rate-limit `errorResponseBuilder` has a different shape (retryAfter in details) so the global 429 branch is a fallback only. No safe dedup target. |
+| W7 | ✅ | `3e72b78` | `DailyBudget` class (UTC-day rollover + `consume(n)` → boolean); `CalendarWorker` uses it |
+| P14 | ✅ | `3e72b78` | `admin.routes.ts` `overlayLiveHeartbeats` reuses `fastify.container.redis` + `mget` (1 round-trip) |
+| P11 | ✅ | `c163df5` | rate-limit Redis store: one `pipeline()` for `incr+pttl` (was 2 calls), real `pttl` (was `windowMs`), `child()` returns route-scoped new store (was `this`) |
+| P13 | ⏸️ deferred | — | sse plugin registers before container, so `fastify.container.redis` isn't available at boot. Needs a registration-order change (move sse after container) — separate refactor. |
+| P16 | ⚠️ partial | `c163df5` | news relay uses `lastSeenAt` watermark + `newsRepo.findSince()` (no unbounded `Set`). Ops aggregator timer still uses `setInterval` + `clearInterval` in `onClose` (already cancellable). |
+| I1 | ✅ | `c163df5` | `createSseParser` helper in `packages/infra/src/external/sse-parser.ts`; used by `AiGatewayClient` + `FxMacroDataClient` |
+| A3 | ⬜ | — | temperature ×100 encoding — needs migration if fixed fully (skip option: leave ×100) |
+| W3 | ⬜ | — | 4 backfillers → 1 generic `Backfiller<Row>` — high risk (behavioral change in production data flows) |
+| P20 | ⬜ | — | health routes — now unblocked after `api.test.ts` deletion in D1 Phase 4, but needs new tests |
+| A6 | ⬜ | — | credit settle-retry — keep or extract (SSOT: candidate for clarification) |
 | P16 | news relay watermark (replace unbounded Set) | Med |
 
 ---
@@ -197,3 +199,44 @@ Commit `77a17e4` ("refactor(auth): migrate to better-auth and remove legacy iden
 - `mockGoogleVerifier` (GoogleOAuth-only)
 
 **D1 status: 🟢 COMPLETE.** BA live, legacy fully removed, build PASS, domain 44/44 PASS, api lint PASS. Soak + frontend switch to `/api/auth/*` remain.
+
+---
+
+## 9. Phase 5 addendum (2026-08-30) — Batch 1+2+3
+
+**10 items done, 2 deferred (P8, P13), 2 partial (W1, P16), 4 remaining (A3, W3, P20, A6).**
+
+Commits:
+- `8dc008b` — Batch 1: I4, A4, W1 (partial), W2, W5, W6, P21.
+- `3e72b78` — Batch 2: P8 (deferred), W7, P14.
+- `c163df5` — Batch 3: P11, P13 (deferred), P16 (partial), I1.
+
+**Key new helpers:**
+- `@betrix/core`: `escapeCsvField`, `toCsvRow` (A4).
+- `packages/domain`: `BrokerTimeCalculator.getUtcMonthEnd(year, month)` (W2).
+- `packages/infra/src/external/sse-parser.ts`: `createSseParser(opts)` (I1).
+- `apps/worker/src/shared/retry.ts`: `backoffDelay`, `retry`, `retrySleep` (W1, W6).
+- `apps/worker/src/shared/daily-budget.ts`: `DailyBudget` class (W7).
+- `packages/domain/src/news/repositories/INewsInterfaces.ts` + `DrizzleNewsRepository`: `findSince(since: number)` (P16).
+- `apps/api/src/plugins/rateLimit.plugin.ts`: pipeline + real pttl + child (P11).
+- `apps/api/src/plugins/server.ts`: `forceCloseConnections: 'idle'` (P21).
+- `apps/api/src/routes/api/v1/admin.routes.ts`: `overlayLiveHeartbeats` reuses cradle redis + mget (P14).
+- `apps/api/src/plugins/container.plugin.ts`: news relay watermark (P16).
+- `apps/worker/src/calendar-worker.ts`: `DailyBudget` integration (W7).
+- `apps/worker/src/shared/calendar-mapping.ts`: anchored regex (W5).
+- `apps/worker/src/ws-worker.ts`: `backoffDelay` (W6).
+- `packages/infra/src/external/ai/AiGatewayClient.ts` + `fxmacrodata/FxMacroDataClient.ts`: `createSseParser` (I1).
+
+**Deferred/partial rationale:**
+- **P8** — error handler already has 5 well-separated branches (AppError, validation, rate-limit, HTTP 4xx, 500); rate-limit `errorResponseBuilder` has a different response shape (`retryAfter` in `details`) so the global 429 branch is a fallback. No safe dedup target.
+- **P13** — sse plugin registers before container in `server.ts`, so `fastify.container.redis` isn't available at plugin boot. Real Redis-native budget needs a registration-order change (move sse after container) — separate refactor.
+- **W1 partial** — `sync-worker.ts` retry loop is custom-predicate (retry until bar date matches, not "no throw"); the shared `retry()` helper assumes throw-retry and doesn't fit. Future throw-retry call sites can use it.
+- **P16 partial** — news relay watermark done (eliminates unbounded `Set` memory leak). Ops aggregator timer still uses `setInterval` + `clearInterval` in `onClose` (already cancellable on shutdown). A fully cancellable loop with `node:timers/promises` is a separate refactor.
+
+**Remaining (high-risk / behavioral):**
+- A3 (temperature ×100) — needs migration if fixed fully; skip option: leave as is.
+- W3 (4 backfillers → 1 generic) — high risk (production data flows).
+- P20 (health routes) — unblocked after `api.test.ts` deletion; needs new tests + bug fix.
+- A6 (credit settle-retry) — keep or extract/clarify.
+
+**Build:** `pnpm -r build` PASS (7 pkgs). **Domain tests:** 44/44 PASS.
