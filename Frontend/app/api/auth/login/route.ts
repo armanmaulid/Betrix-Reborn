@@ -74,13 +74,22 @@ export async function POST(request: NextRequest) {
       // Whitelist only known-safe fields from the upstream error — never
       // spread the raw object (it may leak internals like stack/infra data).
       const upstream = resData?.error;
-      const safeError: { message: string; captchaId?: string; delayMs?: number } = {
+      const safeError: {
+        message: string;
+        captchaId?: string;
+        question?: string;
+        delayMs?: number;
+      } = {
         message:
           (typeof upstream?.message === 'string' && upstream.message) ||
           (typeof resData?.message === 'string' && resData.message) ||
           'Authentication failed'
       };
-      if (upstream?.captchaId) safeError.captchaId = upstream.captchaId;
+      // The CAPTCHA challenge lives under error.details.captcha (see backend
+      // PreconditionRequiredError payload), not as a top-level captchaId.
+      const captcha = upstream?.details?.captcha;
+      if (typeof captcha?.id === 'string') safeError.captchaId = captcha.id;
+      if (typeof captcha?.question === 'string') safeError.question = captcha.question;
       if (upstream?.delayMs) safeError.delayMs = upstream.delayMs;
 
       return NextResponse.json(

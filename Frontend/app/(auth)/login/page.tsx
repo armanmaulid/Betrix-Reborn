@@ -117,7 +117,7 @@ function LoginForm() {
         if (response.status === 428 || resultError.captchaId) {
           setCaptchaData({
             id: resultError.captchaId || 'captcha-req',
-            question: resultError.message || 'Math Challenge Required'
+            question: resultError.question || 'Math Challenge Required'
           });
           setValue('captchaId', resultError.captchaId || 'captcha-req');
         }

@@ -31,7 +31,8 @@ export class SseHub {
   // event loop non-empty, so Fastify's app.close() (awaited in server.ts's
   // SIGINT/SIGTERM handler before process.exit(0)) never resolves and the
   // process hangs until something force-kills it.
-  private isShuttingDown = false;  private marketDelayMs = Number(process.env.MARKET_TICKER_INTERVAL_MS) || 5000;
+  private isShuttingDown = false;
+  private marketDelayMs = Number(process.env.MARKET_TICKER_INTERVAL_MS) || 5000;
   private static readonly MARKET_MAX_DELAY_MS = 30_000;
   private lastPriceSnapshot = new Map<string, number>();
   private priceFetcher: (() => Promise<PriceTick[]>) | null = null;
@@ -102,6 +103,24 @@ export class SseHub {
     reply: FastifyReply,
     symbols?: string[]
   ): void {
+    // Reject new connections once shutdown has begun. Without this, a
+    // client reconnecting in the window between SIGINT and the process
+    // actually exiting (e.g. its old connection was just severed by
+    // closeAll()'s reply.raw.end() below, or a plain network blip) can
+    // still reach here and register in this.clients — after closeAll()
+    // already ran once, so nothing will ever clean it up. An open SSE
+    // response (writeHead(200, ...) with no matching .end()) keeps Node's
+    // http.Server tracking it as an active connection, which is exactly
+    // what makes Fastify's app.close() (awaited in server.ts before
+    // process.exit(0)) hang indefinitely — the same end result as the
+    // marketTimer race condition, but from a different cause: a
+    // never-ending connection instead of a never-cleared timer.
+    if (this.isShuttingDown) {
+      reply.raw.writeHead(503, { 'Content-Type': 'application/json' });
+      reply.raw.end(JSON.stringify({ error: 'Server is shutting down' }));
+      return;
+    }
+
     // Set standard SSE Headers
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -360,8 +379,10 @@ const ssePluginCallback: FastifyPluginAsync = async (fastify) => {
   fastify.decorate('sseHub', sseHub);
 
   fastify.addHook('onClose', async () => {
+    fastify.log.info('[SHUTDOWN] SseHub onClose hook starting...');
     fastify.log.info('Closing all active SSE connections in SseHub...');
     sseHub.closeAll();
+    fastify.log.info('[SHUTDOWN] SseHub onClose hook finished.');
   });
 };
 

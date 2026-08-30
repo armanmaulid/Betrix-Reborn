@@ -88,10 +88,14 @@ export type FxTechnicalIndicator =
   | 'all';
 export interface FxMacroDataFxPriceRow {
   date: string; // YYYY-MM-DD
+  /** Daily reference rate — always present (the canonical close). */
+  val?: number;
+  // OHLC built from timestamped reference observations — omitted on rows
+  // without ≥4 observations, so close may be null where val is not.
   open?: number;
   high?: number;
   low?: number;
-  close: number;
+  close?: number | null;
   // Technical overlays (only present when ?indicators= is passed).
   sma_20?: number;
   sma_50?: number;
@@ -99,7 +103,7 @@ export interface FxMacroDataFxPriceRow {
   rsi_14?: number;
   macd?: number;
   macd_signal?: number;
-  macd_hist?: number;
+  macd_histogram?: number;
   ema_12?: number;
   ema_26?: number;
   bb_upper?: number;
@@ -109,7 +113,18 @@ export interface FxMacroDataFxPriceRow {
 export interface FxMacroDataFxPriceResponse {
   base: string;
   quote: string;
-  rows: FxMacroDataFxPriceRow[];
+  pagination?: FxPaginationInfo;
+  data: FxMacroDataFxPriceRow[];
+}
+
+/** Shared pagination envelope returned by forex/cot/commodities endpoints. */
+export interface FxPaginationInfo {
+  limit?: number | null;
+  offset?: number;
+  returned_count?: number;
+  total_count?: number;
+  has_more?: boolean;
+  next_offset?: number | null;
 }
 
 // ── COT positioning ───────────────────────────────────────────────────────
@@ -123,11 +138,13 @@ export interface FxMacroDataCotRow {
   noncommercial_long?: number;
   noncommercial_short?: number;
   noncommercial_net?: number;
-  total_open_interest?: number;
+  /** API field name is `open_interest` (not `total_open_interest`). */
+  open_interest?: number;
 }
 export interface FxMacroDataCotResponse {
   currency: string;
-  rows: FxMacroDataCotRow[];
+  pagination?: FxPaginationInfo;
+  data: FxMacroDataCotRow[];
 }
 
 // ── Commodities ──────────────────────────────────────────────────────────
@@ -135,15 +152,15 @@ export interface FxMacroDataCotResponse {
 export type FxCommodityIndicator = 'gold' | 'silver' | 'platinum';
 export interface FxMacroDataCommodityRow {
   date: string; // YYYY-MM-DD
-  close: number;
-  open?: number;
-  high?: number;
-  low?: number;
-  unit?: string; // e.g. USD/oz
+  /** API field name is `val` (not `close`); there is no OHLC or unit on this endpoint. */
+  val?: number;
+  pct_change?: number;
+  pct_change_12m?: number;
 }
 export interface FxMacroDataCommodityResponse {
-  indicator: FxCommodityIndicator;
-  rows: FxMacroDataCommodityRow[];
+  indicator: string;
+  pagination?: FxPaginationInfo;
+  data: FxMacroDataCommodityRow[];
 }
 
 const RETRYABLE_STATUS = new Set([401, 429, 500, 502, 503, 504]);
@@ -221,6 +238,35 @@ export class FxMacroDataClient {
     throw lastError;
   }
 
+  /**
+   * Page through a paginated list endpoint until `pagination.has_more` is
+   * false, returning every row. The forex/cot/commodities endpoints default to
+   * `limit=20` and cap at `limit=100` — without paging here, a 6-year backfill
+   * silently returns only ~20 rows per call (≈120 rows/pair) instead of the
+   * full series. `pathWithQuery(offset)` must produce the path + query string
+   * (api_key is appended by `fetchWithRetry`); `parse` extracts rows + the
+   * pagination envelope from the decoded JSON.
+   */
+  private async fetchPaginated<T>(
+    pathWithQuery: (offset: number) => string,
+    parse: (json: any) => { rows: T[]; pagination?: FxPaginationInfo }
+  ): Promise<T[]> {
+    const LIMIT = 100; // API hard maximum (defaults to 20 when omitted)
+    const out: T[] = [];
+    let offset = 0;
+    // Hard cap 200 pages (20k rows) guards against a server that never clears has_more.
+    for (let page = 0; page < 200; page++) {
+      const json = await this.fetchWithRetry<any>(pathWithQuery(offset));
+      const { rows, pagination } = parse(json);
+      out.push(...rows);
+      if (!pagination?.has_more || rows.length === 0) break;
+      // `next_offset` is nullable per the schema — fall back to a computed
+      // offset when the server sets has_more but omits it.
+      offset = pagination.next_offset ?? offset + rows.length;
+    }
+    return out;
+  }
+
   /** GET /v1/calendar/{currency} — the event schedule, no Before/Forecast/Actual values.
    *  FXMacroData returns ONLY upcoming releases unless `start_date`/`end_date`
    *  are supplied, so historical (past-year) schedules require the range. */
@@ -251,14 +297,33 @@ export class FxMacroDataClient {
     startDate?: string,
     endDate?: string
   ): Promise<FxMacroDataAnnouncement[]> {
-    const qs = new URLSearchParams();
-    if (startDate) qs.set('start_date', startDate);
-    if (endDate) qs.set('end_date', endDate);
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    const result = await this.fetchWithRetry<{ data: FxMacroDataAnnouncement[] }>(
-      `/v1/announcements/${currency}/${indicator}${suffix}`
+    // No-date callers (CalendarWorker's daily value refresh) only need the
+    // most-recent rows, which the default limit=20 covers. Paginating the full
+    // history there would burn up to ~70 pages on daily indicators (e.g.
+    // policy_rate). Historical callers (calendar backfill) always pass a
+    // range, and those need every row — the API defaults limit=20, so without
+    // paging a full-year window silently drops all but the 20 most recent.
+    if (!(startDate && endDate)) {
+      const qs = new URLSearchParams();
+      if (startDate) qs.set('start_date', startDate);
+      if (endDate) qs.set('end_date', endDate);
+      const suffix = qs.toString() ? `?${qs.toString()}` : '';
+      const result = await this.fetchWithRetry<{ data: FxMacroDataAnnouncement[] }>(
+        `/v1/announcements/${currency}/${indicator}${suffix}`
+      );
+      return result.data ?? [];
+    }
+    return this.fetchPaginated<FxMacroDataAnnouncement>(
+      (offset) => {
+        const qs = new URLSearchParams();
+        qs.set('start_date', startDate);
+        qs.set('end_date', endDate);
+        qs.set('limit', '100');
+        qs.set('offset', String(offset));
+        return `/v1/announcements/${currency}/${indicator}?${qs.toString()}`;
+      },
+      (json) => ({ rows: json?.data ?? [], pagination: json?.pagination })
     );
-    return result.data ?? [];
   }
 
   /**
@@ -272,11 +337,25 @@ export class FxMacroDataClient {
   public async fetchPredictions(
     currency: string,
     indicator: string,
-    predictionType?: FxMacroDataPredictionType
+    predictionType?: FxMacroDataPredictionType,
+    startDate?: string,
+    endDate?: string,
+    preReleaseOnly = false
   ): Promise<FxMacroDataPredictionGroup[]> {
-    const suffix = predictionType ? `?prediction_type=${predictionType}` : '';
+    // Default pre_release_only=false: the store only persists pre-release rows,
+    // but the flag also controls whether *past* (already-released) groups are
+    // included in the default window. With the default (true) only the ~future
+    // window is served, so historical forecast joins would come back empty.
+    const qs = new URLSearchParams();
+    if (predictionType) qs.set('prediction_type', predictionType);
+    if (startDate) qs.set('start_date', startDate);
+    if (endDate) qs.set('end_date', endDate);
+    qs.set('pre_release_only', String(preReleaseOnly));
+    // Predictions are sparse (one group per release per indicator), so the
+    // 20-row default is ample; 100 keeps a dense daily indicator whole.
+    qs.set('limit', '100');
     const result = await this.fetchWithRetry<{ data: FxMacroDataPredictionGroup[] }>(
-      `/v1/predictions/${currency}/${indicator}${suffix}`
+      `/v1/predictions/${currency}/${indicator}?${qs.toString()}`
     );
     return result.data ?? [];
   }
@@ -412,15 +491,18 @@ export class FxMacroDataClient {
     indicators?: FxTechnicalIndicator[]
   ): Promise<FxMacroDataFxPriceRow[]> {
     if (!this.hasApiKey()) return [];
-    const qs = new URLSearchParams();
-    if (startDate) qs.set('start_date', startDate);
-    if (endDate) qs.set('end_date', endDate);
-    if (indicators && indicators.length > 0) qs.set('indicators', indicators.join(','));
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    const result = await this.fetchWithRetry<FxMacroDataFxPriceResponse>(
-      `/v1/forex/${base}/${quote}${suffix}`
+    return this.fetchPaginated<FxMacroDataFxPriceRow>(
+      (offset) => {
+        const qs = new URLSearchParams();
+        if (startDate) qs.set('start_date', startDate);
+        if (endDate) qs.set('end_date', endDate);
+        if (indicators && indicators.length > 0) qs.set('indicators', indicators.join(','));
+        qs.set('limit', '100');
+        qs.set('offset', String(offset));
+        return `/v1/forex/${base}/${quote}?${qs.toString()}`;
+      },
+      (json) => ({ rows: json?.data ?? [], pagination: json?.pagination })
     );
-    return result.rows ?? [];
   }
 
   /** GET /v1/cot/{currency} — CFTC Commitment of Traders positioning.
@@ -431,14 +513,17 @@ export class FxMacroDataClient {
     endDate?: string
   ): Promise<FxMacroDataCotRow[]> {
     if (!this.hasApiKey()) return [];
-    const qs = new URLSearchParams();
-    if (startDate) qs.set('start_date', startDate);
-    if (endDate) qs.set('end_date', endDate);
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    const result = await this.fetchWithRetry<FxMacroDataCotResponse>(
-      `/v1/cot/${currency}${suffix}`
+    return this.fetchPaginated<FxMacroDataCotRow>(
+      (offset) => {
+        const qs = new URLSearchParams();
+        if (startDate) qs.set('start_date', startDate);
+        if (endDate) qs.set('end_date', endDate);
+        qs.set('limit', '100');
+        qs.set('offset', String(offset));
+        return `/v1/cot/${currency}?${qs.toString()}`;
+      },
+      (json) => ({ rows: json?.data ?? [], pagination: json?.pagination })
     );
-    return result.rows ?? [];
   }
 
   /** GET /v1/commodities/{indicator} — gold | silver | platinum history.
@@ -449,13 +534,16 @@ export class FxMacroDataClient {
     endDate?: string
   ): Promise<FxMacroDataCommodityRow[]> {
     if (!this.hasApiKey()) return [];
-    const qs = new URLSearchParams();
-    if (startDate) qs.set('start_date', startDate);
-    if (endDate) qs.set('end_date', endDate);
-    const suffix = qs.toString() ? `?${qs.toString()}` : '';
-    const result = await this.fetchWithRetry<FxMacroDataCommodityResponse>(
-      `/v1/commodities/${indicator}${suffix}`
+    return this.fetchPaginated<FxMacroDataCommodityRow>(
+      (offset) => {
+        const qs = new URLSearchParams();
+        if (startDate) qs.set('start_date', startDate);
+        if (endDate) qs.set('end_date', endDate);
+        qs.set('limit', '100');
+        qs.set('offset', String(offset));
+        return `/v1/commodities/${indicator}?${qs.toString()}`;
+      },
+      (json) => ({ rows: json?.data ?? [], pagination: json?.pagination })
     );
-    return result.rows ?? [];
   }
 }

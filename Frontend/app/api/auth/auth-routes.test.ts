@@ -145,9 +145,15 @@ describe('Next.js Auth Route Handlers Integration Tests', () => {
         success: false,
         message: 'Upstream says no',
         error: {
-          message: 'Invalid credentials',
-          captchaId: 'cap-challenge-9',
+          message: 'CAPTCHA verification required due to recent failed login attempts.',
           delayMs: 4000,
+          details: {
+            captcha: {
+              id: 'cap-challenge-9',
+              question: 'What is 12 + 7?',
+              expiresInSeconds: 300
+            }
+          },
           stack: 'sensitive-stack-trace',
           internalHost: 'db-node-01:5432'
         }
@@ -168,13 +174,14 @@ describe('Next.js Auth Route Handlers Integration Tests', () => {
 
     expect(res.status).toBe(401);
     expect(body.success).toBe(false);
-    expect(body.error.message).toBe('Invalid credentials');
+    expect(body.error.message).toBe('CAPTCHA verification required due to recent failed login attempts.');
     expect(body.error.captchaId).toBe('cap-challenge-9');
+    expect(body.error.question).toBe('What is 12 + 7?');
     expect(body.error.delayMs).toBe(4000);
     // Internal fields must be stripped, never spread through
     expect(body.error.stack).toBeUndefined();
     expect(body.error.internalHost).toBeUndefined();
-    expect(Object.keys(body.error).sort()).toEqual(['captchaId', 'delayMs', 'message']);
+    expect(Object.keys(body.error).sort()).toEqual(['captchaId', 'delayMs', 'message', 'question']);
   });
 
   it('Admin proxy: upstream 204 responds success with preserved 204 status and never parses a body', async () => {

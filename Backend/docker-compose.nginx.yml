@@ -1,0 +1,22 @@
+# nginx HTTPS reverse proxy for local testing (mkcert).
+# Backend (:3000) and frontend (:3001) keep running via `pnpm dev` on the host.
+#
+#   docker compose -f docker-compose.nginx.yml up -d
+#   → https://betrix.local
+#
+# Certificates are expected in ./nginx/certs/ (see ./nginx/README.md). The
+# DOCKER_GATEWAY_HOST default (host.docker.internal) works on Windows & macOS;
+# on Linux override it to the host IP, e.g. DOCKER_GATEWAY_HOST=172.17.0.1.
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: betrix_reborn_nginx
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    restart: unless-stopped

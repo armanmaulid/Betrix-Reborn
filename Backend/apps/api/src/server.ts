@@ -80,7 +80,28 @@ export async function startServer() {
   const shutdown = async (signal: string) => {
     app.log.info(`Received ${signal}, initiating graceful shutdown...`);
     try {
-      await app.close();
+      // Fastify's close() waits for in-flight requests to drain, then runs
+      // onClose hooks (SseHub.closeAll(), pgPool.end()) in registration
+      // order. Any one of those can, in principle, hang — a request that
+      // never completes, an onClose hook awaiting something that never
+      // resolves. Racing against an explicit timeout turns a silent
+      // indefinite hang (previously: nothing after "Received SIGINT..." in
+      // the log, forcing a manual kill with no diagnostic) into a clear,
+      // actionable log line naming which case happened, without changing
+      // behavior at all when close() finishes normally and wins the race.
+      const CLOSE_TIMEOUT_MS = 10_000;
+      const closeTimeout = new Promise<'timeout'>((resolve) =>
+        setTimeout(() => resolve('timeout'), CLOSE_TIMEOUT_MS)
+      );
+      const result = await Promise.race([app.close().then(() => 'closed' as const), closeTimeout]);
+
+      if (result === 'timeout') {
+        app.log.error(
+          `app.close() did not resolve within ${CLOSE_TIMEOUT_MS}ms — an in-flight request or an onClose hook (SseHub.closeAll, pgPool.end) is likely hanging. Forcing exit(1) rather than blocking forever; this needs investigating.`
+        );
+        process.exit(1);
+      }
+
       app.log.info('Server successfully closed.');
       process.exit(0);
     } catch (err) {

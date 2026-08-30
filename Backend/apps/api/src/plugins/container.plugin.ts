@@ -791,8 +791,10 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
     // explicitly the way pgPool needs .end(). Log message kept accurate to
     // what actually happens, since it previously claimed to disconnect
     // Redis with no code backing that claim.
+    fastify.log.info('[SHUTDOWN] pgPool onClose hook starting...');
     fastify.log.info('Closing PostgreSQL pool...');
     await pgPool.end();
+    fastify.log.info('[SHUTDOWN] pgPool onClose hook finished — pool closed.');
   });
 };
 

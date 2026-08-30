@@ -109,12 +109,25 @@ export async function joinWithAnnouncementsAndPredictions(
   // join silently fails and Before/Actual/Forecast stay NULL.
   const currencyKey = currency.toLowerCase();
   const uniqueEventCodes = [...new Set(rawEvents.map((e) => e.release))];
+  // Derive the value-fetch window from the events themselves: FXMacroData's
+  // /v1/announcements and /v1/predictions default to limit=20 (most-recent-
+  // first) and (for predictions) pre_release_only=true, so calling with no
+  // range silently returns only the latest rows and no past forecasts — which
+  // makes every non-recent event fail its announcement_id match and leaves
+  // Before/Actual/Forecast null. A full-window fetch (paginated) recovers the
+  // whole series so the join can actually match historical events.
+  const dates = rawEvents.map((e) => e.date).filter(Boolean).sort();
+  const windowStart = dates[0];
+  const windowEnd = dates[dates.length - 1];
   const announcementsByCode = new Map<string, FxMacroDataAnnouncement[]>();
   const predictionsByCode = new Map<string, FxMacroDataPredictionGroup[]>();
 
   for (const code of uniqueEventCodes) {
     try {
-      announcementsByCode.set(code, await fxMacroData.fetchAnnouncements(currencyKey, code));
+      announcementsByCode.set(
+        code,
+        await fxMacroData.fetchAnnouncements(currencyKey, code, windowStart, windowEnd)
+      );
     } catch (err: any) {
       logger.warn(
         { err: err.message },
@@ -123,7 +136,10 @@ export async function joinWithAnnouncementsAndPredictions(
       announcementsByCode.set(code, []);
     }
     try {
-      predictionsByCode.set(code, await fxMacroData.fetchPredictions(currencyKey, code));
+      predictionsByCode.set(
+        code,
+        await fxMacroData.fetchPredictions(currencyKey, code, undefined, windowStart, windowEnd)
+      );
     } catch (err: any) {
       logger.warn(
         { err: err.message },
@@ -239,11 +255,17 @@ export async function eventsFromAnnouncements(
     byIndicator.set(indicator, bucket);
   }
 
+  // Predictions for the whole span so historical forecasts resolve; the
+  // default pre_release_only=true window omits past releases.
+  const annDates = announcements.map((a) => a.date).filter(Boolean).sort();
+  const predStart = annDates[0];
+  const predEnd = annDates[annDates.length - 1];
+
   const events: CalendarEvent[] = [];
   for (const [indicator, anns] of byIndicator) {
     let predGroups: FxMacroDataPredictionGroup[] = [];
     try {
-      predGroups = await fxMacroData.fetchPredictions(cur, indicator);
+      predGroups = await fxMacroData.fetchPredictions(cur, indicator, undefined, predStart, predEnd);
     } catch (err: any) {
       logger.warn(
         { err: err.message },

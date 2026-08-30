@@ -118,7 +118,7 @@ export class FxSpotPriceBackfiller {
                 open: r.open ?? null,
                 high: r.high ?? null,
                 low: r.low ?? null,
-                close: r.close,
+                close: r.close ?? r.val ?? 0,
                 unit: null,
                 sma20: r.sma_20 ?? null,
                 sma50: r.sma_50 ?? null,
@@ -126,7 +126,7 @@ export class FxSpotPriceBackfiller {
                 rsi14: r.rsi_14 ?? null,
                 macd: r.macd ?? null,
                 macdSignal: r.macd_signal ?? null,
-                macdHist: r.macd_hist ?? null,
+                macdHist: r.macd_histogram ?? null,
                 ema12: r.ema_12 ?? null,
                 ema26: r.ema_26 ?? null,
                 bbUpper: r.bb_upper ?? null,
@@ -198,7 +198,7 @@ export class CotPositionBackfiller {
                 noncommercialLong: r.noncommercial_long ?? null,
                 noncommercialShort: r.noncommercial_short ?? null,
                 noncommercialNet: r.noncommercial_net ?? null,
-                totalOpenInterest: r.total_open_interest ?? null
+                totalOpenInterest: r.open_interest ?? null
               })
           );
           const saved = await this.repo.saveMany(domain);
@@ -259,11 +259,11 @@ export class CommodityPriceBackfiller {
                 id: CommodityPrice.buildId(indicator, r.date),
                 indicator,
                 tradeDate: r.date,
-                close: r.close,
-                open: r.open ?? null,
-                high: r.high ?? null,
-                low: r.low ?? null,
-                unit: r.unit ?? null
+                close: r.val ?? 0,
+                open: null,
+                high: null,
+                low: null,
+                unit: null
               })
           );
           const saved = await this.repo.saveMany(domain);

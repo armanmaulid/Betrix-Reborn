@@ -8,6 +8,9 @@ import os from 'node:os';
  */
 function getDynamicDevOrigins(): string[] {
   const origins = new Set<string>(['localhost', '127.0.0.1']);
+  // Local dev hostname(s) used via hosts-file / reverse-proxy aliases (e.g. betrix.local).
+  const hostAliases = process.env.DEV_ORIGIN_ALIASES?.split(',').map((s) => s.trim()).filter(Boolean) ?? [];
+  hostAliases.forEach((h) => origins.add(h));
   const interfaces = os.networkInterfaces();
 
   for (const name of Object.keys(interfaces)) {
