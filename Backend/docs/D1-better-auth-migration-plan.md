@@ -135,6 +135,7 @@
 1. **Phase 0 — Schema prep (online DDL):** add BA-required columns/tables; no behavior change. Write migration SQL.
 2. **Phase 1 — Backfill script:** populate `account` from `password_hash` (bcrypt preserved); validate row counts.
 3. **Phase 2 — Better Auth wiring (flag-gated `USE_BETTER_AUTH`):** catch-all `/api/auth/*` route, Drizzle adapter with `additionalFields`, bcrypt hash override, admin plugin, rate-limit, email hooks. Keep legacy routes live behind the flag.
+   - **Slice 1 ✅ DONE (`c6d9564`):** `createAuth(db, opts)` full config (emailAndPassword bcrypt cost 12, google placeholder, `admin()` plugin, `rateLimit`, `trustedOrigins`, `user.additionalFields` mirroring identity.users). `betterAuth.plugin.ts` mounts BA handler at `/api/auth/*` only when `USE_BETTER_AUTH=true` (no-op otherwise). `auth.plugin.ts` `authenticate` resolves session via BA `getSession` when flag on, legacy JWT when off. **Slice 2 (custom hooks: device binding, captcha, credit grant, audit log) deferred to separate phase.**
 4. **Phase 3 — Cutover:** flip flag; invalidate legacy sessions; route all auth through BA.
 5. **Phase 4 — Soak + cleanup:** monitor; after soak, delete 8 use-cases + 4 routes + legacy JWT decorate; drop `password_hash`.
 
