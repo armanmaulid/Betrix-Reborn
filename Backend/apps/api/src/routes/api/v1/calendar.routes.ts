@@ -35,7 +35,7 @@ const GetCalendarQuerySchema = Type.Object({
 });
 
 export const calendarRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
-  const { useCases } = fastify.diContainer.cradle;
+  const { useCases } = fastify.container;
 
   // 1. GET /calendar — Retrieve economic calendar events (upcoming, or a specific YYYY-MM month)
   fastify.get(

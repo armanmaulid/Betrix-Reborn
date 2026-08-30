@@ -2,7 +2,7 @@ import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { GetNewsQuerySchema } from '@betrix/application';
 
 export const newsRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
-  const { useCases } = fastify.diContainer.cradle;
+  const { useCases } = fastify.container;
 
   // 1. GET /news — Retrieve paginated and filtered market news
   fastify.get(

@@ -5,7 +5,7 @@ import { sseFrame } from '../../../plugins/sse.plugin.js';
 import { Type } from '@sinclair/typebox';
 
 export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
-  const { useCases } = fastify.diContainer.cradle;
+  const { useCases } = fastify.container;
 
   // 1. POST /chat — Synchronous AI Market Analysis completion
   fastify.post(
