@@ -155,3 +155,18 @@
 ---
 
 *Generated from 4 parallel research agents (Fastify integration, codebase audit, schema/data migration, hooks mapping). No code was written. Next step: user reviews §7 open questions, then a separate implementation sprint begins.*
+
+---
+
+## 8. Phase 3 Status (2026-08-30) — CUTOVER LIVE
+
+- `USE_BETTER_AUTH` default flipped to **true** (`0578588`) → Better Auth is the
+  LIVE auth path. Legacy 8 use-cases + `/api/v1/auth` routes kept as flag-gated
+  fallback (set flag `false` to revert).
+- `packages/infra/src/persistence/drizzle/d1-cutover-invalidate.ts` added; run
+  `pnpm --filter @betrix/infra db:cutover:d1` to TRUNCATE `identity.sessions`
+  + `identity.failed_login_attempts` (data-only, no schema change).
+- All 6 open questions (§7) answered — see §7. Decisions: flag-gated parallel
+  run, keep math captcha, 1:1 device hook, force re-login, forced re-auth OK,
+  dedicated sprint.
+- Build PASS (7 pkgs); application tests 28/28 PASS.

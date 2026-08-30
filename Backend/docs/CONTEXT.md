@@ -3,7 +3,7 @@
 **Date:** 2026-08-30
 **Workspace:** `Backend/` (Fastify 5 + Drizzle + Pino + TypeBox + @upstash/redis + node-cron + dukascopy-node + ws)
 **Branch:** `session/agent_3e8f767d-86a4-4ebc-824b-ab97de21a28b`
-**HEAD:** `466819f` (pushed)
+**HEAD:** `0578588` (pushed)
 
 > **Read this file first if context is lost.** Full review in
 > `docs/backend-native-vs-complex-review.md` (SSOT). This file is the
@@ -22,7 +22,7 @@
 | 5 — Wave 2B / Wave 3 | ⬜ | — | A1, I1, W3, P8/P11/P14, A3–A6, W1/W2/W5–W7, I4, P13, P16 |
 | 6 — D2 `@fastify/awilix` | ✅ | `b5af856` + `e54bb2f` + `9b8bd36` | P15 — container 798 → 407 lines (-49%) |
 | 6 — D4 `@betrix/application` A1 `Value.Default` | ✅ | `0c40e88` | 7 use-case boundaries: schema is single source of truth for `\|\| default`; 28/28 app tests PASS |
-| 6 — D1 `better-auth` | 🔵 Phase 0 ✅ Phase 1 ✅ Phase 2 Slice 1 ✅ Slice 2 ✅ | `d06677f` Phase 0 (env flag + dep + 4 BA tables + stub + DDL doc). `7af3616` Phase 1 (identity schema +updatedAt/image + d1-backfill-accounts.ts). `c6d9564` Phase 2 Slice 1 (full BA config via createAuth + betterAuth.plugin.ts flag-gated mount + auth.plugin.ts flag-gated hook). `466819f` Phase 2 Slice 2 (buildBetterAuthHooks in packages/infra/src/auth/hooks.ts: device 1:1 binding, progressive captcha gate, credit default 100, REGISTER/LOGIN audit). See `docs/D1-better-auth-migration-plan.md`. |
+| 6 — D1 `better-auth` | 🟢 Phase 0 ✅ Phase 1 ✅ Phase 2 Slice 1 ✅ Slice 2 ✅ Phase 3 ✅ (cutover live) | `d06677f` Phase 0 (env flag + dep + 4 BA tables + stub + DDL doc). `7af3616` Phase 1 (identity schema +updatedAt/image + d1-backfill-accounts.ts). `c6d9564` Phase 2 Slice 1 (full BA config + betterAuth.plugin.ts flag-gated mount + auth.plugin.ts flag-gated hook). `466819f` Phase 2 Slice 2 (buildBetterAuthHooks: device 1:1, progressive captcha, credit default 100, REGISTER/LOGIN audit). `0578588` Phase 3 (USE_BETTER_AUTH default=true → BA LIVE; d1-cutover-invalidate.ts TRUNCATEs identity.sessions + failed_login_attempts). Legacy 8 use-cases + /api/v1/auth kept as flag-gated fallback. 6 open questions answered (see D1 plan §7): flag-gated, keep math captcha, 1:1 device hook, force re-login, forced re-auth OK, dedicated sprint. |
 
 **Net code removed (Phases 1–3):** ~250 lines. **Phase 6 (D2 + D4):** D2 -391 lines (798→407), D4 -76 lines net (9 files, 141 insertions / 76 deletions in the main commit; plus the ContextInjectionService `Resolved` follow-up).
 **Build:** `pnpm -r build` PASS (all 7 packages).

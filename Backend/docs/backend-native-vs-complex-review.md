@@ -276,3 +276,15 @@ These were executed and committed before this doc was written. Line numbers belo
 - `pnpm test` (vitest): domain **44 passed**, application **28 passed** (D3 confirms `Value.Parse` correctly coerces `PORT`/`BROKER_UTC_OFFSET` numbers and `DEVICE_ENFORCEMENT`/`FINNHUB_LOG_TICKS` booleans at runtime); infra **4 passed / 5 failed** due to `ECONNREFUSED` (no Postgres :5432 / Redis :8079 in sandbox — environmental, not code; stack traces reach the changed redis code and fail only at the network layer). Run `docker compose -f docker-compose.dev.yml up -d` to exercise the 5 integration tests.
 
 *Generated for future reference — line numbers reflect the committed state at the time of writing.*
+
+---
+
+## 10. D1 Phase 3 addendum (2026-08-30)
+
+D1 Better Auth is now **live** (flag `USE_BETTER_AUTH` default `true`, commit
+`0578588`). Phase 0/1/2-Slice1/2-Slice2 all done; legacy 8 use-cases +
+`/api/v1/auth` retained as flag-gated fallback. Cutover invalidation script
+(`d1-cutover-invalidate.ts`) TRUNCATEs `identity.sessions` +
+`identity.failed_login_attempts`. 6 open questions answered (flag-gated,
+keep math captcha, 1:1 device hook, force re-login, forced re-auth OK,
+dedicated sprint). Build PASS, 28/28 app tests PASS.
