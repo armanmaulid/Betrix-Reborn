@@ -291,21 +291,22 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   }
 
   if (isNotTest()) {
-    const seenNewsIds = new Set<string>();
-    let seenNewsPrimed = false;
+    // P16 — news relay uses a `datetime` watermark (Unix seconds) + `newsRepo.findSince()`
+    // instead of an unbounded `Set<string>` of seen IDs (which leaked memory
+    // on long-running replicas). One row read per tick, watermark advances.
+    let newsWatermark = 0;
     const newsRelayTimer = setInterval(async () => {
       if (!fastify.sseHub.hasClientsFor('news')) return;
       try {
-        const latest = await diContainer.cradle.repositories.newsRepo.findRecent(25);
-        if (!seenNewsPrimed) {
-          for (const article of latest) seenNewsIds.add(article.id);
-          seenNewsPrimed = true;
-          return;
-        }
-        const fresh = latest.filter((a) => !seenNewsIds.has(a.id));
-        for (const article of fresh.reverse()) {
-          seenNewsIds.add(article.id);
-          fastify.sseHub.broadcastNews(article.toJSON ? article.toJSON() : article);
+        const fresh = await diContainer.cradle.repositories.newsRepo.findSince(
+          newsWatermark,
+          25
+        );
+        if (fresh.length > 0) {
+          newsWatermark = fresh[fresh.length - 1].datetime;
+          for (const article of fresh) {
+            fastify.sseHub.broadcastNews(article.toJSON ? article.toJSON() : article);
+          }
         }
       } catch {}
     }, 15_000);

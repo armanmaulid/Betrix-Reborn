@@ -1,5 +1,6 @@
 import { env } from '@betrix/config';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { createSseParser } from '../sse-parser.js';
 
 export interface FxMacroDataCalendarEvent {
   release: string;
@@ -327,29 +328,30 @@ export class FxMacroDataClient {
 
         const reader = resp.body.getReader();
         const decoder = new TextDecoder();
-        let buffer = '';
 
-        while (!stopped) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const events = buffer.split('\n\n');
-          buffer = events.pop() ?? '';
-
-          for (const rawEvent of events) {
-            const dataLine = rawEvent.split('\n').find((line) => line.startsWith('data:'));
-            if (!dataLine) continue;
+        // I1 — shared SSE parser (sse-parser.ts). FxMacroData sends
+        // `data:` payloads separated by `\n\n` event boundaries; the
+        // shared parser is event-delimiter-agnostic (it extracts every
+        // `data:` line regardless of blank-line separators) so it works
+        // identically here.
+        const sse = createSseParser({
+          doneSentinel: null,
+          onData: (data) => {
             try {
-              const parsed: FxMacroDataStreamEvent = JSON.parse(
-                dataLine.slice('data:'.length).trim()
-              );
+              const parsed: FxMacroDataStreamEvent = JSON.parse(data);
               onEvent(parsed);
             } catch {
               // Malformed SSE payload — skip this event, keep the connection alive.
             }
           }
+        });
+
+        while (!stopped) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          sse.feed(decoder.decode(value, { stream: true }));
         }
+        sse.end();
 
         if (!stopped) scheduleReconnect();
       } catch (err: any) {

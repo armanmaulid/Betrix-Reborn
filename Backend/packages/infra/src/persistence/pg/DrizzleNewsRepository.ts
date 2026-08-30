@@ -1,4 +1,4 @@
-import { and, arrayContains, asc, desc, eq, ilike, inArray, lt, or, sql } from 'drizzle-orm';
+import { and, arrayContains, asc, desc, eq, gt, ilike, inArray, lt, or, sql } from 'drizzle-orm';
 import {
   INewsRepository,
   NewsArticle,
@@ -129,6 +129,21 @@ export class DrizzleNewsRepository implements INewsRepository {
     }
 
     return uniqueArticles;
+  }
+
+  async findSince(since: number, limit: number = 25, category?: string): Promise<NewsArticle[]> {
+    // P16 — SSE news-relay watermark. Returns articles with `datetime > since`
+    // (Unix seconds), ordered ascending so the relay can stream them in
+    // publication order. Caller advances the watermark to the latest returned.
+    const conditions = [gt(newsArticles.datetime, since)];
+    if (category) conditions.push(eq(newsArticles.category, category));
+    const rows = await this.db
+      .select()
+      .from(newsArticles)
+      .where(and(...conditions))
+      .orderBy(asc(newsArticles.datetime))
+      .limit(limit);
+    return rows.map((r) => this.mapToDomain(r));
   }
 
   async findAll(

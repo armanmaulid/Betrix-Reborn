@@ -7,6 +7,7 @@ import {
 } from '@betrix/domain';
 import { AppError } from '@betrix/core';
 import { env } from '@betrix/config';
+import { createSseParser } from '../sse-parser.js';
 
 export class AiGatewayClient implements IAiGateway {
   private readonly baseUrl: string;
@@ -100,7 +101,6 @@ export class AiGatewayClient implements IAiGateway {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
-      let buffer = '';
       let fullContent = '';
       let providerUsage: { inputTokens?: number; outputTokens?: number } | undefined;
 
@@ -109,52 +109,49 @@ export class AiGatewayClient implements IAiGateway {
         onDelta: (chunk) => callbacks.onDelta?.(chunk)
       });
 
+      // I1 — shared SSE parser (sse-parser.ts). Same chunking/buffer
+      // logic used by FxMacroDataClient.
+      const sse = createSseParser({
+        doneSentinel: 'data: [DONE]',
+        onData: (data: string) => {
+          try {
+            const parsed = JSON.parse(data);
+
+            // T1.5 — capture real upstream usage when the provider sends it
+            // (final OpenAI-compatible chunk carries `usage` with empty
+            // choices). Preferred over the chars/4 estimate for billing.
+            const u = parsed.usage;
+            if (
+              u &&
+              (Number.isFinite(Number(u.prompt_tokens)) ||
+                Number.isFinite(Number(u.completion_tokens)))
+            ) {
+              providerUsage = {
+                inputTokens: Number(u.prompt_tokens),
+                outputTokens: Number(u.completion_tokens)
+              };
+            }
+
+            const delta = parsed.choices?.[0]?.delta;
+            if (delta?.reasoning_content) {
+              callbacks.onThink?.(delta.reasoning_content);
+            }
+            if (delta?.content) {
+              fullContent += delta.content;
+              router.push(delta.content);
+            }
+          } catch {
+            // Ignore partial JSON parse errors in SSE stream
+          }
+        }
+      });
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed.startsWith(':')) continue;
-          if (trimmed === 'data: [DONE]') continue;
-
-          if (trimmed.startsWith('data: ')) {
-            try {
-              const parsed = JSON.parse(trimmed.substring(6));
-
-              // T1.5 — capture real upstream usage when the provider sends it
-              // (final OpenAI-compatible chunk carries `usage` with empty
-              // choices). Preferred over the chars/4 estimate for billing.
-              const u = parsed.usage;
-              if (
-                u &&
-                (Number.isFinite(Number(u.prompt_tokens)) ||
-                  Number.isFinite(Number(u.completion_tokens)))
-              ) {
-                providerUsage = {
-                  inputTokens: Number(u.prompt_tokens),
-                  outputTokens: Number(u.completion_tokens)
-                };
-              }
-
-              const delta = parsed.choices?.[0]?.delta;
-              if (delta?.reasoning_content) {
-                callbacks.onThink?.(delta.reasoning_content);
-              }
-              if (delta?.content) {
-                fullContent += delta.content;
-                router.push(delta.content);
-              }
-            } catch {
-              // Ignore partial JSON parse errors in SSE stream
-            }
-          }
-        }
+        sse.feed(decoder.decode(value, { stream: true }));
       }
+      sse.end();
 
       router.flush();
       const latencyMs = Date.now() - startTime;

@@ -17,31 +17,54 @@ type UpstashLike = ReturnType<typeof createRedisClient>;
  * is NEVER blocked by an infrastructure outage; a throttled warning is logged
  * instead. RATELIMIT_BACKEND=memory keeps the old behavior explicitly.
  *
+ * P11 — fixes over the original T2.2:
+ *   1) Single-round-trip pipeline: incr + pttl (+ expire on first hit) in one
+ *      request instead of two.
+ *   2) Real `pttl` returned for `retryAfter` (was: full `windowMs` regardless
+ *      of actual key age, so retry-after never counted down).
+ *   3) `child(route)` returns a NEW store with the route-scoped key prefix,
+ *      so per-route buckets no longer collide with the global one.
+ *
  * @fastify/rate-limit v11 expects a STORE CONSTRUCTOR (`new Store(globalParams)`)
  * with `incr(key, cb, timeWindow, max)` → cb(null, {current, ttl}) — not an
  * instance, and not a bare counter. This factory returns a class matching that
  * contract.
  */
-function createRedisRateLimitStore(redis: UpstashLike, scope: string, onBackendError: () => void) {
+function createRedisRateLimitStore(
+  redis: UpstashLike,
+  scope: string,
+  onBackendError: () => void
+) {
   return class RedisRateLimitStore {
+    constructor(private readonly localScope: string = scope) {}
+
     incr(
       key: string,
       callback: (err: Error | null, res?: { current: number; ttl: number }) => void,
       timeWindow?: number
     ): void {
       const windowMs = timeWindow ?? 60000;
-      const k = redisKeys.rateLimit(scope, key);
+      const windowSec = Math.ceil(windowMs / 1000);
+      const k = redisKeys.rateLimit(this.localScope, key);
+
       redis
+        .pipeline()
         .incr(k)
-        .then(async (current: number) => {
-          if (current === 1) {
+        .pttl(k)
+        .exec()
+        .then(async ([currentRaw, pttlRaw]: [number, number]) => {
+          const current = Number(currentRaw) || 0;
+          let pttlMs = Number(pttlRaw);
+          // Key exists but has no expiry (-1) or no key (-2): set expiry.
+          if (pttlMs < 0) {
             try {
-              await redis.expire(k, Math.ceil(windowMs / 1000));
+              await redis.expire(k, windowSec);
+              pttlMs = windowMs;
             } catch {
-              // Expiry best-effort: worst case key lives until pruned.
+              pttlMs = windowMs;
             }
           }
-          callback(null, { current, ttl: windowMs });
+          callback(null, { current, ttl: pttlMs });
         })
         .catch(() => {
           onBackendError();
@@ -50,8 +73,8 @@ function createRedisRateLimitStore(redis: UpstashLike, scope: string, onBackendE
         });
     }
 
-    child(): this {
-      return this;
+    child(routeScope: string): RedisRateLimitStore {
+      return new (createRedisRateLimitStore(redis, `${scope}:${routeScope}`, onBackendError))();
     }
   };
 }

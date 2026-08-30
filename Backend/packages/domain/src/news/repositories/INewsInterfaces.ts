@@ -6,6 +6,8 @@ export interface INewsRepository {
   saveMany(articles: NewsArticle[]): Promise<number>;
   findById(id: string): Promise<Nullable<NewsArticle>>;
   findRecent(limit?: number, category?: string, tag?: string): Promise<NewsArticle[]>;
+  /** P16 — return articles with `datetime > since` (Unix-seconds watermark for the SSE news relay). */
+  findSince(since: number, limit?: number, category?: string): Promise<NewsArticle[]>;
   findAll(
     pagination: PaginationParams,
     category?: string,
