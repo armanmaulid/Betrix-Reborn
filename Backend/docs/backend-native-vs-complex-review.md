@@ -159,8 +159,8 @@ These were executed and committed before this doc was written. Line numbers belo
 | A4 (CSV) | app | ✅ Done (W1, `8dc008b`) — RFC 4180 `escapeCsvField` + `toCsvRow` helpers in `@betrix/core`; `ExportAuditLogsUseCase` uses them (was: only one field escaped, others would break CSV on `,`/`"`/newline). |
 | A6 (credit retry) | app | ⬜ Not executed — W3 (or keep) |
 | I4 (legacy scaffolding) | infra | ✅ Done (W1, `8dc008b`) — removed `captchaLegacy`/`streamTicketLegacy` from `redis-keys.ts` and the `DUAL_READ_LEGACY` window in `RedisEphemeralStores.ts` (post-D1, all writes/reads use the namespaced keys). |
-| W1 (retry helper) | worker | ⬜ Not executed — W3 |
-| W2 (month math) | worker | ⬜ Not executed — W3 |
+| W1 (retry helper) | worker | ⚠️ Partial (W1, `8dc008b`) — shared `retry()` + `retrySleep()` in `apps/worker/src/shared/retry.ts`. `sync-worker.ts` keeps its custom-predicate loop (retry until bar date matches — not a throw-retry) so the helper isn't applied there; it's ready for future call sites. |
+| W2 (month math) | worker | ✅ Done (W1, `8dc008b`) — `BrokerTimeCalculator.getUtcMonthEnd(year, month)` (uses the `Date.UTC(y, m+1, 0)` trick); `calendar-worker.ts` calls it. |
 | W5 (indicator parse) | worker | ⬜ Not executed — W3 |
 | W6 (backoff) | worker | ⬜ Not executed — W3 |
 | W7 (daily budget) | worker | ⬜ Not executed — W3 |
