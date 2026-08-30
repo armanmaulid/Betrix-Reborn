@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import fp from 'fastify-plugin';
-import { fastifyAwilixPlugin } from '@fastify/awilix';
+import { fastifyAwilixPlugin, type Cradle } from '@fastify/awilix';
 import {
   asClass,
   asFunction,
@@ -67,12 +67,6 @@ declare module 'fastify' {
     container: AppContainer;
   }
 }
-
-// ----------------------------------------------------------------------------
-// Resolver objects. Each `*Resolvers` literal's CRADLE type is derived via
-// `InferCradleFromResolvers` — no manual 75-key interface. The aggregate
-// `Cradle` is the intersection of all of them, so every binding is type-safe.
-// ----------------------------------------------------------------------------
 
 const repoResolvers = {
   userRepo: asClass(DrizzleUserRepository),
@@ -210,10 +204,6 @@ const useCaseResolvers = {
 };
 type UseCaseCradle = InferCradleFromResolvers<typeof useCaseResolvers>;
 
-// Groupings project individual cradle bindings into nested namespaces that
-// match the legacy `fastify.container.repositories.userRepo` shape used by
-// the routes + tests. The grouping's type is derived from the source
-// cradle's keys (one map per grouping), so nothing is hand-written.
 const repositoriesGrouping = asFunction(
   (c: RepoCradle): RepoCradle =>
     Object.fromEntries(Object.keys(repoResolvers).map((k) => [k, c[k as keyof RepoCradle]])) as RepoCradle
@@ -241,9 +231,6 @@ const useCasesGrouping = asFunction(
     ) as UseCaseCradle
 );
 
-// Aggregate cradle = union of all binding cradles. The local `diContainer`
-// is typed `AwilixContainer<AppCradle>`, so `diContainer.cradle` is fully typed
-// end-to-end (no `any` in the chain).
 type AppCradle = InferCradleFromResolvers<typeof repoResolvers> &
   InferCradleFromResolvers<typeof storeResolvers> &
   InferCradleFromResolvers<typeof adapterResolvers> &
@@ -266,20 +253,7 @@ type AppCradle = InferCradleFromResolvers<typeof repoResolvers> &
     useCases: UseCaseCradle;
   };
 
-// Hand-rolled `AppContainer` mirror for the public `fastify.container`
-// surface (the routes access `fastify.container.repositories.userRepo` etc.).
-// It's DERIVED from the cradles above — every binding type follows the data.
-interface AppContainer {
-  repositories: RepoCradle;
-  stores: StoreCradle;
-  adapters: AdapterCradle;
-  services: ServiceCradle;
-  useCases: UseCaseCradle;
-  pgPool: ReturnType<typeof createPgPool>;
-  db: DrizzleDb;
-  redis: ReturnType<typeof createRedisClient>;
-  eventDispatcher: EventDispatcher;
-}
+type AppContainer = Pick<AppCradle, 'repositories' | 'stores' | 'adapters' | 'services' | 'useCases' | 'pgPool' | 'db' | 'redis' | 'eventDispatcher'>;
 
 declare module '@fastify/awilix' {
   interface Cradle extends AppCradle {}
@@ -287,6 +261,7 @@ declare module '@fastify/awilix' {
 
 const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   const diContainer: AwilixContainer<AppCradle> = createContainer({ injectionMode: 'PROXY' });
+  const isNotTest = () => env.NODE_ENV !== 'test' && !process.env.VITEST;
 
   diContainer.register(infraResolvers);
   diContainer.register(repoResolvers);
@@ -294,9 +269,6 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   diContainer.register(adapterResolvers);
   diContainer.register(serviceResolvers);
   diContainer.register(useCaseResolvers);
-  // EventDispatcher must receive its `onError` at construction (the typed
-  // constructor signature enforces it); we register the dispatcher as a value
-  // built by an `asFunction` that captures fastify.log.
   diContainer.register({
     chatLoggingHandler: asClass(ChatLoggingHandler)
   });
@@ -309,7 +281,6 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   });
   diContainer.register({ sseHub: asValue(fastify.sseHub) });
 
-  // Dev/test Google OAuth verifier (dev-only, refuses non-mock tokens in prod)
   const isDevMode = env.NODE_ENV === 'development' || env.NODE_ENV === 'test';
   const mockGoogleVerifier = {
     verifyIdToken: async (token: string) => {
@@ -326,25 +297,17 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   };
   diContainer.register({ mockGoogleVerifier: asValue(mockGoogleVerifier) });
 
-  // Connect dispatcher error logger (constructor-injected)
   const eventDispatcher = new EventDispatcher((eventName, err) => {
     fastify.log.error({ err, eventName }, 'Event handler failed');
   });
   diContainer.register({ eventDispatcher: asValue(eventDispatcher) });
 
-  // The plugin's `FastifyPluginCallback<NonNullable<FastifyAwilixOptions>>`
-  // types `container` as `AwilixContainer<Cradle>` (their Cradle); our
-  // container is typed with the augmented `AppCradle` (structurally equal
-  // but nominally distinct). The runtime accepts any container — only the
-  // static type conflicts — so we narrow via the plugin's exported option
-  // shape.
   await fastify.register(fastifyAwilixPlugin, {
-    container: diContainer as never,
+    container: diContainer as unknown as AwilixContainer<Cradle>,
     disposeOnClose: true
   });
 
-  // Wire SSE price/ops fetchers + news relay (lifecycle-aware via onClose).
-  if (env.NODE_ENV !== 'test' && !process.env.VITEST) {
+  if (!isNotTest()) {
     const sseHub = fastify.sseHub as any;
     if (sseHub) {
       sseHub.setPriceFetcher(() => diContainer.cradle.repositories.marketDataRepo.getAllPrices());
@@ -364,7 +327,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
     }
   }
 
-  if (env.NODE_ENV !== 'test' && !process.env.VITEST) {
+  if (isNotTest()) {
     const seenNewsIds = new Set<string>();
     let seenNewsPrimed = false;
     const newsRelayTimer = setInterval(async () => {
@@ -386,8 +349,7 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
     fastify.addHook('onClose', async () => clearInterval(newsRelayTimer));
   }
 
-  // Ops aggregator (60s leader-replica writer)
-  if (env.NODE_ENV !== 'test' && !process.env.VITEST) {
+  if (isNotTest()) {
     const aggMs = env.OPS_AGGREGATOR_INTERVAL_MS || 60_000;
     const aggTimer = setInterval(async () => {
       try {
@@ -410,16 +372,17 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
     fastify.addHook('onClose', async () => clearInterval(aggTimer));
   }
 
+  const c = diContainer.cradle;
   fastify.decorate('container', {
-    repositories: diContainer.cradle.repositories,
-    stores: diContainer.cradle.stores,
-    adapters: diContainer.cradle.adapters,
-    services: diContainer.cradle.services,
-    useCases: diContainer.cradle.useCases,
-    pgPool: diContainer.cradle.pgPool,
-    db: diContainer.cradle.db,
-    redis: diContainer.cradle.redis,
-    eventDispatcher: diContainer.cradle.eventDispatcher
+    repositories: c.repositories,
+    stores: c.stores,
+    adapters: c.adapters,
+    services: c.services,
+    useCases: c.useCases,
+    pgPool: c.pgPool,
+    db: c.db,
+    redis: c.redis,
+    eventDispatcher: c.eventDispatcher
   } satisfies AppContainer);
 
   fastify.addHook('onClose', async () => {
