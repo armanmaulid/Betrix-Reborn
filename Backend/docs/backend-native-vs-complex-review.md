@@ -288,3 +288,9 @@ D1 Better Auth is now **live** (flag `USE_BETTER_AUTH` default `true`, commit
 `identity.failed_login_attempts`. 6 open questions answered (flag-gated,
 keep math captcha, 1:1 device hook, force re-login, forced re-auth OK,
 dedicated sprint). Build PASS, 28/28 app tests PASS.
+
+---
+
+## 11. D1 Phase 4 — D1 COMPLETE (commit 77a17e4)
+
+All legacy auth code removed. Better Auth is the sole auth path. 8 use-cases + AuthService + auth.routes + JWT decorate + `@fastify/jwt` + legacy schemas + legacy tests all deleted. Routes migrated to `request.authUser`. Build PASS, domain 44/44 PASS, api lint PASS. Soak + frontend `/api/auth/*` switch are the only remaining items. D1 (better-auth migration) is now 🟢 complete across Phases 0→4.

@@ -187,3 +187,19 @@ rg "as any" apps/api/src/ packages/
 - **Pre-D2 commit (what D2 replaced):** `30093be` (reverted) and the original
   798-line `container.plugin.ts` is preserved in git history (`999d6e5`).
 - **Repo:** `git@github.com:armanmaulid/Betrix-Reborn.git` (origin)
+
+---
+
+## 8. D1 Phase 4 addendum (2026-08-30) — D1 COMPLETE
+
+Commit `77a17e4` ("refactor(auth): migrate to better-auth and remove legacy identity use-cases") deletes:
+- 8 legacy use-cases (Register, Login, GoogleOAuth, VerifyEmail, ResendVerification, ForgotPassword, ResetPassword, ChangePassword)
+- `AuthService` (hashPassword/verifyPassword inlined via `@betrix/core` for survivors)
+- `auth.routes.ts` (legacy `/api/v1/auth/*`)
+- `api.test.ts` + `application.test.ts` (legacy-coupled)
+- `@fastify/jwt` dep + JWT decorate
+- Legacy `request.user.*` → `request.authUser!.id` across admin/chat/me routes
+- Legacy auth schemas from `auth.schema.ts` (Register, Login, etc.)
+- `mockGoogleVerifier` (GoogleOAuth-only)
+
+**D1 status: 🟢 COMPLETE.** BA live, legacy fully removed, build PASS, domain 44/44 PASS, api lint PASS. Soak + frontend switch to `/api/auth/*` remain.

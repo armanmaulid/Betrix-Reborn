@@ -260,22 +260,6 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
   });
   diContainer.register({ sseHub: asValue(fastify.sseHub) });
 
-  const isDevMode = env.NODE_ENV === 'development' || env.NODE_ENV === 'test';
-  const mockGoogleVerifier = {
-    verifyIdToken: async (token: string) => {
-      if (isDevMode && token.startsWith('mock_')) {
-        return {
-          sub: 'google_sub_' + token,
-          email: `${token.slice(5)}@mock.google`,
-          name: 'Google Trader (Mock)',
-          email_verified: true
-        };
-      }
-      throw new GoogleVerifierNotConfiguredError();
-    }
-  };
-  diContainer.register({ mockGoogleVerifier: asValue(mockGoogleVerifier) });
-
   const eventDispatcher = new EventDispatcher((eventName, err) => {
     fastify.log.error({ err, eventName }, 'Event handler failed');
   });

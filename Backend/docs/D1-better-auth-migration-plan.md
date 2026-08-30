@@ -170,3 +170,9 @@
   run, keep math captcha, 1:1 device hook, force re-login, forced re-auth OK,
   dedicated sprint.
 - Build PASS (7 pkgs); application tests 28/28 PASS.
+
+---
+
+## 9. Phase 4 Status (2026-08-30) — D1 COMPLETE
+
+Commit `77a17e4` executed Phase 4: all legacy auth use-cases + routes + AuthService + JWT decorate + legacy schemas + legacy-coupled tests deleted. Better Auth (`@fastify/better-auth`-equivalent catch-all) is the **only** auth path. Routes migrated `request.user.userId` → `request.authUser!.id`. Build PASS (7 pkgs), domain 44/44 PASS, api lint PASS. D1 cutover complete; soak + frontend switch to `/api/auth/*` are the remaining operational items.
