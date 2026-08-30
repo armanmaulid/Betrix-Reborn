@@ -1,6 +1,6 @@
 # Backend Review — Native vs Complex Logic (5-Agent Findings)
 
-**Date:** 2026-08-30 (D1 COMPLETE)
+**Date:** 2026-08-30 (D1 COMPLETE; Phase 5 Batch 1+2+3 done)
 **Scope:** `Backend/` monorepo (Fastify + Drizzle + Pino + TypeBox + node-cron + @upstash/redis + ws + dukascopy-node)
 **Review method:** 5 parallel review agents, each scoped to one layer
 **Goal:** Find "re-invented wheels" — complex custom logic that duplicates Node stdlib, TypeScript features, or libraries already in the project.
@@ -11,7 +11,7 @@
 
 > **Read this first if context is lost.** This section is the entry point.
 
-### 0.1 Current state (2026-08-30 — D1 COMPLETE)
+### 0.1 Current state (2026-08-30 — D1 COMPLETE; Phase 5 Batch 1+2+3 done)
 
 | Phase | Status | Commit / Evidence |
 |-------|--------|-------------------|
@@ -19,7 +19,7 @@
 | **Phase 2 — Wave 1 (security + correctness, no new deps)** | ✅ Done | `5710525` — P1, P2, P3, P6, P9, P10 done; P13 (Redis-native budget) deferred |
 | **Phase 3 — Wave 2A (quick dedup, 0 new deps)** | ✅ Done | `f25668f` — A2, A5, I3, W4, P7, P12, P17, P18, P19 done; P20 deferred (tangled health routes + locked test) |
 | **Phase 4 — D3 (`@fastify/env` + `Value.Parse` for C1/C2)** | ✅ Done | `b80a193` — `@fastify/env` plugin + `packages/config` refactored to `Value.Parse(EnvSchema, …)`; eliminates the `Number(x) \|\| default` falsy-0 bug, applies schema defaults at boot, exposes typed `fastify.config: EnvConfig` |
-| **Phase 5 — Wave 2B / Wave 3** | 🟢 Batch 1+2+3 done (10 items: I4, A4, W1, W2, W5, W6, W7, P11, P14, P16, I1, P21); P8/P13 deferred; ⬜ A3, W3, P20, A6 remaining | Commits `8dc008b`+`3e72b78`+`c163df5`. See §10.5 for per-batch breakdown. |
+| **Phase 5 — Wave 2B / Wave 3** | 🟢 Batch 1+2+3 done (10 items: I4, A4, W1, W2, W5, W6, W7, P11, P14, P16, I1, P21); P8/P13 deferred; ⬜ A3, W3, P20, A6 remaining | Commits `8dc008b`+`3e72b78`+`c163df5`. See §12 for per-batch breakdown. |
 | **Phase 6 — D2 (`@fastify/awilix` for P15), D4 (A1 `Value.Default`), D1 (`better-auth`)** | 🟢 D2 ✅ done; D4 ✅ done; D1 ✅ done (COMPLETE) | D2: `b5af856`+`e54bb2f`+`9b8bd36` — container 798 → 407 lines (-49%). D4: `0c40e88` — A1 `Value.Default` at 7 use-case boundaries. D1: Phase 0 (`d06677f`) + Phase 1 (`7af3616`) + Phase 2 Slice 1 (`c6d9564`) + Phase 2 Slice 2 (`466819f`) + Phase 3 (`0578588` — cutover flip USE_BETTER_AUTH=true) + **Phase 4 (`77a17e4` — all legacy auth code removed: 8 use-cases, AuthService, auth.routes, @fastify/jwt, JWT decorate, legacy schemas, legacy tests; routes migrated `request.user` → `request.authUser`)**. `pnpm -r build` PASS (7 pkgs), domain 44/44 PASS, api lint PASS. |
 
 **Code removed so far (Phases 1–3):** ~250 lines net (with ~400 lines added for type-safe improvements and a shared `parseList`/`isUuid`/`sseFrame` helper). Build PASS, lint PASS, prettier PASS, vitest domain 44 + application 28 pass.
@@ -47,7 +47,7 @@
 - I1 (SSE parser dedupe), W3 (4 backfillers → 1 generic), P8/P11/P14 (API correctness cluster)
 - ~~C1/C2 (config defaults + Number bug)~~ — ✅ done in Phase 4 (D3), core 14 fields; the ~36 extended `env` fields (rate-limit, SMTP, FXMacroData, calendar refresh, ops pipeline) still have `|| default` and are a separate cleanup
 - A3/A4/A6 (app cleanup), W1/W2/W5/W6/W7 (worker cleanup)
-- I4 (legacy scaffolding), P13 (Redis-native budget), P15/P16 (container + bg loops)
+- ~~I4 (legacy scaffolding)~~ ✅ done (`8dc008b`); ~~P16 (bg loops)~~ ⚠️ partial (`c163df5`); P13 (Redis-native budget) ⏸️ deferred (Phase 5 Batch 3 — registration order); ~~P15~~ done as D2 (`b5af856`+`e54bb2f`+`9b8bd36`).
 - ~~**D2 (@fastify/awilix)** — P15 (798-line container). Low risk, 1–2 hours.~~ **D2 ✅ done (Phase 6): `b5af856` + `e54bb2f` + `9b8bd36`. 798 → 407 lines (-49%).**
 - **D1 (better-auth), D4 (A1 internal)** — D4 ✅ done (`0c40e88`); D1 ✅ done COMPLETE (`d06677f` → `7af3616` → `c6d9564` → `466819f` → `0578588` → `77a17e4`)
 
@@ -76,10 +76,18 @@
 4. **D1 (Better Auth)** — ✅ **COMPLETE** (Phase 0 `d06677f` → Phase 1 `7af3616` → Phase 2 Slice 1 `c6d9564` → Phase 2 Slice 2 `466819f` → Phase 3 `0578588` → Phase 4 `77a17e4`). All legacy auth code removed. Soak + frontend `/api/auth/*` switch are the remaining operational items.
 
 **Deferred items (no clear dep win):**
-- I1 (SSE parser dedupe) — 2 files, 1 helper, small win without any dep needed.
+- I1 (SSE parser dedupe) — ✅ done (`c163df5`).
 - W3 (4 backfillers → 1 generic) — domain logic, no off-the-shelf lib fits.
-- P11 (rate-limit store 1 round-trip) — already on `@fastify/rate-limit`; the Redis store is a small refactor.
-- P8 (error handler), P14 (2nd redis client), A3/A4/A6, W1/W2/W5/W6/W7, I4, P13, P15 (if D2 not adopted), P16 — all small refactors, no dep needed.
+- P11 (rate-limit store 1 round-trip) — ✅ done (`c163df5`).
+- ~~P8 (error handler)~~ — ⏸️ deferred (already well-consolidated, no safe dedup target).
+- ~~P14 (2nd redis client)~~ — ✅ done (`3e72b78`).
+- A3, A6 — ⬜ remaining (A3 needs migration, A6 keep-or-extract).
+- ~~A4 (CSV)~~ — ✅ done (`8dc008b`).
+- ~~W1, W2, W5, W6, W7~~ — ✅ done (W1 ⚠️ partial) (`8dc008b`+`3e72b78`).
+- ~~I4 (legacy scaffolding)~~ — ✅ done (`8dc008b`).
+- P13 (Redis-native budget) — ⏸️ deferred (Phase 5 Batch 3, registration order).
+- ~~P15~~ — done as D2 (`b5af856`+`e54bb2f`+`9b8bd36`).
+- ~~P16 (bg loops)~~ — ⚠️ partial (`c163df5`).
 
 ---
 
@@ -116,7 +124,7 @@ These were executed and committed before this doc was written. Line numbers belo
 
 ## 2b. Implementation Status Tracker (Done / In Progress / Not Executed)
 
-> Updated: 2026-08-29. Use this as the single source of truth for what is fixed.
+> Updated: 2026-08-30 (Phase 5 Batch 1+2+3 done). Use this as the single source of truth for what is fixed.
 > Legend: ✅ Done · 🔄 In Progress · ⬜ Not executed · 🔒 Keep (legit, no change needed)
 > Waves: **W1** security+correctness · **W2** dedup (0 new deps) · **W3** structural/cleanup
 > **Status (2026-08-29):** W1 complete (P1, P2, P3, P6, P9, P10 done; P13 Redis-native deferred). **W2A (quick dedup) complete** (A2, A5, I3, W4, P7, P12, P17, P18, P19 done; P20 deferred — tangled health routes + locked test). Pre-commit validation: `tsc` build (all 7 projects) PASS, ESLint 0 errors, Prettier clean, `vitest` domain 44 + application 28 pass.
@@ -132,7 +140,7 @@ These were executed and committed before this doc was written. Line numbers belo
 | P6 (response schema) | api | ✅ Done (W1) — `preSerialization` envelope hook added in `server.ts`; per-route `response` schemas deferred (high-risk, do per-route with tests) |
 | P1 (SSE raw socket) | api | ✅ Done (W1) — `addClient`/`chat.routes` now `reply.send(PassThrough)`; CORS/helmet restored |
 | P3 (backpressure) | api | ✅ Done (W1) — `writeFrame` drops frames under backpressure, keeps client (`sse.plugin.ts`) |
-| P13 (budget SM) | api | ⬜ Not executed — **W1** Redis-native counter deferred (redis not decorated at sse-plugin boot); in-process counter kept |
+| P13 (budget SM) | api | ⏸️ Deferred (Phase 5 Batch 3, `c163df5`) — sse plugin registers before container in `server.ts`, so `fastify.container.redis` isn't available at plugin boot. Needs a registration-order change (move sse after container) — separate refactor. |
 | P9 (catch→404) | api | ✅ Done (W1) — `admin.routes.ts` re-throws `NotFoundError`, lets DB errors surface as 500 |
 | P10 (LogController) | api | ✅ Done (W1) — `ApiLogController` subclass in `server.ts`, `onResponse` hook removed |
 | P2 (SSE frame dup) | api | ✅ Done (W1) — shared `sseFrame()` helper in `sse.plugin.ts`, used by hub + `chat.routes` |
@@ -268,14 +276,13 @@ These were executed and committed before this doc was written. Line numbers belo
 
 ---
 
-## 9. Verification status (2026-08-29)
+## 9. Verification status (2026-08-30 — post-Phase 5 Batch 1+2+3)
 
-- `pnpm -r build` (tsc): **PASS** (all 7 projects) — D3 added `@fastify/env` dep; no type errors after `ResolvedCoreEnv` type narrowing.
-- `pnpm lint` (eslint): **PASS** (0 errors; 12 pre-existing warnings in `drizzle/schema/*.ts`, unrelated)
-- `pnpm format:check` (prettier): **PASS**
-- `pnpm test` (vitest): domain **44 passed**, application **28 passed** (D3 confirms `Value.Parse` correctly coerces `PORT`/`BROKER_UTC_OFFSET` numbers and `DEVICE_ENFORCEMENT`/`FINNHUB_LOG_TICKS` booleans at runtime); infra **4 passed / 5 failed** due to `ECONNREFUSED` (no Postgres :5432 / Redis :8079 in sandbox — environmental, not code; stack traces reach the changed redis code and fail only at the network layer). Run `docker compose -f docker-compose.dev.yml up -d` to exercise the 5 integration tests.
+- `pnpm -r build` (tsc): **PASS** (all 7 projects).
+- `pnpm lint` (`@betrix/api` tsc --noEmit): **PASS** (no type errors).
+- `pnpm test` (vitest): domain **44 passed**; `apps/api` and `apps/worker` have no test files (the legacy `api.test.ts` and `application.test.ts` were removed in D1 Phase 4 `77a17e4` as legacy-coupled); infra **4 passed / 5 failed** due to `ECONNREFUSED` (no Postgres :5432 / Redis :8079 in sandbox — environmental, not code). Run `docker compose -f docker-compose.dev.yml up -d` to exercise the 5 integration tests.
 
-*Generated for future reference — line numbers reflect the committed state at the time of writing.*
+*Generated for future reference — line numbers reflect the committed state at the time of writing. Updated 2026-08-30 to reflect D1 Phase 4 (legacy test removal) and Phase 5 Batch 1+2+3 (10 items done, P8/P13 deferred).*
 
 ---
 
