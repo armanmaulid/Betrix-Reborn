@@ -44,7 +44,9 @@ export const EnvSchema = Type.Object({
   AI_BASE_URL: Type.Optional(Type.String()),
   AI_API_KEY: Type.Optional(Type.String()),
   DEFAULT_MODEL: Type.Optional(Type.String()),
-  USE_BETTER_AUTH: Type.Optional(Type.Boolean({ default: false }))
+  USE_BETTER_AUTH: Type.Optional(Type.Boolean({ default: false })),
+  BETTER_AUTH_SECRET: Type.Optional(Type.String()),
+  BETTER_AUTH_URL: Type.Optional(Type.String())
 });
 
 export type EnvConfig = Static<typeof EnvSchema>;
