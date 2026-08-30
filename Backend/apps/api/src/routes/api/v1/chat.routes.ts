@@ -20,7 +20,7 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.sendMessageUseCase.execute(request.user.userId, request.body);
+      const result = await useCases.sendMessageUseCase.execute(request.authUser!.id, request.body);
       return reply.send({
         success: true,
         data: result
@@ -68,7 +68,7 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
 
       try {
         await useCases.streamMessageUseCase.execute(
-          request.user.userId,
+          request.authUser!.id,
           request.body,
           {
             onThink: (chunk: string) => {
@@ -114,7 +114,7 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     async (request, reply) => {
       const { sessionId, page = 1, limit = 20 } = request.query;
       const result = await useCases.getChatHistoryUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         { page, limit },
         sessionId
       );
@@ -154,7 +154,7 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     async (request, reply) => {
       const result = await useCases.deleteChatSessionUseCase.execute(
         request.params.sessionId,
-        request.user.userId
+        request.authUser!.id
       );
       return reply.send({
         success: true,
@@ -178,7 +178,7 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     async (request, reply) => {
       const markdown = await useCases.exportChatUseCase.execute(
         request.params.sessionId,
-        request.user.userId
+        request.authUser!.id
       );
 
       reply.header('Content-Type', 'text/markdown; charset=utf-8');

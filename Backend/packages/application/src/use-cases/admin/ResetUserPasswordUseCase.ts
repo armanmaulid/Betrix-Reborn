@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { NotFoundError } from '@betrix/core';
+import { NotFoundError, hashPassword } from '@betrix/core';
 import {
   IUserRepository,
   ISessionRepository,
@@ -7,15 +7,13 @@ import {
   AdminAction,
   User
 } from '@betrix/domain';
-import { AuthService } from '../../services/AuthService.js';
 import { ResetUserPasswordDTO } from '../../schemas/admin.schema.js';
 
 export class ResetUserPasswordUseCase {
   constructor(
     private readonly userRepo: IUserRepository,
     private readonly sessionRepo: ISessionRepository,
-    private readonly adminActionRepo: IAdminActionRepository,
-    private readonly authService: AuthService
+    private readonly adminActionRepo: IAdminActionRepository
   ) {}
 
   public async execute(
@@ -29,7 +27,7 @@ export class ResetUserPasswordUseCase {
       throw new NotFoundError('User not found.');
     }
 
-    const passwordHash = await this.authService.hashPassword(dto.newPassword);
+    const passwordHash = await hashPassword(dto.newPassword);
     const updatedUser = new User({
       ...user,
       passwordHash

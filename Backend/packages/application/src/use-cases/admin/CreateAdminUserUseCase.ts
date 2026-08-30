@@ -1,15 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { randomBytes } from 'node:crypto';
-import { ConflictError } from '@betrix/core';
+import { ConflictError, hashPassword } from '@betrix/core';
 import { IUserRepository, IAdminActionRepository, AdminAction, User } from '@betrix/domain';
-import { AuthService } from '../../services/AuthService.js';
 import { CreateAdminUserDTO } from '../../schemas/admin.schema.js';
 
 export class CreateAdminUserUseCase {
   constructor(
     private readonly userRepo: IUserRepository,
-    private readonly adminActionRepo: IAdminActionRepository,
-    private readonly authService: AuthService
+    private readonly adminActionRepo: IAdminActionRepository
   ) {}
 
   /**
@@ -28,7 +26,7 @@ export class CreateAdminUserUseCase {
 
     const generatedPassword = dto.password ? null : randomBytes(12).toString('hex');
     const password = dto.password ?? generatedPassword!;
-    const passwordHash = await this.authService.hashPassword(password);
+    const passwordHash = await hashPassword(password);
 
     const user = new User({
       id: randomUUID(),

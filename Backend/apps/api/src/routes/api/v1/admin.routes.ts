@@ -82,7 +82,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const userId = request.user.userId;
+      const userId = request.authUser!.id;
       const clientId = `ops-${userId}-${randomUUID()}`;
       fastify.sseHub.addClient(clientId, userId, 'ops', request, reply);
     }
@@ -101,7 +101,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const { user, generatedPassword } = await useCases.createAdminUserUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.body,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -190,7 +190,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     async (request, reply) => {
       try {
         const result = await useCases.revokeUserSessionUseCase.execute(
-          request.user.userId,
+          request.authUser!.id,
           request.params.id,
           request.params.sessionId,
           { ip: request.ip, userAgent: request.headers['user-agent'] }
@@ -223,7 +223,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const result = await useCases.revokeAllUserSessionsUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.id,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -251,7 +251,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     async (request, reply) => {
       try {
         const result = await useCases.removeUserDeviceUseCase.execute(
-          request.user.userId,
+          request.authUser!.id,
           request.params.id,
           request.params.deviceId,
           { ip: request.ip, userAgent: request.headers['user-agent'] }
@@ -283,7 +283,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const updated = await useCases.updateAdminUserUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.id,
         request.body,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
@@ -308,7 +308,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const result = await useCases.deleteAdminUserUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.id,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -333,7 +333,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const result = await useCases.resetUserPasswordUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.id,
         request.body,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
@@ -360,7 +360,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     async (request, reply) => {
       const { page = 1, limit = 20 } = request.query;
       const result = await useCases.getAdminUserChatHistoryUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.id,
         { page, limit },
         request.query.sessionId,
@@ -402,7 +402,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const voucher = await useCases.createVoucherUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.body,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -457,7 +457,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const { revoked, failed } = await useCases.batchRevokeVouchersUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.body.ids,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -481,7 +481,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const result = await useCases.revokeVoucherUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.id,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -611,7 +611,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const result = await useCases.broadcastMessageUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.body,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -635,7 +635,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const result = await useCases.systemCleanupUseCase.execute(request.body, {
-        adminId: request.user.userId,
+        adminId: request.authUser!.id,
         ip: request.ip,
         userAgent: request.headers['user-agent']
       });
@@ -677,7 +677,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const agent = await useCases.createAgentUseCase.execute(request.body, request.user.userId, {
+      const agent = await useCases.createAgentUseCase.execute(request.body, request.authUser!.id, {
         ip: request.ip,
         userAgent: request.headers['user-agent']
       });
@@ -722,7 +722,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const updated = await useCases.updateAgentUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.id,
         request.body,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
@@ -747,7 +747,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const deleted = await useCases.deleteAgentUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.id,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -771,7 +771,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const success = await useCases.setDefaultAgentUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.id,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -839,7 +839,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const updated = await useCases.controlWorkerUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.id,
         request.body,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
@@ -870,7 +870,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       const category = request.body?.category || 'general';
       const articles = await useCases.fetchNewsUseCase.execute(
         { category },
-        { adminId: request.user.userId, ip: request.ip, userAgent: request.headers['user-agent'] }
+        { adminId: request.authUser!.id, ip: request.ip, userAgent: request.headers['user-agent'] }
       );
       return reply.send({
         success: true,
@@ -896,7 +896,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const deleted = await useCases.deleteNewsUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.id,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -926,7 +926,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const count = await useCases.batchDeleteNewsUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.body.ids,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -950,7 +950,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const saved = await useCases.saveSymbolUseCase.execute(request.user.userId, request.body, {
+      const saved = await useCases.saveSymbolUseCase.execute(request.authUser!.id, request.body, {
         ip: request.ip,
         userAgent: request.headers['user-agent']
       });
@@ -975,7 +975,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const saved = await useCases.saveSymbolUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         { ...request.body, symbol: request.params.symbol },
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -999,7 +999,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const deleted = await useCases.deleteSymbolUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.symbol,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -1023,7 +1023,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const saved = await useCases.saveStreamSymbolUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.body,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -1048,7 +1048,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const saved = await useCases.saveStreamSymbolUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         { ...request.body, symbol: request.params.symbol },
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -1072,7 +1072,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const deleted = await useCases.deleteStreamSymbolUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.symbol,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -1119,7 +1119,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const saved = await useCases.saveOhlcSymbolUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.body,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );
@@ -1143,7 +1143,7 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const deleted = await useCases.deleteOhlcSymbolUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.symbol,
         { ip: request.ip, userAgent: request.headers['user-agent'] }
       );

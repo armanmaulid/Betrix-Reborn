@@ -1,13 +1,9 @@
-import { AuthenticationError, ConflictError, NotFoundError } from '@betrix/core';
+import { AuthenticationError, ConflictError, NotFoundError, verifyPassword } from '@betrix/core';
 import { IUserRepository, User } from '@betrix/domain';
-import { AuthService } from '../../services/AuthService.js';
 import { ChangeEmailDTO } from '../../schemas/auth.schema.js';
 
 export class ChangeEmailUseCase {
-  constructor(
-    private readonly userRepo: IUserRepository,
-    private readonly authService: AuthService
-  ) {}
+  constructor(private readonly userRepo: IUserRepository) {}
 
   public async execute(
     userId: string,
@@ -19,7 +15,7 @@ export class ChangeEmailUseCase {
     }
 
     if (user.passwordHash) {
-      const isMatch = await this.authService.verifyPassword(dto.password, user.passwordHash);
+      const isMatch = await verifyPassword(dto.password, user.passwordHash);
       if (!isMatch) {
         throw new AuthenticationError('Password is incorrect.');
       }

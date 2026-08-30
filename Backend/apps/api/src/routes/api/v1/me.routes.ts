@@ -1,7 +1,6 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import {
   UpdateProfileSchema,
-  ChangePasswordSchema,
   ChangeEmailSchema,
   RedeemVoucherSchema,
   SendUserMessageSchema,
@@ -28,7 +27,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const user = await useCases.getProfileUseCase.execute(request.user.userId);
+      const user = await useCases.getProfileUseCase.execute(request.authUser!.id);
       return reply.send({
         success: true,
         data: user.toJSON()
@@ -49,7 +48,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const updated = await useCases.updateProfileUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.body
       );
       return reply.send({
@@ -59,31 +58,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     }
   );
 
-  // 3. POST /me/change-password — Change account password
-  fastify.post(
-    '/change-password',
-    {
-      schema: {
-        tags: ['Me'],
-        summary: 'Change account password',
-        body: ChangePasswordSchema,
-        security: [{ bearerAuth: [] }]
-      }
-    },
-    async (request, reply) => {
-      const result = await useCases.changePasswordUseCase.execute(
-        request.user.userId,
-        request.body,
-        request.user.sessionId
-      );
-      return reply.send({
-        success: true,
-        data: result
-      });
-    }
-  );
-
-  // 4. POST /me/change-email — Change account email address
+  // 3. POST /me/change-email — Change account email address
   fastify.post(
     '/change-email',
     {
@@ -95,7 +70,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.changeEmailUseCase.execute(request.user.userId, request.body);
+      const result = await useCases.changeEmailUseCase.execute(request.authUser!.id, request.body);
       return reply.send({
         success: true,
         data: result
@@ -115,7 +90,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.redeemVoucherUseCase.execute(request.user.userId, request.body);
+      const result = await useCases.redeemVoucherUseCase.execute(request.authUser!.id, request.body);
       return reply.send({
         success: true,
         data: result
@@ -138,7 +113,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const { page = 1, limit = 20 } = request.query;
-      const paginated = await useCases.getInboxUseCase.execute(request.user.userId, {
+      const paginated = await useCases.getInboxUseCase.execute(request.authUser!.id, {
         page,
         limit
       });
@@ -168,7 +143,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const { page = 1, limit = 20 } = request.query;
-      const paginated = await useCases.getSentMessagesUseCase.execute(request.user.userId, {
+      const paginated = await useCases.getSentMessagesUseCase.execute(request.authUser!.id, {
         page,
         limit
       });
@@ -199,7 +174,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     async (request, reply) => {
       const messages = await useCases.getThreadUseCase.execute(
         request.params.threadId,
-        request.user.userId
+        request.authUser!.id
       );
       return reply.send({
         success: true,
@@ -221,7 +196,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const saved = await useCases.sendUserMessageUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.body
       );
       return reply.status(201).send({
@@ -244,7 +219,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const result = await useCases.markMessageReadUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.id
       );
       return reply.send({
@@ -267,7 +242,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const result = await useCases.deleteMessageUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.params.id
       );
       return reply.send({
@@ -290,7 +265,7 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
     },
     async (request, reply) => {
       const updated = await useCases.updateNotificationPrefsUseCase.execute(
-        request.user.userId,
+        request.authUser!.id,
         request.body
       );
       return reply.send({

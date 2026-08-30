@@ -93,7 +93,8 @@ const rateLimitPluginCallback: FastifyPluginAsync = async (fastify) => {
 
   // Credential endpoints (/login, /register, /forgot-password, /reset-password,
   // /resend-verification) get a tighter per-route bucket declared directly on
-  // each route via `config.rateLimit` (see auth.routes.ts) so the brute-force
+  // each route via `config.rateLimit` (see better-auth-plugin.ts / BA
+  // rateLimit option) so the brute-force
   // defense can never silently vanish on a route rename.
 };
 

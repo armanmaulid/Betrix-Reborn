@@ -50,14 +50,12 @@ import {
 import {
   AppConfig,
   createAppConfig,
-  AuthService,
   CaptchaService,
   MarketDataService,
   NewsService,
   ContextInjectionService,
   WorkerManagerService,
   IWorkerCommandPublisher,
-  GoogleVerifierNotConfiguredError,
   ChatLoggingHandler
 } from '@betrix/application';
 import * as UC from '@betrix/application';
@@ -118,7 +116,6 @@ const adapterResolvers = {
 type AdapterCradle = InferCradleFromResolvers<typeof adapterResolvers>;
 
 const serviceResolvers = {
-  authService: asClass(AuthService),
   captchaService: asClass(CaptchaService),
   marketDataService: asClass(MarketDataService),
   newsService: asClass(NewsService),
@@ -128,14 +125,6 @@ const serviceResolvers = {
 type ServiceCradle = InferCradleFromResolvers<typeof serviceResolvers>;
 
 const useCaseResolvers = {
-  registerUseCase: asClass(UC.RegisterUseCase),
-  loginUseCase: asClass(UC.LoginUseCase),
-  googleOAuthUseCase: asClass(UC.GoogleOAuthUseCase),
-  verifyEmailUseCase: asClass(UC.VerifyEmailUseCase),
-  resendVerificationUseCase: asClass(UC.ResendVerificationUseCase),
-  forgotPasswordUseCase: asClass(UC.ForgotPasswordUseCase),
-  resetPasswordUseCase: asClass(UC.ResetPasswordUseCase),
-  changePasswordUseCase: asClass(UC.ChangePasswordUseCase),
   changeEmailUseCase: asClass(UC.ChangeEmailUseCase),
   getStreamTicketUseCase: asClass(UC.GetStreamTicketUseCase),
   revokeSessionUseCase: asClass(UC.RevokeSessionUseCase),
