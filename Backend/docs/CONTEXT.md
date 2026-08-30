@@ -20,10 +20,11 @@
 | 3 — Wave 2A (quick dedup) | ✅ | `f25668f` | A2/A5/I3/W4/P7/P12/P17/P18/P19 |
 | 4 — D3 `@fastify/env` + `Value.Parse` | ✅ | `b80a193` | Config C1/C2 — schema defaults applied at boot, `env.PORT` typed `number` |
 | 5 — Wave 2B / Wave 3 | ⬜ | — | A1, I1, W3, P8/P11/P14, A3–A6, W1/W2/W5–W7, I4, P13, P16 |
-| 6 — D2 `@fastify/awilix` | ✅ | `b5af856` + `e54bb2f` + `9b8bd36` | P15 — container 798 → 407 lines (-49%); dedup commits collapse `Pick<AppCradle>`, `isNotTest()`, `pickGroup<R>` helper, proper plugin cast, prune stale comments |
-| 6 — D1 `better-auth`, D4 A1 `Value.Decode` | ⬜ | — | Next up (see §3) |
+| 6 — D2 `@fastify/awilix` | ✅ | `b5af856` + `e54bb2f` + `9b8bd36` | P15 — container 798 → 407 lines (-49%) |
+| 6 — D4 `@betrix/application` A1 `Value.Default` | ✅ | `0c40e88` | 7 use-case boundaries: schema is single source of truth for `\|\| default`; 28/28 app tests PASS |
+| 6 — D1 `better-auth` | ⬜ | — | Next up (see §3.2) |
 
-**Net code removed (Phases 1–3):** ~250 lines. **Phase 6 (D2):** -350 lines.
+**Net code removed (Phases 1–3):** ~250 lines. **Phase 6 (D2 + D4):** D2 -391 lines (798→407), D4 -76 lines net (9 files, 141 insertions / 76 deletions in the main commit; plus the ContextInjectionService `Resolved` follow-up).
 **Build:** `pnpm -r build` PASS (all 7 packages).
 **Tests:** vitest domain 44 + application 28 pass; **infra 4/9 pass** — 5 fail
 on `ECONNREFUSED` (no Postgres/Redis in sandbox; environmental, not code).
@@ -62,54 +63,32 @@ route code (`fastify.container.X`) still works unchanged.**
 
 ---
 
-## 3. Next up (Phase 6, ⬜ open)
+## 3. Next up (Phase 6 — D2 ✅, D4 ✅, D1 ⬜ open)
 
-### 3.1 D4 — A1 `Value.Decode` at boundary (RECOMMENDED NEXT)
+### 3.1 D4 — A1 `Value.Default` at boundary — ✅ DONE (`0c40e88` + follow-up)
 
-**Why first:** 0 new deps, internal discipline, kills drift bug across ~8
-use-cases, similar payoff to D2 (less risk than D1).
+**Status:** Completed. 7 use-case boundaries now call `Value.Default(Schema, input)`
+at the start of `execute()`, and the manual `|| default` lines were deleted.
+Schema is the single source of truth.
 
-**What:** TypeBox schema declares defaults (e.g. `includeNews: Type.Optional(Type.Boolean({default: true}))`)
-but `Value.Decode` never runs at runtime — every use-case re-applies `|| default`,
-defeating the schema and drifting from it.
+**Key learning (don't repeat):** use `Value.Default`, NOT `Value.Cast` or
+`Value.Decode`. `Cast`/`Decode` do NOT apply schema `default` — using `Cast`
+broke the credit-reservation amount (NaN → "Insufficient credits" test
+failure). `Default` applies the defaults; input is already Ajv-validated by the
+route.
 
-**Touch these files (~8 use-cases):**
-- `packages/application/src/use-cases/intelligence/ContextInjectionService.ts:45`
-- `packages/application/src/use-cases/intelligence/SendMessageUseCase.ts:44,48,71,108`
-- `packages/application/src/use-cases/intelligence/StreamMessageUseCase.ts:48,74,115`
-- `packages/application/src/use-cases/intelligence/CreateAgentUseCase.ts`
-- `packages/application/src/use-cases/intelligence/UpdateAgentUseCase.ts`
-- (plus any other use-case with `|| default` at input boundary)
+**Files touched:** `SendMessageUseCase`, `StreamMessageUseCase`,
+`CreateAgentUseCase`, `GetNewsUseCase`, `FetchNewsUseCase`, `GetOHLCUseCase`,
+`ContextInjectionService`. Added `Resolved*` narrowed types where
+`Type.Optional + default` keeps the static type as `T | undefined`.
 
-**Recipe (per use-case):**
-1. Find existing TypeBox schema (or import from `packages/application/src/schemas`).
-2. At the start of `execute(input)`, do:
-   ```ts
-   const parsed = Value.Decode(Schema, input); // strict — throws on bad shape
-   // OR for env/list coercion:
-   const parsed = Value.Cast(Schema, input);   // loose — fills defaults
-   ```
-3. Delete the `|| default` lines that the schema now covers.
-4. If route sends string-typed booleans (`{includeNews: 'true'}`) or numbers
-   as strings, switch to `Value.Cast` (loose) for that boundary, OR coerce
-   in the route via `Value.Convert`.
+**UpdateAgentUseCase was intentionally LEFT UNTOUCHED** — it is a
+partial-merge (`dto.X ?? existing.X`), not a default-drift case; applying A1
+there would be wrong.
 
-**Gotchas:**
-- `Value.Decode` is strict; routes currently send loosely-typed bodies. Either
-  coerce at route (preferred — single chokepoint) or use `Value.Cast` per
-  use-case.
-- Some defaults may have *intentional* override semantics — review before
-  deleting.
-- Test verification limited: test env doesn't boot (see §1 gotcha). Build
-  green is the main signal.
+### 3.2 D1 — `better-auth@1.x` (DEFER to dedicated sprint) — NEXT UP
 
-**Effort estimate:** 2–3 hours for me (8 use-cases × ~15 min + research).
-SSOT says "Low–Med effort", which I under-quote honestly because of the
-loose/strict boundary work.
-
-### 3.2 D1 — `better-auth@1.x` (DEFER to dedicated sprint)
-
-**Why not next:** SSOT says "1–2 days, Medium risk, schema migration + data
+**Why not done yet:** SSOT says "1–2 days, Medium risk, schema migration + data
 migration". Bigger blast radius than D2/D4.
 
 **Replacement scope:** 8 use-cases (Register, Login, GoogleOAuth, VerifyEmail,

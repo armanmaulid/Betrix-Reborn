@@ -4,7 +4,8 @@ import { MarketDataService } from './MarketDataService.js';
 import { NewsService } from './NewsService.js';
 import {
   MarketContextOptionsDTO,
-  MarketContextOptionsSchema
+  MarketContextOptionsSchema,
+  ResolvedMarketContextOptionsDTO
 } from '../schemas/chat.schema.js';
 import { logger } from '../logger.js';
 
@@ -46,10 +47,10 @@ export class ContextInjectionService {
     options: MarketContextOptionsDTO
   ): Promise<InjectedContextResult> {
     // A1 — schema is the source of truth; Default fills `timeframe: 'h1'`, `candleCount: 30`.
-    const input = Value.Default(MarketContextOptionsSchema, options) as MarketContextOptionsDTO;
+    const input = Value.Default(MarketContextOptionsSchema, options) as ResolvedMarketContextOptionsDTO;
     const symbol = input.symbol.toUpperCase();
-    const timeframe = (input.timeframe || 'h1').toLowerCase();
-    const candleCount = input.candleCount || 30;
+    const timeframe = input.timeframe.toLowerCase();
+    const candleCount = input.candleCount;
 
     let candles: RawCandle[] = [];
     let marketFetchError: string | null = null;
@@ -74,9 +75,9 @@ export class ContextInjectionService {
 
     // 2. Fetch Relevant News with Graceful Fallback (ADR-28)
     let relevantNews: { headline: string; summary: string; time: string }[] = [];
-    if (options.includeNews && this.newsService) {
+    if (input.includeNews && this.newsService) {
       try {
-        const newsLimit = options.newsLimit || 3;
+        const newsLimit = input.newsLimit;
         let articles = await this.newsService.getRecentNews(
           newsLimit,
           undefined,

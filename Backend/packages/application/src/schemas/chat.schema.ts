@@ -22,6 +22,19 @@ export const MarketContextOptionsSchema = Type.Object({
 });
 export type MarketContextOptionsDTO = Static<typeof MarketContextOptionsSchema>;
 
+// A1 — narrow so `Value.Default(MarketContextOptionsSchema, ...)` callers see
+// the defaulted fields as non-optional (TypeBox keeps `Type.Optional + default`
+// as `T | undefined` at the type level).
+export type ResolvedMarketContextOptionsDTO = Omit<
+  MarketContextOptionsDTO,
+  'timeframe' | 'candleCount' | 'newsLimit' | 'includeNews'
+> & {
+  timeframe: string;
+  candleCount: number;
+  newsLimit: number;
+  includeNews: boolean;
+};
+
 // Send Message DTO (Synchronous REST completion)
 export const SendMessageSchema = Type.Object({
   sessionId: Type.Optional(Type.String()),
