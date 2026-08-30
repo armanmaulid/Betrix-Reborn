@@ -1,4 +1,5 @@
 import { IAdminActionRepository } from '@betrix/domain';
+import { toCsvRow } from '@betrix/core';
 
 export class ExportAuditLogsUseCase {
   constructor(private readonly adminActionRepo: IAdminActionRepository) {}
@@ -23,7 +24,7 @@ export class ExportAuditLogsUseCase {
       };
     }
 
-    // CSV format
+    // CSV format (A4 — uses toCsvRow from @betrix/core, RFC 4180 escaping)
     const headers = [
       'id',
       'adminId',
@@ -36,21 +37,21 @@ export class ExportAuditLogsUseCase {
     ];
     const rows = logs.map((l) => {
       const j = l.toJSON();
-      return [
+      return toCsvRow([
         j.id,
         j.adminId,
         j.action,
         j.targetType,
         j.targetId,
-        `"${JSON.stringify(j.details || {}).replace(/"/g, '""')}"`,
-        j.ip || '',
+        j.details,
+        j.ip,
         j.createdAt
-      ].join(',');
+      ]);
     });
 
     return {
       format: 'csv',
-      content: [headers.join(','), ...rows].join('\n'),
+      content: [toCsvRow(headers), ...rows].join('\n'),
       filename
     };
   }

@@ -62,7 +62,10 @@ export async function createServer() {
     // TRUST_PROXY=true when running behind a trusted reverse proxy / BFF so
     // request.ip reflects X-Forwarded-For (correct rate-limit buckets and
     // server-side device fingerprints). Never enable when directly exposed.
-    trustProxy: env.TRUST_PROXY
+    trustProxy: env.TRUST_PROXY,
+    // P21 — close idle (keep-alive) connections on shutdown so SSE clients
+    // and any stuck keep-alive sockets cannot delay a clean restart.
+    forceCloseConnections: 'idle'
   }).withTypeProvider<TypeBoxTypeProvider>();
 
   // 1. Register Core Security & Infrastructure Plugins

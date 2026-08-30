@@ -2,14 +2,6 @@ import { Redis } from '@upstash/redis';
 import { ICaptchaStore, IStreamTicketStore, Nullable } from '@betrix/domain';
 import { redisKeys } from './redis-keys.js';
 
-/**
- * T2.3 — dual-read migration window: reads try the NEW namespaced key first,
- * falling back to the pre-cutover legacy key so in-flight challenges/tickets
-// survive a deploy. Writes ALWAYS target the new key. Delete the legacy
-// fallbacks one release after the cutover ships everywhere.
- */
-const DUAL_READ_LEGACY = true;
-
 async function consumeAtomic(redis: Redis, key: string): Promise<Nullable<string>> {
   const value = await redis.getdel<string>(key);
   return value === null || value === undefined ? null : String(value);
@@ -25,10 +17,7 @@ export class RedisCaptchaStore implements ICaptchaStore {
   }
 
   async getAndDelete(challengeId: string): Promise<Nullable<string>> {
-    const fresh = await consumeAtomic(this.redis, redisKeys.captcha(challengeId));
-    if (fresh !== null) return fresh;
-    if (!DUAL_READ_LEGACY) return null;
-    return consumeAtomic(this.redis, redisKeys.captchaLegacy(challengeId));
+    return consumeAtomic(this.redis, redisKeys.captcha(challengeId));
   }
 }
 
@@ -42,9 +31,6 @@ export class RedisStreamTicketStore implements IStreamTicketStore {
   }
 
   async getAndDelete(ticket: string): Promise<Nullable<string>> {
-    const fresh = await consumeAtomic(this.redis, redisKeys.streamTicket(ticket));
-    if (fresh !== null) return fresh;
-    if (!DUAL_READ_LEGACY) return null;
-    return consumeAtomic(this.redis, redisKeys.streamTicketLegacy(ticket));
+    return consumeAtomic(this.redis, redisKeys.streamTicket(ticket));
   }
 }

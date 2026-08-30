@@ -82,6 +82,16 @@ export class BrokerTimeCalculator {
   }
 
   /**
+   * W2 — UTC last-day-of-month for the given (year, month) pair. Uses the
+   * `Date.UTC(y, m+1, 0)` trick: day 0 of the next month is the last day of
+   * the current month. Centralized so calendar math lives next to the rest
+   * of the broker-time helpers.
+   */
+  public static getUtcMonthEnd(year: number, month: number): Date {
+    return new Date(Date.UTC(year, month + 1, 0));
+  }
+
+  /**
    * Checks whether the current broker time falls in weekend market closure
    * (Saturday 00:00 Broker Time to Sunday 23:59 Broker Time).
    */

@@ -13,6 +13,7 @@ import {
 import { PriceTick } from '@betrix/domain';
 import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
 import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
+import { backoffDelay } from './shared/retry.js';
 
 const logger = pino({
   level: env.LOG_LEVEL || 'info',
@@ -205,7 +206,7 @@ export class FinnhubWsWorker extends ManagedWorkerBase implements IManagedWorker
   private scheduleReconnect(): void {
     if (this.isShuttingDown || this.reconnectTimer) return;
     this.reconnectAttempt++;
-    const delay = Math.min(3000 * this.reconnectAttempt, 20000);
+    const delay = backoffDelay(this.reconnectAttempt, 3000, 20000);
     logger.info(
       `Scheduling Finnhub WebSocket reconnect in ${Math.round(delay / 1000)}s (attempt ${this.reconnectAttempt})...`
     );

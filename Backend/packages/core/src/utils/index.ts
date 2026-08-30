@@ -58,3 +58,21 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export function isUuid(value: unknown): boolean {
   return typeof value === 'string' && UUID_RE.test(value);
 }
+
+/**
+ * A4 — RFC 4180 CSV field escape. Wraps a value in double-quotes if it
+ * contains a comma, double-quote, CR, or LF; doubles internal double-quotes.
+ * `null`/`undefined` become an empty field. Numbers/booleans are stringified.
+ */
+export function escapeCsvField(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  const s = typeof value === 'string' ? value : String(value);
+  if (s === '') return '';
+  if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+/** A4 — serialize a row of fields to a single CSV line. */
+export function toCsvRow(fields: readonly unknown[]): string {
+  return fields.map(escapeCsvField).join(',');
+}

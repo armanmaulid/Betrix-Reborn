@@ -146,18 +146,18 @@ export async function joinWithAnnouncementsAndPredictions(
 }
 
 /**
- * Parse the indicator slug out of an FXMacroData `announcement_id`, which uses
- * the format `{currency}_{indicator}_{date}` (date = YYYY-MM-DD, may contain
- * dashes; indicator slugs may themselves contain underscores, e.g.
- * non_farm_payrolls). The date is the final `_`-separated segment.
+ * W5 — Parse the indicator slug out of an FXMacroData `announcement_id`,
+ * format `{currency}_{indicator}_{YYYY-MM-DD}`. The date is the
+ * `_`-anchored trailing segment; the indicator is everything between the
+ * currency prefix and the date (indicator slugs may themselves contain
+ * underscores, e.g. `non_farm_payrolls`).
  */
+const ANNOUNCEMENT_ID_RE = /_([^_]+)_(\d{4}-\d{2}-\d{2})$/;
 function indicatorFromAnnouncementId(announcementId: string, currency: string): string | null {
   const prefix = `${currency.toLowerCase()}_`;
   if (!announcementId.startsWith(prefix)) return null;
-  const rest = announcementId.slice(prefix.length);
-  const lastUnderscore = rest.lastIndexOf('_');
-  if (lastUnderscore < 0) return null;
-  return rest.slice(0, lastUnderscore);
+  const m = ANNOUNCEMENT_ID_RE.exec(announcementId);
+  return m ? m[1] : null;
 }
 
 /**

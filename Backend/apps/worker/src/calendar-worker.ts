@@ -237,7 +237,7 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
         // bounds a zero-row month would be partially seeded and miss past days.
         const [cy, cm] = currentYearMonth.split('-').map(Number);
         const monthStart = `${currentYearMonth}-01`;
-        const monthEnd = utcDateKey.format(new Date(Date.UTC(cy!, cm! + 1, 0)));
+        const monthEnd = utcDateKey.format(BrokerTimeCalculator.getUtcMonthEnd(cy!, cm!));
         const rawEvents = await this.fxMacroData.fetchCalendar(currency, monthStart, monthEnd);
         const eventsThisMonth = rawEvents.filter((e) => e.date?.startsWith(currentYearMonth));
 

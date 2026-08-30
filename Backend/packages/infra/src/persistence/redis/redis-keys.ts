@@ -31,11 +31,7 @@ export const redisKeys = {
 
   // ── R1 AUTH-GATE (TTL wajib) ─────────────────────────────────────────
   captcha: (challengeId: string) => `b:${ENV}:auth:captcha:${challengeId}`,
-  /** Dual-read window helper — remove one release after the ns cutover. */
-  captchaLegacy: (challengeId: string) => `auth:captcha:${challengeId}`,
   streamTicket: (ticket: string) => `b:${ENV}:auth:ticket:${ticket}`,
-  /** Dual-read window helper. */
-  streamTicketLegacy: (ticket: string) => `auth:stream_ticket:${ticket}`,
   rateLimit: (scope: string, id: string) => `b:${ENV}:rl:${scope}:${id}`,
   idempotency: (scope: string, key: string) => `b:${ENV}:idem:${scope}:${key}`,
   sessionDigest: (hash: string) => `b:${ENV}:auth:sessdigest:${hash}`,
