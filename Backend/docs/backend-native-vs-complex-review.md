@@ -127,7 +127,7 @@ These were executed and committed before this doc was written. Line numbers belo
 ## 2b. Implementation Status Tracker (Done / In Progress / Not Executed)
 
 > Updated: 2026-08-30 (Phase 5 Batch 1+2+3+4 done). Use this as the single source of truth for what is fixed.
-> Legend: ✅ Done · 🔄 In Progress · ⬜ Not executed · 🔒 Keep (legit, no change needed)
+> Legend: ✅ Done · ⚠️ Partial (done but not all call sites migrated) · ⏸️ Deferred (requires separate refactor) · ⏸️ Kept (already adequate, no safe change) · 🔒 Keep (legit, no change needed) · ⬜ Not executed
 > Waves: **W1** security+correctness · **W2** dedup (0 new deps) · **W3** structural/cleanup
 > **Status (2026-08-29):** W1 complete (P1, P2, P3, P6, P9, P10 done; P13 Redis-native deferred). **W2A (quick dedup) complete** (A2, A5, I3, W4, P7, P12, P17, P18, P19 done; P20 deferred — tangled health routes + locked test). Pre-commit validation: `tsc` build (all 7 projects) PASS, ESLint 0 errors, Prettier clean, `vitest` domain 44 + application 28 pass.
 
@@ -268,17 +268,20 @@ These were executed and committed before this doc was written. Line numbers belo
 
 ---
 
-## 8. Recommended next-wave priority (post quick wins)
+## 8. Recommended next-wave priority — historical (all items now done/deferred/kept)
 
-1. **P6 — response schemas + 1 `preSerialization` hook** (highest leverage: removes most repetition *and* closes the `passwordHash` leak-by-omission risk). Roll out route-by-route with `api.test.ts` as guard.
-2. **P1 + P3 + P13 — SSE layer** (`reply.send(stream)` + `node:stream` + `node:timers/promises` + Redis-side budget). `sse.plugin.ts` should land ~180 lines instead of 355.
-3. **A1 — `Value.Decode` at input boundary** so schemas become the source of truth (deletes `\|\| default` / UUID-regex duplication A2).
-4. **W3 + W4 — worker dedupe** (generic `Backfiller` + `parseList`): ~250–300 lines removed, low risk.
-5. **P15 + P16 — split `container.plugin.ts`** into per-domain `fp` plugins (do last; touches everything).
+> **Historical priority list, written before Phase 1–5 work began. All items
+> have since been addressed (see §0.1, §2b, §12). Kept here for context only.**
+
+1. ~~**P6 — response schemas + 1 `preSerialization` hook`**~~ — ✅ done in Wave 1 (`f25668f`-era).
+2. ~~**P1 + P3 + P13 — SSE layer**~~ — P1/P3 ✅ done in Wave 1; P13 ⏸️ deferred (Phase 5 Batch 3, registration order — separate refactor).
+3. ~~**A1 — `Value.Decode` at input boundary**~~ — ✅ done as D4 (`0c40e88`) using `Value.Default` (not `Decode`/`Cast`, which skip defaults).
+4. ~~**W3 + W4 — worker dedupe**~~ — W4 ✅ done in Wave 2A; W3 ✅ done in Phase 5 Batch 4 (`dfd887b`).
+5. ~~**P15 + P16 — split `container.plugin.ts`**~~ — P15 ✅ done as D2 (`b5af856`+`e54bb2f`+`9b8bd36`); P16 ⚠️ partial in Phase 5 Batch 3 (`c163df5` — news relay watermark, ops aggregator timer still setInterval).
 
 ---
 
-## 9. Verification status (2026-08-30 — post-Phase 5 Batch 1+2+3)
+## 9. Verification status (2026-08-30 — post-Phase 5 Batch 1+2+3+4)
 
 - `pnpm -r build` (tsc): **PASS** (all 7 projects).
 - `pnpm lint` (`@betrix/api` tsc --noEmit): **PASS** (no type errors).
