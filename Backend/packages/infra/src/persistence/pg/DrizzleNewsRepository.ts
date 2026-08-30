@@ -144,7 +144,22 @@ export class DrizzleNewsRepository implements INewsRepository {
     if (canReadCache) {
       try {
         const raw = await this.redis!.get<string>(redisKeys.cacheNewsPage1());
-        if (raw) return typeof raw === 'string' ? JSON.parse(raw) : raw;
+        const parsed = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+        // JSON.parse only yields plain objects — rehydrate into real
+        // NewsArticle instances so callers relying on class methods
+        // (e.g. .toJSON() in the route handler) don't blow up on a cache hit.
+        if (parsed) {
+          return {
+            ...parsed,
+            data: (parsed.data as Array<Record<string, unknown>>).map(
+              (a) =>
+                new NewsArticle({
+                  ...(a as unknown as ConstructorParameters<typeof NewsArticle>[0]),
+                  createdAt: a.createdAt ? new Date(a.createdAt as string) : undefined
+                })
+            )
+          } as PaginatedResult<NewsArticle>;
+        }
       } catch {
         // Cache read failure falls through to the DB query.
       }

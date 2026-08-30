@@ -23,7 +23,15 @@ export class SseHub {
   private clients = new Map<string, SseClient>();
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private marketTimer: NodeJS.Timeout | null = null;
-  private marketDelayMs = Number(process.env.MARKET_TICKER_INTERVAL_MS) || 5000;
+  // Guards the recursive setTimeout chain in scheduleMarketTick/runMarketTick.
+  // Without this, a tick already in flight when closeAll() runs (e.g. still
+  // awaiting priceFetcher()) finishes AFTER closeAll() has cleared
+  // this.marketTimer, and its trailing scheduleMarketTick() call arms a new
+  // timer that nothing ever clears again — that live timer keeps the Node
+  // event loop non-empty, so Fastify's app.close() (awaited in server.ts's
+  // SIGINT/SIGTERM handler before process.exit(0)) never resolves and the
+  // process hangs until something force-kills it.
+  private isShuttingDown = false;  private marketDelayMs = Number(process.env.MARKET_TICKER_INTERVAL_MS) || 5000;
   private static readonly MARKET_MAX_DELAY_MS = 30_000;
   private lastPriceSnapshot = new Map<string, number>();
   private priceFetcher: (() => Promise<PriceTick[]>) | null = null;
@@ -178,6 +186,13 @@ export class SseHub {
   }
 
   public closeAll(): void {
+    // Set first, before anything else: any tick already mid-flight (past
+    // this check, blocked in an await) will still run to completion, but
+    // its final scheduleMarketTick() call at the end will see this flag and
+    // no-op instead of arming a new, never-cleared timer. See the field's
+    // doc comment above for why that matters.
+    this.isShuttingDown = true;
+
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
@@ -281,7 +296,7 @@ export class SseHub {
   }
 
   private scheduleMarketTick(delayMs = this.marketDelayMs): void {
-    if (this.marketTimer) return;
+    if (this.marketTimer || this.isShuttingDown) return;
     this.marketTimer = setTimeout(() => {
       this.marketTimer = null;
       void this.runMarketTick();

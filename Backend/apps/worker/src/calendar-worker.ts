@@ -337,6 +337,12 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
     );
 
     let pendingCount = 0;
+    // Same batching as refreshRecentValuesInner's idleCurrencies: a
+    // far-future year with nothing announced yet is expected and not
+    // actionable, so it's collected into one summary line instead of one
+    // per currency+year — this can otherwise be a dozen+ near-identical
+    // lines on a single startup pass across several currencies.
+    const noEventsPairs: string[] = [];
 
     for (const cur of currencies) {
       for (const year of targetYears) {
@@ -364,9 +370,7 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
           const eventsThisYear = rawEvents.filter((e) => e.date?.startsWith(yearStr));
 
           if (eventsThisYear.length === 0) {
-            logger.info(
-              `[CALENDAR YEAR SYNC] ${cur} ${yearStr}: FXMacroData returned no scheduled events for this year — nothing to insert (this is expected for a far-future year with nothing announced yet).`
-            );
+            noEventsPairs.push(`${cur} ${yearStr}`);
             continue;
           }
 
@@ -423,6 +427,12 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
       }
     }
 
+    if (noEventsPairs.length > 0) {
+      logger.info(
+        `[CALENDAR YEAR SYNC] No scheduled events yet (expected for a far-future year with nothing announced): ${noEventsPairs.join(', ')}.`
+      );
+    }
+
     if (pendingCount > 0) {
       logger.warn(
         `[CALENDAR YEAR SYNC] ${pendingCount} currency+year pair(s) still incomplete (budget-limited or errored) — will retry on next worker restart.`
@@ -462,6 +472,11 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
     const nowSec = Math.floor(Date.now() / 1000);
     const lookbackStart = nowSec - env.CALENDAR_REFRESH_LOOKBACK_HOURS * 3600;
     const aheadEnd = nowSec + env.CALENDAR_REFRESH_AHEAD_HOURS * 3600;
+    // Currencies with nothing to refresh this pass are batched into one
+    // summary line at the end instead of one "nothing to refresh" line each —
+    // on a quiet tick (the common case) this collapses N near-identical log
+    // lines every CALENDAR_REFRESH_CRON tick into at most one.
+    const idleCurrencies: string[] = [];
 
     for (const currency of currencies) {
       const cur = currency.toUpperCase();
@@ -487,7 +502,7 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
       const targets = new Map<string, CalendarEvent>();
       for (const e of [...needsActual, ...upcoming]) targets.set(e.id, e);
       if (targets.size === 0) {
-        logger.info(`[CALENDAR REFRESH] ${cur}: nothing to refresh, no HTTP calls.`);
+        idleCurrencies.push(cur);
         continue;
       }
 
@@ -564,6 +579,12 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
       this.processedCount += updatedRows;
       logger.info(
         `[CALENDAR REFRESH] ${cur}: ${updatedRows} row(s) refreshed across ${codes.length} indicator(s).`
+      );
+    }
+
+    if (idleCurrencies.length > 0) {
+      logger.info(
+        `[CALENDAR REFRESH] ${idleCurrencies.join(', ')}: nothing to refresh, no HTTP calls.`
       );
     }
   }

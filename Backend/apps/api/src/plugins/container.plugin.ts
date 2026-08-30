@@ -785,7 +785,13 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
 
   // Hook for graceful pool closing on fastify close
   fastify.addHook('onClose', async () => {
-    fastify.log.info('Closing PostgreSQL pool and disconnecting Redis...');
+    // Redis here is @upstash/redis (HTTP-based via createRedisClient — see
+    // packages/infra/src/persistence/redis/RedisClient.ts), not a
+    // persistent TCP connection, so there's no live socket to close
+    // explicitly the way pgPool needs .end(). Log message kept accurate to
+    // what actually happens, since it previously claimed to disconnect
+    // Redis with no code backing that claim.
+    fastify.log.info('Closing PostgreSQL pool...');
     await pgPool.end();
   });
 };

@@ -212,7 +212,19 @@ export class FinnhubWsWorker extends ManagedWorkerBase implements IManagedWorker
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       if (!this.isShuttingDown && !this.isPaused) {
-        this.runAsLeaderOrStandby();
+        // Call doStart() directly, NOT runAsLeaderOrStandby(). This process
+        // already won the leader lease when it first started, and its
+        // renewal loop (startLeaseRenewLoop) is still actively refreshing it
+        // every 30s — the lease is never released just because the
+        // WebSocket dropped. Going through runAsLeaderOrStandby() here would
+        // re-run tryAcquireLease()'s Redis SET NX, which can only ever fail
+        // (the key this process itself holds still exists), permanently
+        // parking this reconnect attempt in the standby-poll loop and
+        // logging "Leader lease held elsewhere" every 30s forever — the
+        // WebSocket would never actually reconnect. doStart() is already
+        // idempotent for this (see the readyState guard at its top) and is
+        // exactly what a leader reconnecting its own connection should call.
+        this.doStart();
       }
     }, delay);
   }
@@ -316,7 +328,14 @@ export class FinnhubWsWorker extends ManagedWorkerBase implements IManagedWorker
     this.isShuttingDown = false;
     await this.doStop();
     this.isShuttingDown = false;
-    await this.runAsLeaderOrStandby();
+    // doStart() directly, matching every other worker's doRestart()
+    // (sync-worker.ts, calendar-worker.ts, news-worker.ts,
+    // cleanup-worker.ts all do doStop() -> doStart()). Same reasoning as
+    // scheduleReconnect() above: doStop() never releases the leader lease,
+    // so calling runAsLeaderOrStandby() here would send this process into
+    // tryAcquireLease() against a lease it still holds, which can only fail
+    // and permanently strand the restart in the standby-poll loop.
+    await this.doStart();
   }
 
   public getHealth(): WorkerHealthSnapshot {

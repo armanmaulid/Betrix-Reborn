@@ -68,14 +68,25 @@ export abstract class ManagedWorkerBase {
   }
 
   private async acquireThenRun(): Promise<void> {
+    let standbyPolls = 0;
+    // Only every Nth poll gets a log line while parked in standby — a
+    // legitimate standby (a second instance running for redundancy) can
+    // stay here indefinitely, and logging every single 30s poll turns into
+    // hundreds of identical lines an hour for no new information. The first
+    // poll always logs immediately so standby entry is never silent.
+    const STANDBY_LOG_EVERY_N_POLLS = 10; // ~5 min at the 30s poll interval
+
     for (;;) {
       if (this.isShuttingDownLease) return;
       if (await this.tryAcquireLease()) break;
 
-      this.logger.info(
-        { workerId: this.workerId },
-        'Leader lease held elsewhere — standing by (polling every 30s)...'
-      );
+      if (standbyPolls % STANDBY_LOG_EVERY_N_POLLS === 0) {
+        this.logger.info(
+          { workerId: this.workerId },
+          'Leader lease held elsewhere — standing by (polling every 30s)...'
+        );
+      }
+      standbyPolls += 1;
       // Standby deliberately does NOT heartbeat: the key is owned by the
       // active leader, and zero-counter standbys must not flap the panel.
       await new Promise((r) => setTimeout(r, ManagedWorkerBase.LEASE_POLL_MS));
