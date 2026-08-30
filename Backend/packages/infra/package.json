@@ -31,6 +31,7 @@
     "@betrix/core": "workspace:*",
     "@betrix/domain": "workspace:*",
     "@upstash/redis": "^1.38.2",
+    "bcryptjs": "^3.0.3",
     "better-auth": "^1.7.2",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",

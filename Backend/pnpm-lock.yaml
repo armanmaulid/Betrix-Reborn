@@ -287,6 +287,9 @@ importers:
       '@upstash/redis':
         specifier: ^1.38.2
         version: 1.38.2
+      bcryptjs:
+        specifier: ^3.0.3
+        version: 3.0.3
       better-auth:
         specifier: ^1.7.2
         version: 1.7.2(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@types/pg@8.23.1)(@upstash/redis@1.38.2)(gel@2.2.0)(kysely@0.29.5)(pg@8.23.0))(pg@8.23.0)(vitest@4.1.11)
