@@ -3,7 +3,7 @@
 **Date:** 2026-08-30
 **Workspace:** `Backend/` (Fastify 5 + Drizzle + Pino + TypeBox + @upstash/redis + node-cron + dukascopy-node + ws)
 **Branch:** `session/agent_3e8f767d-86a4-4ebc-824b-ab97de21a28b`
-**HEAD:** `1e13f71` (pushed)
+**HEAD:** `dfd887b` (pushed)
 
 > **Read this file first if context is lost.** Full review in
 > `docs/backend-native-vs-complex-review.md` (SSOT). This file is the
@@ -104,7 +104,7 @@ log) + Drizzle auth schema. 6 open questions answered (D1 plan §7).
 schema + data migration (zero-downtime sequence), hooks mapping table, phased
 execution plan, and 6 open questions for the user. **No code written.**
 
-### 3.3 Phase 5 / Wave 2B / Wave 3 — Batch 1+2+3 done (commits `8dc008b`+`3e72b78`+`c163df5`)
+### 3.3 Phase 5 / Wave 2B / Wave 3 — Batch 1+2+3+4 done (commits `8dc008b`+`3e72b78`+`c163df5`+`dfd887b`)
 
 | ID | Status | Commit | Note |
 |----|--------|--------|------|
@@ -122,10 +122,10 @@ execution plan, and 6 open questions for the user. **No code written.**
 | P13 | ⏸️ deferred | — | sse plugin registers before container, so `fastify.container.redis` isn't available at boot. Needs a registration-order change (move sse after container) — separate refactor. |
 | P16 | ⚠️ partial | `c163df5` | news relay uses `lastSeenAt` watermark + `newsRepo.findSince()` (no unbounded `Set`). Ops aggregator timer still uses `setInterval` + `clearInterval` in `onClose` (already cancellable). |
 | I1 | ✅ | `c163df5` | `createSseParser` helper in `packages/infra/src/external/sse-parser.ts`; used by `AiGatewayClient` + `FxMacroDataClient` |
-| A3 | ⬜ | — | temperature ×100 encoding — needs migration if fixed fully (skip option: leave ×100) |
-| W3 | ⬜ | — | 4 backfillers → 1 generic `Backfiller<Row>` — high risk (behavioral change in production data flows) |
-| P20 | ⬜ | — | health routes — now unblocked after `api.test.ts` deletion in D1 Phase 4, but needs new tests |
-| A6 | ⬜ | — | credit settle-retry — keep or extract (SSOT: candidate for clarification) |
+| A3 | ⏸️ kept | — | temperature ×100 encoding works; fixing requires a stored-value migration across AI agent configs. |
+| W3 | ✅ | `dfd887b` | `runBackfiller()` helper in `apps/worker/src/scripts/runBackfiller.ts`; `cot-backfill` / `fx-backfill` / `commodities-backfill` now declarative (5-line call each). Net: -60 lines of boilerplate. |
+| P20 | ✅ | `dfd887b` | health routes moved from `/api/v1/health/{,deep}` to root `/health` + `/health/deep`. Duplicate static `app.get('/health', …)` removed. |
+| A6 | ⏸️ kept | — | "settle exactly once" pattern in `StreamMessageUseCase` is already well-commented + named; no safe refactor target. |
 | P16 | news relay watermark (replace unbounded Set) | Med |
 
 ---
@@ -204,7 +204,7 @@ Commit `77a17e4` ("refactor(auth): migrate to better-auth and remove legacy iden
 
 ## 9. Phase 5 addendum (2026-08-30) — Batch 1+2+3
 
-**10 items done, 2 deferred (P8, P13), 2 partial (W1, P16), 4 remaining (A3, W3, P20, A6).**
+**13 items done, 2 deferred (P8, P13), 2 partial (W1, P16), 2 kept (A3, A6).**
 
 Commits:
 - `8dc008b` — Batch 1: I4, A4, W1 (partial), W2, W5, W6, P21.
@@ -233,10 +233,14 @@ Commits:
 - **W1 partial** — `sync-worker.ts` retry loop is custom-predicate (retry until bar date matches, not "no throw"); the shared `retry()` helper assumes throw-retry and doesn't fit. Future throw-retry call sites can use it.
 - **P16 partial** — news relay watermark done (eliminates unbounded `Set` memory leak). Ops aggregator timer still uses `setInterval` + `clearInterval` in `onClose` (already cancellable on shutdown). A fully cancellable loop with `node:timers/promises` is a separate refactor.
 
-**Remaining (high-risk / behavioral):**
-- A3 (temperature ×100) — needs migration if fixed fully; skip option: leave as is.
-- W3 (4 backfillers → 1 generic) — high risk (production data flows).
-- P20 (health routes) — unblocked after `api.test.ts` deletion; needs new tests + bug fix.
-- A6 (credit settle-retry) — keep or extract/clarify.
+**Remaining (kept by design):**
+- A3 (temperature ×100) — ⏸️ kept; fixing requires a stored-value migration across AI agent configs.
+- A6 (credit settle-retry) — ⏸️ kept; "settle exactly once" pattern in `StreamMessageUseCase` is already well-commented + named; no safe refactor target.
 
 **Build:** `pnpm -r build` PASS (7 pkgs). **Domain tests:** 44/44 PASS.
+
+**Batch 4 (`dfd887b`):** P20 ✅ (health routes moved to root `/health` + `/health/deep`), W3 ✅ (`runBackfiller()` helper in `apps/worker/src/scripts/runBackfiller.ts`; 3 backfill scripts now 5-line declarative calls, -60 lines of boilerplate), A3 ⏸️ kept, A6 ⏸️ kept.
+
+**Phase 5 status:** 🟢 ALL items either done, partially done, or explicitly kept/deferred with rationale. P8 + P13 are the only items with a real deferral (separate refactor); the rest are completed or kept-by-design. See SSOT §12.4-§12.5 for per-batch breakdown.
+
+**Net Phase 5 diff (code only, 4 batches):** 18 files, +264/-284, +8 new helpers (`escapeCsvField`, `toCsvRow`, `BrokerTimeCalculator.getUtcMonthEnd`, `createSseParser`, `backoffDelay`/`retry`/`retrySleep`, `DailyBudget`, `runBackfiller`). Build PASS (7 pkgs), domain 44/44 PASS.

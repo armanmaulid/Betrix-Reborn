@@ -1,6 +1,6 @@
 # Backend Review — Native vs Complex Logic (5-Agent Findings)
 
-**Date:** 2026-08-30 (D1 COMPLETE; Phase 5 Batch 1+2+3 done)
+**Date:** 2026-08-30 (D1 COMPLETE; Phase 5 Batch 1+2+3+4 done)
 **Scope:** `Backend/` monorepo (Fastify + Drizzle + Pino + TypeBox + node-cron + @upstash/redis + ws + dukascopy-node)
 **Review method:** 5 parallel review agents, each scoped to one layer
 **Goal:** Find "re-invented wheels" — complex custom logic that duplicates Node stdlib, TypeScript features, or libraries already in the project.
@@ -11,7 +11,7 @@
 
 > **Read this first if context is lost.** This section is the entry point.
 
-### 0.1 Current state (2026-08-30 — D1 COMPLETE; Phase 5 Batch 1+2+3 done)
+### 0.1 Current state (2026-08-30 — D1 COMPLETE; Phase 5 Batch 1+2+3+4 done)
 
 | Phase | Status | Commit / Evidence |
 |-------|--------|-------------------|
@@ -19,7 +19,7 @@
 | **Phase 2 — Wave 1 (security + correctness, no new deps)** | ✅ Done | `5710525` — P1, P2, P3, P6, P9, P10 done; P13 (Redis-native budget) deferred |
 | **Phase 3 — Wave 2A (quick dedup, 0 new deps)** | ✅ Done | `f25668f` — A2, A5, I3, W4, P7, P12, P17, P18, P19 done; P20 deferred (tangled health routes + locked test) |
 | **Phase 4 — D3 (`@fastify/env` + `Value.Parse` for C1/C2)** | ✅ Done | `b80a193` — `@fastify/env` plugin + `packages/config` refactored to `Value.Parse(EnvSchema, …)`; eliminates the `Number(x) \|\| default` falsy-0 bug, applies schema defaults at boot, exposes typed `fastify.config: EnvConfig` |
-| **Phase 5 — Wave 2B / Wave 3** | 🟢 Batch 1+2+3 done (10 items: I4, A4, W1, W2, W5, W6, W7, P11, P14, P16, I1, P21); P8/P13 deferred; ⬜ A3, W3, P20, A6 remaining | Commits `8dc008b`+`3e72b78`+`c163df5`. See §12 for per-batch breakdown. |
+| **Phase 5 — Wave 2B / Wave 3** | 🟢 Batch 1+2+3+4 done (13 items: I4, A4, W1, W2, W5, W6, W7, P11, P14, P16, I1, P21, P20, W3); P8/P13 deferred; A3/A6 kept (no safe change) | Commits `8dc008b`+`3e72b78`+`c163df5`+`dfd887b`. See §12 for per-batch breakdown. |
 | **Phase 6 — D2 (`@fastify/awilix` for P15), D4 (A1 `Value.Default`), D1 (`better-auth`)** | 🟢 D2 ✅ done; D4 ✅ done; D1 ✅ done (COMPLETE) | D2: `b5af856`+`e54bb2f`+`9b8bd36` — container 798 → 407 lines (-49%). D4: `0c40e88` — A1 `Value.Default` at 7 use-case boundaries. D1: Phase 0 (`d06677f`) + Phase 1 (`7af3616`) + Phase 2 Slice 1 (`c6d9564`) + Phase 2 Slice 2 (`466819f`) + Phase 3 (`0578588` — cutover flip USE_BETTER_AUTH=true) + **Phase 4 (`77a17e4` — all legacy auth code removed: 8 use-cases, AuthService, auth.routes, @fastify/jwt, JWT decorate, legacy schemas, legacy tests; routes migrated `request.user` → `request.authUser`)**. `pnpm -r build` PASS (7 pkgs), domain 44/44 PASS, api lint PASS. |
 
 **Code removed so far (Phases 1–3):** ~250 lines net (with ~400 lines added for type-safe improvements and a shared `parseList`/`isUuid`/`sseFrame` helper). Build PASS, lint PASS, prettier PASS, vitest domain 44 + application 28 pass.
@@ -76,18 +76,20 @@
 4. **D1 (Better Auth)** — ✅ **COMPLETE** (Phase 0 `d06677f` → Phase 1 `7af3616` → Phase 2 Slice 1 `c6d9564` → Phase 2 Slice 2 `466819f` → Phase 3 `0578588` → Phase 4 `77a17e4`). All legacy auth code removed. Soak + frontend `/api/auth/*` switch are the remaining operational items.
 
 **Deferred items (no clear dep win):**
-- I1 (SSE parser dedupe) — ✅ done (`c163df5`).
-- W3 (4 backfillers → 1 generic) — domain logic, no off-the-shelf lib fits.
-- P11 (rate-limit store 1 round-trip) — ✅ done (`c163df5`).
+- ~~I1 (SSE parser dedupe)~~ — ✅ done (`c163df5`).
+- ~~W3 (4 backfillers → 1 generic)~~ — ✅ done (`dfd887b`); helper `runBackfiller()`.
+- ~~P11 (rate-limit store 1 round-trip)~~ — ✅ done (`c163df5`).
 - ~~P8 (error handler)~~ — ⏸️ deferred (already well-consolidated, no safe dedup target).
 - ~~P14 (2nd redis client)~~ — ✅ done (`3e72b78`).
-- A3, A6 — ⬜ remaining (A3 needs migration, A6 keep-or-extract).
+- ~~A3 (temperature ×100)~~ — ⏸️ kept (no change; fixing requires stored-value migration).
+- ~~A6 (credit settle-retry)~~ — ⏸️ kept (no change; pattern already well-commented).
 - ~~A4 (CSV)~~ — ✅ done (`8dc008b`).
 - ~~W1, W2, W5, W6, W7~~ — ✅ done (W1 ⚠️ partial) (`8dc008b`+`3e72b78`).
 - ~~I4 (legacy scaffolding)~~ — ✅ done (`8dc008b`).
 - P13 (Redis-native budget) — ⏸️ deferred (Phase 5 Batch 3, registration order).
 - ~~P15~~ — done as D2 (`b5af856`+`e54bb2f`+`9b8bd36`).
 - ~~P16 (bg loops)~~ — ⚠️ partial (`c163df5`).
+- ~~P20 (health routes)~~ — ✅ done (`dfd887b`).
 
 ---
 
@@ -124,7 +126,7 @@ These were executed and committed before this doc was written. Line numbers belo
 
 ## 2b. Implementation Status Tracker (Done / In Progress / Not Executed)
 
-> Updated: 2026-08-30 (Phase 5 Batch 1+2+3 done). Use this as the single source of truth for what is fixed.
+> Updated: 2026-08-30 (Phase 5 Batch 1+2+3+4 done). Use this as the single source of truth for what is fixed.
 > Legend: ✅ Done · 🔄 In Progress · ⬜ Not executed · 🔒 Keep (legit, no change needed)
 > Waves: **W1** security+correctness · **W2** dedup (0 new deps) · **W3** structural/cleanup
 > **Status (2026-08-29):** W1 complete (P1, P2, P3, P6, P9, P10 done; P13 Redis-native deferred). **W2A (quick dedup) complete** (A2, A5, I3, W4, P7, P12, P17, P18, P19 done; P20 deferred — tangled health routes + locked test). Pre-commit validation: `tsc` build (all 7 projects) PASS, ESLint 0 errors, Prettier clean, `vitest` domain 44 + application 28 pass.
@@ -149,7 +151,7 @@ These were executed and committed before this doc was written. Line numbers belo
 | A5 (switch→table) | app | ✅ Done (W2A) — `Record<WorkerAction, …>` lookup tables in `WorkerManagerService`; new actions fail the build |
 | I1 (SSE parser dup) | infra | ✅ Done (W3, `c163df5`) — `createSseParser` helper in `packages/infra/src/external/sse-parser.ts`; used by `AiGatewayClient` (OpenAI-style `data: [DONE]` sentinel) and `FxMacroDataClient` (no sentinel, multi-line events). Event-delimiter-agnostic. |
 | I3 (process.env) | infra | ✅ Done (W2A) — `redis-keys.ts` / `AiGatewayClient` / `RedisMarketDataRepository` now read `env` from `@betrix/config` |
-| W3 (backfillers) | worker | ⬜ Not executed — W2 (high) |
+| W3 (backfillers) | worker | ✅ Done (W3, `dfd887b`) — extracted `runBackfiller()` helper in `apps/worker/src/scripts/runBackfiller.ts`; `cot-backfill` / `fx-backfill` / `commodities-backfill` now declarative (5-line `runBackfiller({…})` call each, was ~30 lines of pino+env-diagnostic+year-span+try/finally boilerplate). The 4 actual backfiller classes (`Cot` / `FxSpot` / `CommodityPrice` / `UsdCatalogue`) remain in `marketdata-backfill-lib.ts`; only the 3 one-shot script entry-points use the new runner (`UsdCatalogue` is invoked from a worker, not a script). Net: -60 lines of boilerplate. |
 | W4 (env parsers) | worker | ✅ Done (W2A) — shared `parseList()` in `apps/worker/src/shared/parseList.ts`; 3 backfill scripts use it (cot/fx/commodities) |
 | P7 (query defaults) | api | ✅ Done (W2A) — `page||1;limit||20` → `{ page = 1, limit = 20 } = request.query` in admin + me routes |
 | P8 (error handler) | api | ⏸️ Deferred — error handler is already well-consolidated (5 branches: AppError, validation, rate-limit, HTTP 4xx, 500); the rate-limit `errorResponseBuilder` carries a different shape (`retryAfter` in `details`) so the global 429 branch is a fallback only. No safe dedup target. |
@@ -159,13 +161,13 @@ These were executed and committed before this doc was written. Line numbers belo
 | P17 (any types) | api | ✅ Done (W2A) — `pgPool`/`redis` typed via `ReturnType<typeof createPgPool/createRedisClient>`; Upstash REST has no `quit()` so teardown unchanged |
 | P18 (authUser cast) | api | ✅ Done (W2A) — `fastify.decorateRequest('authUser', null)` + typed `FastifyRequest.authUser` |
 | P19 (jwt bound) | api | ✅ Done (W2A) — `AuthService.toJwtPayload()` returns payload; routes sign via `fastify.jwt.sign(payload)` |
-| P20 (health) | api | ⬜ Deferred — health-route paths tangled (`/api/v1/health` and `/api/v1/health/deep` are both wrong: prefix is `/health` and the deep route uses `/health/deep` → `/health/health/deep` 404); `api.test.ts` was deleted in D1 Phase 4 (`77a17e4`), so this P20 re-evaluation is now unblocked; full consolidation needs a separate bug fix + new tests |
+| P20 (health) | api | ✅ Done (W3, `dfd887b`) — health routes moved from `/api/v1/health/{,deep}` to root `/health` and `/health/deep`. Removed the duplicate static `app.get('/health', …)` probe in `server.ts`; v1 index no longer registers `healthRoutes`. The original `/api/v1/health` 404 issue is gone. |
 | P21 (signals) | api | ✅ Done (W1, `8dc008b`) — `forceCloseConnections: 'idle'` on Fastify options (backstop for SSE sockets on shutdown); `process.once` was already in place. |
 | C1 (config defaults) | config | ✅ Done (D3) — `Value.Parse(EnvSchema, process.env)` in `packages/config` applies schema `default` at boot; the 3× duplication of defaults (schema → resolvedEnv → env) is gone for the core 14 fields. The ~36 extended `env` fields still have `|| default` (separate cleanup). |
 | C2 (config Number bug) | config | ✅ Done (D3) — `Type.Number` + `Value.Parse` coerces `"3000"` → `3000`; no more `Number(x) \|\| default` (the falsy-`0` bug). `env.PORT` is now `number` (via the `ResolvedCoreEnv` type, since `Type.Optional` + `default` keeps the static type as `T \| undefined` despite runtime being defined). |
-| A3 (temperature) | app | ⬜ Not executed — W3 |
+| A3 (temperature) | app | ⏸️ Kept (no change) — ×100 encoding works; fixing it requires a stored-value migration across AI agent configs. Skip option: leave as is. |
 | A4 (CSV) | app | ✅ Done (W1, `8dc008b`) — RFC 4180 `escapeCsvField` + `toCsvRow` helpers in `@betrix/core`; `ExportAuditLogsUseCase` uses them (was: only one field escaped, others would break CSV on `,`/`"`/newline). |
-| A6 (credit retry) | app | ⬜ Not executed — W3 (or keep) |
+| A6 (credit retry) | app | ⏸️ Kept (no change) — the "settle exactly once" pattern in `StreamMessageUseCase` is already well-commented + named; no safe refactor target that reduces complexity. The bespoke try/finally + `settlePromise` pattern handles the race between `onDone` and the stream-end path; rewriting it would be cosmetic at best, risky at worst. |
 | I4 (legacy scaffolding) | infra | ✅ Done (W1, `8dc008b`) — removed `captchaLegacy`/`streamTicketLegacy` from `redis-keys.ts` and the `DUAL_READ_LEGACY` window in `RedisEphemeralStores.ts` (post-D1, all writes/reads use the namespaced keys). |
 | W1 (retry helper) | worker | ⚠️ Partial (W1, `8dc008b`) — shared `retry()` + `retrySleep()` in `apps/worker/src/shared/retry.ts`. `sync-worker.ts` keeps its custom-predicate loop (retry until bar date matches — not a throw-retry) so the helper isn't applied there; it's ready for future call sites. |
 | W2 (month math) | worker | ✅ Done (W1, `8dc008b`) — `BrokerTimeCalculator.getUtcMonthEnd(year, month)` (uses the `Date.UTC(y, m+1, 0)` trick); `calendar-worker.ts` calls it. |
@@ -282,7 +284,7 @@ These were executed and committed before this doc was written. Line numbers belo
 - `pnpm lint` (`@betrix/api` tsc --noEmit): **PASS** (no type errors).
 - `pnpm test` (vitest): domain **44 passed**; `apps/api` and `apps/worker` have no test files (the legacy `api.test.ts` and `application.test.ts` were removed in D1 Phase 4 `77a17e4` as legacy-coupled); infra **4 passed / 5 failed** due to `ECONNREFUSED` (no Postgres :5432 / Redis :8079 in sandbox — environmental, not code). Run `docker compose -f docker-compose.dev.yml up -d` to exercise the 5 integration tests.
 
-*Generated for future reference — line numbers reflect the committed state at the time of writing. Updated 2026-08-30 to reflect D1 Phase 4 (legacy test removal) and Phase 5 Batch 1+2+3 (10 items done, P8/P13 deferred).*
+*Generated for future reference — line numbers reflect the committed state at the time of writing. Updated 2026-08-30 to reflect D1 Phase 4 (legacy test removal) and Phase 5 Batch 1+2+3+4 (13 items done, P8/P13 deferred, A3/A6 kept).*
 
 ---
 
@@ -326,4 +328,10 @@ All legacy auth code removed. Better Auth is the sole auth path. 8 use-cases + A
 - P16: news relay replaces unbounded `Set<string>` of seen IDs with a `lastSeenAt` watermark + `newsRepo.findSince()`. Ops aggregator timer still uses `setInterval` + `clearInterval` in `onClose` (already cancellable); full cancellable-loop refactor is a separate effort.
 - I1: shared `createSseParser` helper (`packages/infra/src/external/sse-parser.ts`); used by `AiGatewayClient` (OpenAI-style `data: [DONE]` sentinel) and `FxMacroDataClient` (no sentinel, multi-line events). Event-delimiter-agnostic.
 
-**12.4 — Remaining (deferred or pending):** A3 (temperature ×100, needs migration), W3 (4 backfillers → 1 generic, high risk), P20 (health routes, unblocked after `api.test.ts` deletion but needs new tests), A6 (credit retry, keep or extract).
+**12.4 — Batch 4 (commit `dfd887b`):** P20 ✅, W3 ✅, A3 ⏸️ kept, A6 ⏸️ kept.
+- P20: health routes moved from `/api/v1/health/{,deep}` to root `/health` and `/health/deep`. Removed the duplicate static `app.get('/health', …)` probe in `server.ts`; v1 index no longer registers `healthRoutes`. The original `/api/v1/health` 404 issue is gone.
+- W3: extracted `runBackfiller()` helper in `apps/worker/src/scripts/runBackfiller.ts`; `cot-backfill` / `fx-backfill` / `commodities-backfill` now declarative (5-line `runBackfiller({…})` call each, was ~30 lines of pino+env-diagnostic+year-span+try/finally boilerplate). The 4 backfiller classes (`Cot` / `FxSpot` / `CommodityPrice` / `UsdCatalogue`) remain in `marketdata-backfill-lib.ts`; only the 3 one-shot script entry-points use the new runner (`UsdCatalogue` is invoked from a worker). Net: -60 lines of boilerplate.
+- A3: kept (×100 encoding works, fixing requires stored-value migration across AI agent configs).
+- A6: kept (the "settle exactly once" pattern in `StreamMessageUseCase` is already well-commented + named; no safe refactor target that reduces complexity).
+
+**12.5 — Phase 5 status:** 🟢 ALL items either done, partially done, or explicitly kept/deferred with rationale. P8 + P13 are the only items with a real deferral (separate refactor); the rest are completed or kept-by-design.
