@@ -105,6 +105,11 @@ log, custom rate-limit, captcha gate).
 no code change): schema diff, hook map, data migration script outline,
 parallel-test strategy. Then user reviews before any rewrite.
 
+→ **DONE:** `docs/D1-better-auth-migration-plan.md` (4 parallel research agents,
+2026-08-30). Covers integration, current-surface audit, REPLACE-vs-KEEP matrix,
+schema + data migration (zero-downtime sequence), hooks mapping table, phased
+execution plan, and 6 open questions for the user. **No code written.**
+
 ### 3.3 Phase 5 / Wave 2B / Wave 3 backlog
 
 | ID | File | Effort |
