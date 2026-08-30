@@ -3,6 +3,7 @@ import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { env } from '@betrix/config';
 import {
   containerPlugin,
+  betterAuthPlugin,
   authPlugin,
   errorHandlerPlugin,
   swaggerPlugin,
@@ -75,6 +76,7 @@ export async function createServer() {
   await app.register(errorHandlerPlugin);
   await app.register(ssePlugin);
   await app.register(containerPlugin);
+  await app.register(betterAuthPlugin);
   await app.register(authPlugin);
   await app.register(swaggerPlugin);
 

@@ -28,6 +28,7 @@
     "@fastify/type-provider-typebox": "^6.1.0",
     "@sinclair/typebox": "^0.34.52",
     "awilix": "^13.0.5",
+    "better-auth": "^1.7.2",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.12.1",
     "fastify-plugin": "^6.0.0",

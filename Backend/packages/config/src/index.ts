@@ -72,6 +72,9 @@ type ResolvedCoreEnv = {
   AI_BASE_URL: string | undefined;
   AI_API_KEY: string | undefined;
   DEFAULT_MODEL: string | undefined;
+  USE_BETTER_AUTH: boolean;
+  BETTER_AUTH_SECRET: string | undefined;
+  BETTER_AUTH_URL: string | undefined;
 };
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -97,6 +100,9 @@ const parsed = Value.Parse(EnvSchema, buildInput());
 
 export const env = {
   ...(parsed as unknown as ResolvedCoreEnv),
+  USE_BETTER_AUTH: parsed.USE_BETTER_AUTH ?? false,
+  BETTER_AUTH_SECRET: parsed.BETTER_AUTH_SECRET,
+  BETTER_AUTH_URL: parsed.BETTER_AUTH_URL,
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
   RATE_LIMIT_MAX: Number(process.env.RATE_LIMIT_MAX) || 120,

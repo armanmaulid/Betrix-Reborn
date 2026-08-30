@@ -1,75 +1,92 @@
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { admin } from 'better-auth/plugins';
+import { bcrypt } from '../external/auth/bcrypt.js';
 import type { DrizzleDb } from '../persistence/drizzle/client.js';
 import * as authSchema from './schemas.js';
 
 /**
- * Phase 0 — Better Auth instance stub.
+ * Phase 2 Slice 1 — Better Auth instance config (flag-gated at the plugin
+ * layer, see apps/api/src/plugins/better-auth.plugin.ts).
  *
- * Phase 2 will add:
- *   - emailAndPassword (with bcrypt hash override from packages/infra/src/external/auth/bcrypt.ts)
- *   - socialProviders.google
- *   - emailVerification (SmtpEmailService hooks)
- *   - admin plugin
- *   - rateLimit (Redis customStorage)
- *   - custom hooks for device / captcha / credit / audit
- *   - user.additionalFields (isAdmin, credits, tier, status, etc.)
+ * This module owns the *native* BA surface only:
+ *   - emailAndPassword (bcrypt cost 12 via packages/infra/src/external/auth/bcrypt.ts)
+ *   - socialProviders.google (env placeholders, disabled until configured)
+ *   - admin() plugin (role/ban/impersonation)
+ *   - rateLimit (BA built-in, window/max from env)
+ *   - trustedOrigins from CORS_ORIGIN
+ *   - user.additionalFields mirroring identity.users
+ *     (isAdmin, credits, tier, status) so the BA `user` row carries the same
+ *     authoritative fields the legacy path reads.
  *
- * Phase 0 only validates that the schema + adapter imports compile. The
- * returned `auth.handler` is intentionally NOT mounted by `apps/api` — the
- * legacy `auth.plugin.ts` remains the live auth surface until Phase 2
- * flips the `USE_BETTER_AUTH` flag.
+ * Slice 2 (deferred, separate phase) layers ON TOP of this config via BA
+ * hooks: device 1:1 binding, progressive captcha, credit grant on signup, and
+ * audit-log emission. Those are intentionally NOT wired here yet.
  *
- * `BETTER_AUTH_SECRET` is a placeholder for Phase 1. Production deployments
- * must inject it via env (32+ chars). Defaults to a dev marker so missing
- * config is loud in the logs but does not throw at construction time.
+ * The handler is mounted by `better-auth.plugin.ts` only when
+ * `USE_BETTER_AUTH=true`. `BETTER_AUTH_SECRET` MUST be injected in production
+ * (32+ chars); in dev we fall back to a stable dev marker so local runs work
+ * without manual secret generation.
  */
 
 export type BetterAuthInstance = ReturnType<typeof betterAuth>;
 
-export function createAuth(db: DrizzleDb): BetterAuthInstance {
+export function createAuth(db: DrizzleDb, opts?: { secret?: string; baseURL?: string }): BetterAuthInstance {
+  const secret = opts?.secret ?? process.env.BETTER_AUTH_SECRET ?? 'dev-phase2-better-auth-secret-change-me';
+  const baseURL = opts?.baseURL ?? process.env.BETTER_AUTH_URL ?? 'http://localhost:3000';
+
+  const trustedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   const config: BetterAuthOptions = {
     database: drizzleAdapter(db, { provider: 'pg', schema: authSchema }),
-    baseURL: process.env.BETTER_AUTH_URL || 'http://localhost:3000',
-    secret: process.env.BETTER_AUTH_SECRET || 'phase0-placeholder-replace-in-phase1',
+    baseURL,
+    secret,
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: 8,
+      // Keep legacy bcrypt cost (12) so backfilled `account.password` hashes
+      // (from identity.users.password_hash) verify without rehash at cutover.
+      password: {
+        hash: (password: string) => bcrypt.hash(password, 12),
+        verify: ({ password, hash }: { password: string; hash: string }) =>
+          bcrypt.compare(password, hash)
+      }
+    },
+    socialProviders: {
+      // Credentials are placeholders; Google OAuth is inert until both env
+      // vars are set. BA tolerates missing secrets (provider simply errors on
+      // use) so we do not fail construction in dev.
+      google: {
+        clientId: process.env.GOOGLE_CLIENT_ID ?? 'placeholder-google-client-id',
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? 'placeholder-google-client-secret',
+        // redirectURI is derived from baseURL by BA; override if needed.
+      }
+    },
+    // Slice 2 will extend `user` with hooks for device/captcha/credit/audit.
+    user: {
+      additionalFields: {
+        isAdmin: { type: 'boolean', defaultValue: false, input: false },
+        credits: { type: 'number', defaultValue: 100, input: false },
+        tier: { type: 'string', defaultValue: 'free', input: false },
+        status: { type: 'string', defaultValue: 'active', input: false }
+      }
+    },
+    plugins: [admin()],
+    rateLimit: {
+      window: 60,
+      max: Number(process.env.RATE_LIMIT_MAX) || 120,
+      enabled: true
+    },
+    trustedOrigins,
     advanced: {
       database: {
         generateId: () => crypto.randomUUID()
       }
     }
   };
-
-  // Phase 2 additions (commented for reference):
-  // emailAndPassword: {
-  //   enabled: true,
-  //   requireEmailVerification: true,
-  //   password: {
-  //     hash: (pw: string) => bcrypt.hash(pw, 12),
-  //     verify: ({ password, hash }: { password: string; hash: string }) =>
-  //       bcrypt.compare(password, hash)
-  //   }
-  // },
-  // socialProviders: {
-  //   google: {
-  //     clientId: process.env.GOOGLE_CLIENT_ID!,
-  //     clientSecret: process.env.GOOGLE_CLIENT_SECRET!
-  //   }
-  // },
-  // emailVerification: {
-  //   sendVerificationEmail: async ({ user: u, url }) =>
-  //     smtpEmailService.sendVerificationEmail({ to: u.email, link: url, name: u.name })
-  // },
-  // admin: {},
-  // rateLimit: { window: 60, max: 10, customStorage: redisRateLimitStorage },
-  // user: {
-  //   additionalFields: {
-  //     isAdmin: { type: 'boolean', defaultValue: false, input: false },
-  //     credits: { type: 'number', defaultValue: 100, input: false },
-  //     tier: { type: 'string', defaultValue: 'free', input: false },
-  //     status: { type: 'string', defaultValue: 'active', input: false }
-  //   }
-  // },
-  // trustedOrigins: ['http://localhost:3000']
 
   return betterAuth(config);
 }

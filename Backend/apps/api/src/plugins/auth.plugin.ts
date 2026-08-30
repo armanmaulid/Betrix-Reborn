@@ -1,6 +1,7 @@
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
 import fastifyJwt from '@fastify/jwt';
+import { fromNodeHeaders } from 'better-auth/node';
 import { env } from '@betrix/config';
 import { UnauthorizedError, ForbiddenError } from '@betrix/core';
 
@@ -45,9 +46,26 @@ const authPluginCallback: FastifyPluginAsync = async (fastify) => {
   });
 
   // 2. Decorate fastify.authenticate (Hybrid JWT + Active Session Verification).
-  // The verified user is stashed on `request.authUser` so requireAdmin does
-  // not need to re-query the DB (3 hits → 2 per admin request).
+  // D1 Phase 2 Slice 1 — when USE_BETTER_AUTH=true the session is resolved
+  // through Better Auth's getSession (cookie/session-token based) instead of
+  // the legacy JWT. The legacy JWT path remains the default (flag off) so the
+  // 8 identity use-cases keep working unchanged during the parallel-run window.
   fastify.decorate('authenticate', async (request: FastifyRequest, _reply: FastifyReply) => {
+    if (env.USE_BETTER_AUTH) {
+      const session = await fastify.betterAuth.api.getSession({
+        headers: fromNodeHeaders(request.headers)
+      });
+      if (!session?.user) {
+        throw new UnauthorizedError('Invalid or expired authentication session.');
+      }
+      const user = await fastify.container.repositories.userRepo.findById(session.user.id);
+      if (!user || user.status !== 'active') {
+        throw new UnauthorizedError('Account is not active. Please contact support.');
+      }
+      request.authUser = { id: user.id, isAdmin: user.isAdmin, status: user.status };
+      return;
+    }
+
     try {
       await request.jwtVerify();
     } catch {
