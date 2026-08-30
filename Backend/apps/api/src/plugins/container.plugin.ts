@@ -7,7 +7,8 @@ import {
   asValue,
   createContainer,
   type AwilixContainer,
-  type InferCradleFromResolvers
+  type InferCradleFromResolvers,
+  type Resolver
 } from 'awilix';
 import { env } from '@betrix/config';
 import {
@@ -204,32 +205,21 @@ const useCaseResolvers = {
 };
 type UseCaseCradle = InferCradleFromResolvers<typeof useCaseResolvers>;
 
-const repositoriesGrouping = asFunction(
-  (c: RepoCradle): RepoCradle =>
-    Object.fromEntries(Object.keys(repoResolvers).map((k) => [k, c[k as keyof RepoCradle]])) as RepoCradle
-);
-const storesGrouping = asFunction(
-  (c: StoreCradle): StoreCradle =>
-    Object.fromEntries(Object.keys(storeResolvers).map((k) => [k, c[k as keyof StoreCradle]])) as StoreCradle
-);
-const adaptersGrouping = asFunction(
-  (c: AdapterCradle): AdapterCradle =>
-    Object.fromEntries(
-      Object.keys(adapterResolvers).map((k) => [k, c[k as keyof AdapterCradle]])
-    ) as AdapterCradle
-);
-const servicesGrouping = asFunction(
-  (c: ServiceCradle): ServiceCradle =>
-    Object.fromEntries(
-      Object.keys(serviceResolvers).map((k) => [k, c[k as keyof ServiceCradle]])
-    ) as ServiceCradle
-);
-const useCasesGrouping = asFunction(
-  (c: UseCaseCradle): UseCaseCradle =>
-    Object.fromEntries(
-      Object.keys(useCaseResolvers).map((k) => [k, c[k as keyof UseCaseCradle]])
-    ) as UseCaseCradle
-);
+const pickGroup = <R extends Record<string, Resolver<any>>>(
+  source: R
+) =>
+  asFunction(
+    (c: InferCradleFromResolvers<R>) =>
+      Object.fromEntries(
+        Object.keys(source).map((k) => [k, c[k as keyof InferCradleFromResolvers<R>]])
+      ) as InferCradleFromResolvers<R>
+  );
+
+const repositoriesGrouping = pickGroup(repoResolvers);
+const storesGrouping = pickGroup(storeResolvers);
+const adaptersGrouping = pickGroup(adapterResolvers);
+const servicesGrouping = pickGroup(serviceResolvers);
+const useCasesGrouping = pickGroup(useCaseResolvers);
 
 type AppCradle = InferCradleFromResolvers<typeof repoResolvers> &
   InferCradleFromResolvers<typeof storeResolvers> &
