@@ -47,9 +47,9 @@ describe('Betrix-Reborn — Phase 5 Fastify API End-to-End Route Tests', () => {
       credits: 10000,
       createdAt: new Date()
     });
-    await app.container.repositories.userRepo.save(adminUser);
+    await app.diContainer.cradle.repositories.userRepo.save(adminUser);
 
-    const { session } = await app.container.services.authService.createSession(
+    const { session } = await app.diContainer.cradle.services.authService.createSession(
       adminUser.id,
       `fp_admin_dev_${Date.now()}`
     );
@@ -64,10 +64,10 @@ describe('Betrix-Reborn — Phase 5 Fastify API End-to-End Route Tests', () => {
 
   afterAll(async () => {
     if (testUserId) {
-      await app.container.repositories.userRepo.delete(testUserId).catch(() => {});
+      await app.diContainer.cradle.repositories.userRepo.delete(testUserId).catch(() => {});
     }
     if (testAdminId) {
-      await app.container.repositories.userRepo.delete(testAdminId).catch(() => {});
+      await app.diContainer.cradle.repositories.userRepo.delete(testAdminId).catch(() => {});
     }
     await app.close();
   });
@@ -215,7 +215,7 @@ describe('Betrix-Reborn — Phase 5 Fastify API End-to-End Route Tests', () => {
         isRedeemed: false,
         createdAt: new Date()
       });
-      await app.container.repositories.voucherRepo.create(voucher);
+      await app.diContainer.cradle.repositories.voucherRepo.create(voucher);
 
       const res = await app.inject({
         method: 'POST',

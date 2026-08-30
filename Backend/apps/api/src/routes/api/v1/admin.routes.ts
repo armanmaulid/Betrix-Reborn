@@ -31,7 +31,7 @@ import {
 import { Type } from '@sinclair/typebox';
 
 export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
-  const { useCases } = fastify.container;
+  const { useCases } = fastify.diContainer.cradle;
 
   // T3.3 — live worker telemetry heartbeats (Redis, TTL 90s). Read-only here:
   // writers are the worker processes themselves via ManagedWorkerBase.

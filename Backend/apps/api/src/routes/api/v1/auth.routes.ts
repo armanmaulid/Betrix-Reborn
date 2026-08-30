@@ -11,7 +11,7 @@ import {
 import { GoogleVerifierNotConfiguredError } from '@betrix/application';
 
 export const authRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
-  const { useCases, services } = fastify.container;
+  const { useCases, services } = fastify.diContainer.cradle;
 
   // 1. GET /captcha — Generate dynamic math challenge for anti-bruteforce
   fastify.get(

@@ -7,7 +7,7 @@ import {
 import { Type } from '@sinclair/typebox';
 
 export const marketRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
-  const { useCases } = fastify.container;
+  const { useCases } = fastify.diContainer.cradle;
 
   // 1. GET /market/symbols — List all tradable instruments
   fastify.get(

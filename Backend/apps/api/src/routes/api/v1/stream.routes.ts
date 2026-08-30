@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { UnauthorizedError } from '@betrix/core';
 
 export const streamRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
-  const { stores } = fastify.container;
+  const { stores } = fastify.diContainer.cradle;
 
   // 1. GET /stream/market — Real-time Price Ticks SSE Stream (ADR-18 & ADR-36)
   fastify.get(

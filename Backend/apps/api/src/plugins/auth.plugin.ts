@@ -60,13 +60,13 @@ const authPluginCallback: FastifyPluginAsync = async (fastify) => {
     }
 
     // Verify session is active in database (instant revocation support)
-    const session = await fastify.container.repositories.sessionRepo.findByToken(sessionId);
+    const session = await fastify.diContainer.cradle.repositories.sessionRepo.findByToken(sessionId);
     if (!session || session.userId !== userId) {
       throw new UnauthorizedError('Session has expired or been revoked. Please log in again.');
     }
 
     // Re-check live user state — bans/suspensions apply immediately, not at token expiry
-    const user = await fastify.container.repositories.userRepo.findById(userId);
+    const user = await fastify.diContainer.cradle.repositories.userRepo.findById(userId);
     if (!user || user.status !== 'active') {
       throw new UnauthorizedError('Account is not active. Please contact support.');
     }
@@ -81,7 +81,7 @@ const authPluginCallback: FastifyPluginAsync = async (fastify) => {
     // Reuse the user authenticate() already loaded when possible.
     let user = request.authUser;
     if (!user) {
-      const found = await fastify.container.repositories.userRepo.findById(request.user.userId);
+      const found = await fastify.diContainer.cradle.repositories.userRepo.findById(request.user.userId);
       user = found ? { id: found.id, isAdmin: found.isAdmin, status: found.status } : null;
     }
     if (!user?.isAdmin) {

@@ -12,7 +12,7 @@ import {
 } from '@betrix/application';
 
 export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
-  const { useCases } = fastify.container;
+  const { useCases } = fastify.diContainer.cradle;
 
   // Protect all /me/* routes with authentication
   fastify.addHook('preHandler', fastify.authenticate);

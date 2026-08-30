@@ -20,7 +20,8 @@
 | **Phase 3 — Wave 2A (quick dedup, 0 new deps)** | ✅ Done | `f25668f` — A2, A5, I3, W4, P7, P12, P17, P18, P19 done; P20 deferred (tangled health routes + locked test) |
 | **Phase 4 — D3 (`@fastify/env` + `Value.Parse` for C1/C2)** | ✅ Done | (current commit) — `@fastify/env` plugin + `packages/config` refactored to `Value.Parse(EnvSchema, …)`; eliminates the `Number(x) \|\| default` falsy-0 bug, applies schema defaults at boot, exposes typed `fastify.config: EnvConfig` |
 | **Phase 5 — Wave 2B / Wave 3 remaining** | ⬜ Not started | A1, I1, W3, P8/P11/P14, A3–A6, W1/W2/W5–W7, I4, P13, P15/P16 |
-| **Phase 6 — D1 (`better-auth`), D2 (`@fastify/awilix`), D4 (A1 internal)** | ⬜ Open | D3 ✅ done; D2 + D4 next; D1 is a separate sprint |
+| **Phase 5 — D2 (`@fastify/awilix` replaces P15 795-line container)** | ✅ Done | (current commit) — `container.plugin.ts` rewritten on `@fastify/awilix`; 14 call sites migrated (`fastify.container` → `fastify.diContainer.cradle`); custom `AppContainer` interface + `declare module fastify { container }` + `fastify.decorate('container', ...)` are gone. |
+| **Phase 6 — D1 (`better-auth`), D4 (A1 internal)** | ⬜ Open | D2 ✅ done; D4 (A1 `Value.Decode`) next; D1 is a separate sprint |
 
 **Code removed so far (Phases 1–3):** ~250 lines net (with ~400 lines added for type-safe improvements and a shared `parseList`/`isUuid`/`sseFrame` helper). Build PASS, lint PASS, prettier PASS, vitest domain 44 + application 28 pass.
 
@@ -48,18 +49,18 @@
 - ~~C1/C2 (config defaults + Number bug)~~ — ✅ done in Phase 4 (D3), core 14 fields; the ~36 extended `env` fields (rate-limit, SMTP, FXMacroData, calendar refresh, ops pipeline) still have `|| default` and are a separate cleanup
 - A3/A4/A6 (app cleanup), W1/W2/W5/W6/W7 (worker cleanup)
 - I4 (legacy scaffolding), P13 (Redis-native budget), P15/P16 (container + bg loops)
-- **D1 (better-auth), D2 (@fastify/awilix), D4 (A1 internal)** — Phase 6 open (§0.2)
+- **D1 (better-auth), D4 (A1 internal)** — Phase 6 open (§0.2)
 
 ### 0.2 Strategic Dependency Options (Open Question)
 
-> User is open to new dependencies for "minimum coding" (deleting complex code by leveraging battle-tested libraries instead of writing/maintaining it). Researched 2026-current (Better Auth docs, Fastify ecosystem, DI comparison, env validation). **D3 ✅ done (Phase 4)**; D1, D2, D4 still pending.
+> User is open to new dependencies for "minimum coding" (deleting complex code by leveraging battle-tested libraries instead of writing/maintaining it). Researched 2026-current (Better Auth docs, Fastify ecosystem, DI comparison, env validation). **D3 + D2 ✅ done (Phases 4 and 5)**; D1, D4 still pending.
 
 **Why consider new deps at all?** The native-stdlib phases (1–3) already extracted ~250 lines, but the remaining backlog (especially A1, P15, the entire custom auth surface, C1/C2) has either high effort-to-payoff (A1: 8 use-cases, medium risk) or is structural (P15: 795-line container). Strategic deps can convert these from multi-day rewrites into a config + install, deleting orders of magnitude more code.
 
 | # | Candidate dep | Replaces (findings) | Effort | Risk | Why this dep (rationale) |
 |---|---------------|---------------------|--------|------|--------------------------|
 | **D1** | **`better-auth@1.x`** + **`@better-auth/drizzle-adapter`** + **`fastify-better-auth`** (community plugin, optional) | All custom auth: RegisterUseCase, LoginUseCase, ResendVerificationUseCase, ForgotPasswordUseCase, ResetPasswordUseCase, Google OAuth handler, captcha+voucher flows, custom `@fastify/jwt` + `authUser` decorate, manual rate-limit on login, `users`/`sessions`/`verifications` tables | **1–2 days** (rewrite + schema migration) | **Medium** (DB schema change, optional data migration) | **Massive "minimum coding" win.** Official Fastify integration (catch-all `/api/auth/*` + `fromNodeHeaders` + `auth.api.getSession`). Official Drizzle adapter (we already use Drizzle). Replaces 8+ use-cases, 5 routes, 4 Drizzle tables, captcha + voucher flow, custom rate-limit, custom JWT decorate. Adds for free: 2FA, passkeys (WebAuthn), magic links, organizations, admin plugin, built-in rate-limit, OAuth providers (Google/GitHub/etc.), email verification with HTML templates. Type-safe end-to-end. 50+ official plugins. Schema generated via CLI (`npx auth@latest generate`). We pay one dep, delete ~1000+ lines, gain features we'd otherwise build. |
-| **D2** | **`@fastify/awilix`** + **`awilix`** | **P15** — 795-line hand-rolled DI container in `apps/api/src/plugins/container.plugin.ts` | **1–2 hours** | **Low** | **Best-fit DI for THIS stack.** Awilix is convention-based (no `reflect-metadata`, no decorator metadata, no `experimentalDecorators`). TSyringe/Inversify require `emitDecoratorMetadata` which conflicts with our **TypeScript 7** toolchain. `@fastify/awilix` is an official Fastify-ecosystem plugin (128 stars, actively maintained). Replaces the largest single file in the repo with a battle-tested container + request-scoped cradle. |
+| **D2** | **`@fastify/awilix`** + **`awilix`** | **P15** — 795-line hand-rolled DI container in `apps/api/src/plugins/container.plugin.ts` | **1–2 hours** | **Low** | **Best-fit DI for THIS stack.** Awilix is convention-based (no `reflect-metadata`, no decorator metadata, no `experimentalDecorators`). TSyringe/Inversify require `emitDecoratorMetadata` which conflicts with our **TypeScript 7** toolchain. `@fastify/awilix` is an official Fastify-ecosystem plugin (128 stars, actively maintained). Replaces the largest single file in the repo with a battle-tested container + request-scoped cradle. **Status: ✅ Done in Phase 5.** |
 | **D3** | **`@fastify/env`** (wraps `env-schema`) | **C1 + C2** — env defaults duplicated 3×, `Number(x) \|\| default` falsy-0 bug, schema `default` never applied | **30 minutes** | **Low** | **Fastify-ecosystem native.** JSON Schema validation at boot, no new validation library (reuses our existing TypeBox/Ajv pipeline). `@t3-oss/env-core` / `envalid` are also valid but add a new validation paradigm; `@fastify/env` stays inside the Fastify-ecosystem pattern. Solves C1 and C2 in one file. **Status: ✅ Done in Phase 4.** |
 | **D4** | **No new dep** — internal discipline | **A1** — `Value.Decode` TypeBox never run at runtime; every use-case re-applies `\|\| default` that the schema already declares (drift bug, e.g. `includeNews` default `true` effectively ignored) | **Medium** (touches ~8 use-cases) | **Low–Medium** | TypeBox is already the right validation library for Fastify (native integration, fastest with Ajv, JSON Schema output for OpenAPI). The fix is **internal discipline**: call `Value.Decode(Schema, rawInput)` at the input boundary of each use-case and delete the manual `\|\| default` lines. No dep needed — adding Zod/Valibot/ArkType would discard all existing TypeBox schemas and require re-integrating with `@fastify/type-provider-typebox`. Pure loss. |
 
@@ -69,10 +70,9 @@
 - **Lucia / Auth.js** — Better Auth won the 2025–2026 migration (Auth.js officially recommends Better Auth in their own docs).
 
 **Recommended execution order (if user wants to proceed):**
-1. ~~**D2 (awilix) + D3 (@fastify/env)** — Low risk, ecosystem-native, fast, deletes hundreds of lines (P15 + C1/C2). One commit each.~~ **D3 done in Phase 4; D2 still next.**
-2. **D2 (@fastify/awilix)** — P15 (795-line container). Low risk, 1–2 hours.
-3. **D4 (A1 `Value.Decode`)** — Internal, 0 dep, medium effort but kills drift bugs across ~8 use-cases.
-4. **D1 (Better Auth)** — Strategic rewrite. Defer to dedicated sprint; treat as its own project, not a quick win.
+1. ~~**D2 (awilix) + D3 (@fastify/env)** — Low risk, ecosystem-native, fast, deletes hundreds of lines (P15 + C1/C2). One commit each.~~ **D2 + D3 both done in Phases 4 and 5.**
+2. **D4 (A1 `Value.Decode`)** — Internal, 0 dep, medium effort but kills drift bugs across ~8 use-cases.
+3. **D1 (Better Auth)** — Strategic rewrite. Defer to dedicated sprint; treat as its own project, not a quick win.
 
 **Deferred items (no clear dep win):**
 - I1 (SSE parser dedupe) — 2 files, 1 helper, small win without any dep needed.
@@ -163,7 +163,7 @@ These were executed and committed before this doc was written. Line numbers belo
 | W5 (indicator parse) | worker | ⬜ Not executed — W3 |
 | W6 (backoff) | worker | ⬜ Not executed — W3 |
 | W7 (daily budget) | worker | ⬜ Not executed — W3 |
-| P15 (DI container) | api | ⬜ Not executed — W3 (structural) |
+| P15 (DI container) | api | ✅ Done (D2) — replaced by `@fastify/awilix` (see §0.1 Phase 5). The 150-line `AppContainer` interface + `container: AppContainer = {…}` literal + `declare module fastify { container }` + `fastify.decorate('container', …)` are gone; 14 call sites migrated to `fastify.diContainer.cradle`. The use-case wiring stayed explicit (75 `asFunction` calls) to avoid `reflect-metadata` / param-name drift — a deliberate trade-off documented in the file. |
 | P16 (bg loops) | api | ⬜ Not executed — W3 |
 | I2 (fetch retry) | infra | 🔒 Keep (no stdlib equivalent) |
 | W9 (ManagedWorkerBase) | worker | 🔒 Keep (distributed leader election, no replacement) |

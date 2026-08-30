@@ -2,7 +2,7 @@ import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
 import { sql } from 'drizzle-orm';
 
 export const healthRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
-  const { db, redis } = fastify.container;
+  const { db, redis } = fastify.diContainer.cradle;
 
   // 1. GET /health — Liveness probe (PUBLIC, zero internal detail).
   //    Unauthenticated callers get only ok/degraded — pg/redis error strings
