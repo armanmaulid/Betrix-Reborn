@@ -1,6 +1,6 @@
 # Backend Review — Native vs Complex Logic (5-Agent Findings)
 
-**Date:** 2026-08-29
+**Date:** 2026-08-30 (updated)
 **Scope:** `Backend/` monorepo (Fastify + Drizzle + Pino + TypeBox + node-cron + @upstash/redis + ws + dukascopy-node)
 **Review method:** 5 parallel review agents, each scoped to one layer
 **Goal:** Find "re-invented wheels" — complex custom logic that duplicates Node stdlib, TypeScript features, or libraries already in the project.
@@ -20,7 +20,7 @@
 | **Phase 3 — Wave 2A (quick dedup, 0 new deps)** | ✅ Done | `f25668f` — A2, A5, I3, W4, P7, P12, P17, P18, P19 done; P20 deferred (tangled health routes + locked test) |
 | **Phase 4 — D3 (`@fastify/env` + `Value.Parse` for C1/C2)** | ✅ Done | `b80a193` — `@fastify/env` plugin + `packages/config` refactored to `Value.Parse(EnvSchema, …)`; eliminates the `Number(x) \|\| default` falsy-0 bug, applies schema defaults at boot, exposes typed `fastify.config: EnvConfig` |
 | **Phase 5 — Wave 2B / Wave 3 remaining** | ⬜ Not started | A1, I1, W3, P8/P11/P14, A3–A6, W1/W2/W5–W7, I4, P13, P15/P16 |
-| **Phase 6 — D2 (`@fastify/awilix` for P15), D4 (A1 `Value.Default`), D1 (`better-auth`)** | 🔵 D2 ✅ done; D4 ✅ done; D1 open | D2: `b5af856`+`e54bb2f`+`9b8bd36` — container 798 → 407 lines (-49%). D4: `0c40e88` — A1 `Value.Default` at 7 use-case boundaries (SendMessage, StreamMessage, CreateAgent, GetNews, FetchNews, GetOHLC, ContextInjection); schema is now the single source of truth for `|| default`; `pnpm -r build` + application 28/28 tests PASS. |
+| **Phase 6 — D2 (`@fastify/awilix` for P15), D4 (A1 `Value.Default`), D1 (`better-auth`)** | 🔵 D2 ✅ done; D4 ✅ done; D1 🔵 Phase 2 Slice 1 ✅ | D2: `b5af856`+`e54bb2f`+`9b8bd36` — container 798 → 407 lines (-49%). D4: `0c40e88` — A1 `Value.Default` at 7 use-case boundaries (SendMessage, StreamMessage, CreateAgent, GetNews, FetchNews, GetOHLC, ContextInjection); schema is now the single source of truth for `|| default`; `pnpm -r build` + application 28/28 tests PASS. D1: Phase 0 (`d06677f`) + Phase 1 (`7af3616`) + **Phase 2 Slice 1 (`c6d9564`)** — full BA config via `createAuth(db, opts)` (emailAndPassword bcrypt cost 12, google placeholder, `admin()` plugin, `rateLimit`, `trustedOrigins`, `user.additionalFields` mirroring identity.users); `betterAuth.plugin.ts` mounts BA handler at `/api/auth/*` only when `USE_BETTER_AUTH=true`; `auth.plugin.ts` authenticate flag-gated BA `getSession` vs legacy JWT. **Slice 2 (custom hooks: device/captcha/credit/audit) deferred.** |
 
 **Code removed so far (Phases 1–3):** ~250 lines net (with ~400 lines added for type-safe improvements and a shared `parseList`/`isUuid`/`sseFrame` helper). Build PASS, lint PASS, prettier PASS, vitest domain 44 + application 28 pass.
 
@@ -73,7 +73,7 @@
 1. ~~**D2 (awilix) + D3 (@fastify/env)** — Low risk, ecosystem-native, fast, deletes hundreds of lines (P15 + C1/C2). One commit each.~~ **D3 done in Phase 4 (`b80a193`); D2 done in Phase 6 (`b5af856` + `e54bb2f` + `9b8bd36`).**
 2. ~~**D2 (@fastify/awilix)** — P15 (795-line container). Low risk, 1–2 hours.~~ **Done — see Phase 6 row.**
 3. ~~**D4 (A1 `Value.Default`)** — Internal, 0 dep, medium effort but kills drift bugs across ~8 use-cases.~~ **Done — `0c40e88`.**
-4. **D1 (Better Auth)** — Strategic rewrite. Defer to dedicated sprint; treat as its own project, not a quick win.
+4. **D1 (Better Auth)** — Phase 0/1/2-Slice1 done (`d06677f`/`7af3616`/`c6d9564`). Flag-gated BA config + Fastify bridge live; legacy auth untouched behind `USE_BETTER_AUTH=false`. Next: Slice 2 (custom hooks) then Phase 3 cutover (gated by 6 open user questions in `docs/D1-better-auth-migration-plan.md`).
 
 **Deferred items (no clear dep win):**
 - I1 (SSE parser dedupe) — 2 files, 1 helper, small win without any dep needed.
