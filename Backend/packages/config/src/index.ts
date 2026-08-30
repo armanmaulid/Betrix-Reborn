@@ -24,6 +24,10 @@ loadEnvFile();
 /**
  * Canonical schema for the *core* infrastructure env vars — the ones the API
  * needs at boot to bind a port, open a DB pool, sign JWTs, and emit logs.
+ *
+ * USE_BETTER_AUTH: D1 cutover lever. When `true`, `apps/api` routes auth
+ * through Better Auth; legacy 8 use-cases + JWT decorate stay live behind
+ * the flag for debug. Default `false` until Phase 2 cutover.
  */
 export const EnvSchema = Type.Object({
   NODE_ENV: Type.Optional(Type.String({ default: 'development' })),
@@ -39,7 +43,8 @@ export const EnvSchema = Type.Object({
   FINNHUB_LOG_TICKS: Type.Optional(Type.Boolean({ default: false })),
   AI_BASE_URL: Type.Optional(Type.String()),
   AI_API_KEY: Type.Optional(Type.String()),
-  DEFAULT_MODEL: Type.Optional(Type.String())
+  DEFAULT_MODEL: Type.Optional(Type.String()),
+  USE_BETTER_AUTH: Type.Optional(Type.Boolean({ default: false }))
 });
 
 export type EnvConfig = Static<typeof EnvSchema>;
