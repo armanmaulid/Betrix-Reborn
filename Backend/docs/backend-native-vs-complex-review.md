@@ -338,3 +338,30 @@ All legacy auth code removed. Better Auth is the sole auth path. 8 use-cases + A
 - A6: kept (the "settle exactly once" pattern in `StreamMessageUseCase` is already well-commented + named; no safe refactor target that reduces complexity).
 
 **12.5 — Phase 5 status:** 🟢 ALL items either done, partially done, or explicitly kept/deferred with rationale. P8 + P13 are the only items with a real deferral (separate refactor); the rest are completed or kept-by-design.
+
+---
+
+## 13. Library Applicability Audit (2026-08-30)
+
+5 parallel audit agents verified library usage against official docs (`better-auth 1.7.2`, `Fastify v5`, `Drizzle ORM 0.45+`, `TypeBox 0.34 + Pino 9`, `@upstash/redis 1.38 + node-cron v4`). Full report: `docs/audit-library-applicability-2026-08-30.md`.
+
+**Verdict per library:**
+
+| Library | Verdict | Majors | Minors |
+|---|---|---:|---:|
+| better-auth 1.7.2 | ⚠️ MAJOR ISSUES | 1 | 7 |
+| Fastify v5 | MINOR ISSUES | 0 | 9 |
+| Drizzle ORM 0.45+ | MINOR ISSUES | 0 | 4 |
+| TypeBox 0.34 + Pino 9 | MINOR ISSUES | 0 | 7 |
+| @upstash/redis 1.38 + node-cron v4 | MINOR ISSUES (1 mod bug) | 0 | 6 |
+| **TOTAL** | — | **1** | **33** |
+
+**1 major design mismatch (better-auth `admin()` ↔ `isAdmin` field) + 1 moderate correctness bug (`isShuttingDownLease` never set in worker `stop()`) + 33 minor issues.**
+
+**Top-4 priority fixes (by risk):**
+1. **D-1 / B-7** — Generate the BA auth-schema migration; add `isAdmin`/`credits`/`tier`/`status` columns to `auth.user` Drizzle schema. (PROD-BLOCKING: `auth.user` table may not exist in DB.)
+2. **B-1** — Resolve the admin plugin vs `isAdmin` design mismatch (pick one source of truth).
+3. **U-1** — Set `isShuttingDownLease = true` in worker `stop()` (mod-bug: standby loop can re-acquire released lease on torn-down worker).
+4. **T-1** — Wire `ajv-formats` into `@fastify/type-provider-typebox` (HTTP-boundary format validation is silently bypassed today).
+
+**Build:** `pnpm -r build` PASS (7 pkgs). **Domain tests:** 44/44 PASS. No code was modified by the audit.
