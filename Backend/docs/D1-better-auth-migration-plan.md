@@ -136,8 +136,8 @@
 2. **Phase 1 — Backfill script:** populate `account` from `password_hash` (bcrypt preserved); validate row counts.
 3. **Phase 2 — Better Auth wiring (flag-gated `USE_BETTER_AUTH`):** catch-all `/api/auth/*` route, Drizzle adapter with `additionalFields`, bcrypt hash override, admin plugin, rate-limit, email hooks. Keep legacy routes live behind the flag.
    - **Slice 1 ✅ DONE (`c6d9564`):** `createAuth(db, opts)` full config (emailAndPassword bcrypt cost 12, google placeholder, `admin()` plugin, `rateLimit`, `trustedOrigins`, `user.additionalFields` mirroring identity.users). `betterAuth.plugin.ts` mounts BA handler at `/api/auth/*` only when `USE_BETTER_AUTH=true` (no-op otherwise). `auth.plugin.ts` `authenticate` resolves session via BA `getSession` when flag on, legacy JWT when off. **Slice 2 ✅ DONE (`466819f`):** `packages/infra/src/auth/hooks.ts` `buildBetterAuthHooks()` re-creates the 4 custom behaviors as BA-native hooks (device 1:1 binding on `identity.devices`, progressive captcha gate via `LoginPolicy` on `/sign-in/email`, credit default 100 via `additionalFields`, REGISTER/LOGIN audit into `ops.activity_logs`). Hook deps injected from the awilix cradle by `betterAuth.plugin.ts`.
-4. **Phase 3 — Cutover:** flip flag; invalidate legacy sessions; route all auth through BA.
-5. **Phase 4 — Soak + cleanup:** monitor; after soak, delete 8 use-cases + 4 routes + legacy JWT decorate; drop `password_hash`.
+4. **Phase 3 — Cutover:** ✅ done (`0578588`) — flag flipped to `true`; `d1-cutover-invalidate.ts` ready.
+5. **Phase 4 — Soak + cleanup:** ✅ done (`77a17e4`) — 8 use-cases + AuthService + auth.routes + @fastify/jwt + legacy schemas/tests all deleted; routes migrated `request.user` → `request.authUser`.
 
 **Total effort:** ~1–2 days implementation + migration/backfill + soak. Higher than SSOT's optimistic estimate due to 7 custom behaviors requiring hook re-architecture.
 

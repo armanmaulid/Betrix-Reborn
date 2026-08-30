@@ -1,6 +1,6 @@
 # Backend Review — Native vs Complex Logic (5-Agent Findings)
 
-**Date:** 2026-08-30 (updated)
+**Date:** 2026-08-30 (D1 COMPLETE)
 **Scope:** `Backend/` monorepo (Fastify + Drizzle + Pino + TypeBox + node-cron + @upstash/redis + ws + dukascopy-node)
 **Review method:** 5 parallel review agents, each scoped to one layer
 **Goal:** Find "re-invented wheels" — complex custom logic that duplicates Node stdlib, TypeScript features, or libraries already in the project.
@@ -11,7 +11,7 @@
 
 > **Read this first if context is lost.** This section is the entry point.
 
-### 0.1 Current state (2026-08-29)
+### 0.1 Current state (2026-08-30 — D1 COMPLETE)
 
 | Phase | Status | Commit / Evidence |
 |-------|--------|-------------------|
@@ -20,7 +20,7 @@
 | **Phase 3 — Wave 2A (quick dedup, 0 new deps)** | ✅ Done | `f25668f` — A2, A5, I3, W4, P7, P12, P17, P18, P19 done; P20 deferred (tangled health routes + locked test) |
 | **Phase 4 — D3 (`@fastify/env` + `Value.Parse` for C1/C2)** | ✅ Done | `b80a193` — `@fastify/env` plugin + `packages/config` refactored to `Value.Parse(EnvSchema, …)`; eliminates the `Number(x) \|\| default` falsy-0 bug, applies schema defaults at boot, exposes typed `fastify.config: EnvConfig` |
 | **Phase 5 — Wave 2B / Wave 3 remaining** | ⬜ Not started | A1, I1, W3, P8/P11/P14, A3–A6, W1/W2/W5–W7, I4, P13, P15/P16 |
-| **Phase 6 — D2 (`@fastify/awilix` for P15), D4 (A1 `Value.Default`), D1 (`better-auth`)** | 🔵 D2 ✅ done; D4 ✅ done; D1 🔵 Phase 2 Slice 1 ✅ Slice 2 ✅ | D2: `b5af856`+`e54bb2f`+`9b8bd36` — container 798 → 407 lines (-49%). D4: `0c40e88` — A1 `Value.Default` at 7 use-case boundaries (SendMessage, StreamMessage, CreateAgent, GetNews, FetchNews, GetOHLC, ContextInjection); schema is now the single source of truth for `|| default`; `pnpm -r build` + application 28/28 tests PASS. D1: Phase 0 (`d06677f`) + Phase 1 (`7af3616`) + Phase 2 Slice 1 (`c6d9564`) + **Phase 2 Slice 2 (`466819f` — `buildBetterAuthHooks`: device 1:1 binding, progressive captcha gate, credit default 100, REGISTER/LOGIN audit)**. `USE_BETTER_AUTH=false` keeps legacy live; flag flips auth to BA. |
+| **Phase 6 — D2 (`@fastify/awilix` for P15), D4 (A1 `Value.Default`), D1 (`better-auth`)** | 🟢 D2 ✅ done; D4 ✅ done; D1 ✅ done (COMPLETE) | D2: `b5af856`+`e54bb2f`+`9b8bd36` — container 798 → 407 lines (-49%). D4: `0c40e88` — A1 `Value.Default` at 7 use-case boundaries. D1: Phase 0 (`d06677f`) + Phase 1 (`7af3616`) + Phase 2 Slice 1 (`c6d9564`) + Phase 2 Slice 2 (`466819f`) + Phase 3 (`0578588` — cutover flip USE_BETTER_AUTH=true) + **Phase 4 (`77a17e4` — all legacy auth code removed: 8 use-cases, AuthService, auth.routes, @fastify/jwt, JWT decorate, legacy schemas, legacy tests; routes migrated `request.user` → `request.authUser`)**. `pnpm -r build` PASS (7 pkgs), domain 44/44 PASS, api lint PASS. |
 
 **Code removed so far (Phases 1–3):** ~250 lines net (with ~400 lines added for type-safe improvements and a shared `parseList`/`isUuid`/`sseFrame` helper). Build PASS, lint PASS, prettier PASS, vitest domain 44 + application 28 pass.
 
@@ -49,7 +49,7 @@
 - A3/A4/A6 (app cleanup), W1/W2/W5/W6/W7 (worker cleanup)
 - I4 (legacy scaffolding), P13 (Redis-native budget), P15/P16 (container + bg loops)
 - ~~**D2 (@fastify/awilix)** — P15 (798-line container). Low risk, 1–2 hours.~~ **D2 ✅ done (Phase 6): `b5af856` + `e54bb2f` + `9b8bd36`. 798 → 407 lines (-49%).**
-- **D1 (better-auth), D4 (A1 internal)** — D4 ✅ done (`0c40e88`); D1 open (§0.2)
+- **D1 (better-auth), D4 (A1 internal)** — D4 ✅ done (`0c40e88`); D1 ✅ done COMPLETE (`d06677f` → `7af3616` → `c6d9564` → `466819f` → `0578588` → `77a17e4`)
 
 ### 0.2 Strategic Dependency Options (Open Question)
 
@@ -73,7 +73,7 @@
 1. ~~**D2 (awilix) + D3 (@fastify/env)** — Low risk, ecosystem-native, fast, deletes hundreds of lines (P15 + C1/C2). One commit each.~~ **D3 done in Phase 4 (`b80a193`); D2 done in Phase 6 (`b5af856` + `e54bb2f` + `9b8bd36`).**
 2. ~~**D2 (@fastify/awilix)** — P15 (795-line container). Low risk, 1–2 hours.~~ **Done — see Phase 6 row.**
 3. ~~**D4 (A1 `Value.Default`)** — Internal, 0 dep, medium effort but kills drift bugs across ~8 use-cases.~~ **Done — `0c40e88`.**
-4. **D1 (Better Auth)** — Phase 0/1/2-Slice1/2-Slice2 done (`d06677f`/`7af3616`/`c6d9564`/`466819f`). Flag-gated BA config + hooks + Fastify bridge live; legacy auth untouched behind `USE_BETTER_AUTH=false`. Next: Phase 3 cutover (gated by 6 open user questions in `docs/D1-better-auth-migration-plan.md`).
+4. **D1 (Better Auth)** — ✅ **COMPLETE** (Phase 0 `d06677f` → Phase 1 `7af3616` → Phase 2 Slice 1 `c6d9564` → Phase 2 Slice 2 `466819f` → Phase 3 `0578588` → Phase 4 `77a17e4`). All legacy auth code removed. Soak + frontend `/api/auth/*` switch are the remaining operational items.
 
 **Deferred items (no clear dep win):**
 - I1 (SSE parser dedupe) — 2 files, 1 helper, small win without any dep needed.
