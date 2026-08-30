@@ -2,6 +2,7 @@ import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { admin } from 'better-auth/plugins';
 import { bcrypt } from '../external/auth/bcrypt.js';
+import { buildBetterAuthHooks, type BetterAuthHookDeps } from './hooks.js';
 import type { DrizzleDb } from '../persistence/drizzle/client.js';
 import * as authSchema from './schemas.js';
 
@@ -31,7 +32,10 @@ import * as authSchema from './schemas.js';
 
 export type BetterAuthInstance = ReturnType<typeof betterAuth>;
 
-export function createAuth(db: DrizzleDb, opts?: { secret?: string; baseURL?: string }): BetterAuthInstance {
+export function createAuth(
+  db: DrizzleDb,
+  opts?: { secret?: string; baseURL?: string; hooks?: BetterAuthHookDeps }
+): BetterAuthInstance {
   const secret = opts?.secret ?? process.env.BETTER_AUTH_SECRET ?? 'dev-phase2-better-auth-secret-change-me';
   const baseURL = opts?.baseURL ?? process.env.BETTER_AUTH_URL ?? 'http://localhost:3000';
 
@@ -40,11 +44,21 @@ export function createAuth(db: DrizzleDb, opts?: { secret?: string; baseURL?: st
     .map((s) => s.trim())
     .filter(Boolean);
 
+  // Slice 2 — custom hooks (device / captcha / credit / audit). Only attached
+  // when the caller supplies the repositories (i.e. when mounted by
+  // betterAuth.plugin.ts under USE_BETTER_AUTH=true).
+  const slice2 = opts?.hooks ? buildBetterAuthHooks(opts.hooks) : undefined;
+
   const config: BetterAuthOptions = {
     database: drizzleAdapter(db, { provider: 'pg', schema: authSchema }),
     baseURL,
     secret,
     emailAndPassword: {
+      // autoSignIn:false so a successful sign-up does NOT auto-create a session
+      // (legacy register flow separates register from login). This keeps
+      // `user.create.after` = REGISTER audit and `session.create.after` = LOGIN
+      // audit cleanly separated — no double logging.
+      autoSignIn: false,
       enabled: true,
       minPasswordLength: 8,
       // Keep legacy bcrypt cost (12) so backfilled `account.password` hashes
@@ -65,7 +79,8 @@ export function createAuth(db: DrizzleDb, opts?: { secret?: string; baseURL?: st
         // redirectURI is derived from baseURL by BA; override if needed.
       }
     },
-    // Slice 2 will extend `user` with hooks for device/captcha/credit/audit.
+    // Slice 2 — user.additionalFields mirrors identity.users so the BA `user`
+    // row carries the same authoritative fields the legacy path reads.
     user: {
       additionalFields: {
         isAdmin: { type: 'boolean', defaultValue: false, input: false },
@@ -81,6 +96,8 @@ export function createAuth(db: DrizzleDb, opts?: { secret?: string; baseURL?: st
       enabled: true
     },
     trustedOrigins,
+    ...(slice2 ? { databaseHooks: slice2.databaseHooks } : {}),
+    ...(slice2 ? { hooks: slice2.hooks } : {}),
     advanced: {
       database: {
         generateId: () => crypto.randomUUID()
