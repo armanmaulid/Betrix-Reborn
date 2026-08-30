@@ -13,6 +13,7 @@ import {
   envPlugin
 } from './plugins/index.js';
 import { v1Routes } from './routes/api/v1/index.js';
+import { healthRoutes } from './routes/api/v1/health.routes.js';
 
 /**
  * P10 — Replaces the hand-rolled `onResponse` hook with a `LogController`
@@ -86,6 +87,11 @@ export async function createServer() {
   // 2. Register API Routes
   await app.register(v1Routes, { prefix: '/api/v1' });
 
+  // P20 — health routes live at root `/health` (liveness) and `/health/deep`
+  // (admin-only diagnostics), not under `/api/v1`. Mounted here so the paths
+  // match their canonical form (and don't double-prefix via the v1 mount).
+  await app.register(healthRoutes, { prefix: '/health' });
+
   // P6 — Central envelope: wrap any non-enveloped JSON payload from /api/v1 in
   // { success: true, data }. Handlers that already send { success, ... } (and
   // the error handler, which sends { success: false, error }) pass through
@@ -102,15 +108,6 @@ export async function createServer() {
       return payload;
     }
     return { success: true, data: payload };
-  });
-
-  // 3. Root Health Check Endpoint
-  app.get('/health', async (request, reply) => {
-    return reply.send({
-      status: 'ok',
-      version: '1.0.0',
-      timestamp: new Date().toISOString()
-    });
   });
 
   return app;

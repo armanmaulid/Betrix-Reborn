@@ -6,18 +6,9 @@
  *   COMMODITIES_BACKFILL_YEARS=3
  *   COMMODITIES_BACKFILL_LIST=gold,silver
  */
-import pino from 'pino';
-import { env } from '@betrix/config';
 import { CommodityPriceBackfiller } from './marketdata/marketdata-backfill-lib.js';
 import { parseList } from '../shared/parseList.js';
-
-const logger = pino({
-  level: env.LOG_LEVEL || 'info',
-  transport: { target: 'pino-pretty', options: { colorize: true } }
-});
-
-import { premiumEnvDiagnostic } from './marketdata/marketdata-backfill-lib.js';
-premiumEnvDiagnostic(logger, 'COMMODITIES');
+import { runBackfiller } from './runBackfiller.js';
 
 type CommodityIndicator = 'gold' | 'silver' | 'platinum';
 const VALID_INDICATORS = [
@@ -32,24 +23,14 @@ const indicators = parseList<CommodityIndicator>(process.env.COMMODITIES_BACKFIL
   fallback: ['gold', 'silver', 'platinum']
 });
 
-async function main(): Promise<void> {
-  const currentYear = new Date().getUTCFullYear();
-  const years = Number(process.env.COMMODITIES_BACKFILL_YEARS ?? '5');
-  const startYear = currentYear - years;
-  const endYear = currentYear;
-
-  const backfiller = new CommodityPriceBackfiller(logger);
-  try {
-    const result = await backfiller.backfillIndicators(indicators, startYear, endYear);
-    logger.info(
-      `[COMMODITIES COMPLETE] indicators=${indicators.join(',')} years=${startYear}..${endYear} fetched=${result.fetched} saved=${result.saved} failed=${result.failed}`
-    );
-  } catch (err: any) {
-    logger.error({ err: err.message }, 'Commodities backfill failed');
-    process.exitCode = 1;
-  } finally {
-    await backfiller.close();
-  }
-}
-
-main();
+runBackfiller({
+  label: 'COMMODITIES',
+  yearsEnvVar: 'COMMODITIES_BACKFILL_YEARS',
+  input: indicators,
+  factory: (logger) => new CommodityPriceBackfiller(logger),
+  run: (backfiller, { startYear, endYear, input }) =>
+    backfiller.backfillIndicators(input, startYear, endYear)
+}).catch((err) => {
+  console.error('Unexpected error in commodities backfill runner:', err);
+  process.exit(1);
+});

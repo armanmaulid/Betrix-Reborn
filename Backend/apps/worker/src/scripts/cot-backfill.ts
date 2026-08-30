@@ -6,18 +6,9 @@
  *   COT_BACKFILL_YEARS=3
  *   COT_BACKFILL_CURRENCIES=USD,EUR,GBP,JPY
  */
-import pino from 'pino';
-import { env } from '@betrix/config';
 import { CotPositionBackfiller } from './marketdata/marketdata-backfill-lib.js';
 import { parseList } from '../shared/parseList.js';
-
-const logger = pino({
-  level: env.LOG_LEVEL || 'info',
-  transport: { target: 'pino-pretty', options: { colorize: true } }
-});
-
-import { premiumEnvDiagnostic } from './marketdata/marketdata-backfill-lib.js';
-premiumEnvDiagnostic(logger, 'COT');
+import { runBackfiller } from './runBackfiller.js';
 
 const DEFAULT_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'];
 
@@ -26,24 +17,14 @@ const currencies = parseList(process.env.COT_BACKFILL_CURRENCIES, {
   fallback: DEFAULT_CURRENCIES
 });
 
-async function main(): Promise<void> {
-  const currentYear = new Date().getUTCFullYear();
-  const years = Number(process.env.COT_BACKFILL_YEARS ?? '5');
-  const startYear = currentYear - years;
-  const endYear = currentYear;
-
-  const backfiller = new CotPositionBackfiller(logger);
-  try {
-    const result = await backfiller.backfillCurrencies(currencies, startYear, endYear);
-    logger.info(
-      `[COT COMPLETE] currencies=${currencies.length} years=${startYear}..${endYear} fetched=${result.fetched} saved=${result.saved} failed=${result.failed}`
-    );
-  } catch (err: any) {
-    logger.error({ err: err.message }, 'COT backfill failed');
-    process.exitCode = 1;
-  } finally {
-    await backfiller.close();
-  }
-}
-
-main();
+runBackfiller({
+  label: 'COT',
+  yearsEnvVar: 'COT_BACKFILL_YEARS',
+  input: currencies,
+  factory: (logger) => new CotPositionBackfiller(logger),
+  run: (backfiller, { startYear, endYear, input }) =>
+    backfiller.backfillCurrencies(input, startYear, endYear)
+}).catch((err) => {
+  console.error('Unexpected error in COT backfill runner:', err);
+  process.exit(1);
+});
