@@ -22,7 +22,7 @@
 | 5 — Wave 2B / Wave 3 | ⬜ | — | A1, I1, W3, P8/P11/P14, A3–A6, W1/W2/W5–W7, I4, P13, P16 |
 | 6 — D2 `@fastify/awilix` | ✅ | `b5af856` + `e54bb2f` + `9b8bd36` | P15 — container 798 → 407 lines (-49%) |
 | 6 — D4 `@betrix/application` A1 `Value.Default` | ✅ | `0c40e88` | 7 use-case boundaries: schema is single source of truth for `\|\| default`; 28/28 app tests PASS |
-| 6 — D1 `better-auth` | ⬜ | — | Next up (see §3.2) |
+| 6 — D1 `better-auth` | 🔵 Phase 0 ✅ | `d06677f` Phase 0 (env flag + dep + 4 BA tables + stub + DDL doc). Phase 1-4 pending. See `docs/D1-better-auth-migration-plan.md`. |
 
 **Net code removed (Phases 1–3):** ~250 lines. **Phase 6 (D2 + D4):** D2 -391 lines (798→407), D4 -76 lines net (9 files, 141 insertions / 76 deletions in the main commit; plus the ContextInjectionService `Resolved` follow-up).
 **Build:** `pnpm -r build` PASS (all 7 packages).
