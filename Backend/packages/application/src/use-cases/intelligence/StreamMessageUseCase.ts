@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { Value } from '@sinclair/typebox/value';
 import { AppError } from '@betrix/core';
 import {
   IChatRepository,
@@ -11,7 +12,11 @@ import {
   PromptTemplateRegistry
 } from '@betrix/domain';
 import { ContextInjectionService } from '../../services/ContextInjectionService.js';
-import { StreamMessageDTO } from '../../schemas/chat.schema.js';
+import {
+  StreamMessageDTO,
+  ResolvedStreamMessageDTO,
+  StreamMessageSchema
+} from '../../schemas/chat.schema.js';
 
 export interface StreamMessageCallbacks {
   onThink?: (chunk: string) => void;
@@ -44,10 +49,15 @@ export class StreamMessageUseCase {
     callbacks: StreamMessageCallbacks,
     signal?: AbortSignal
   ): Promise<void> {
+    // A1 — schema is the source of truth (Default applies schema defaults; input is already Ajv-validated by the route).
+    const input = Value.Default(StreamMessageSchema, dto) as ResolvedStreamMessageDTO;
+
     // 1. Atomic credit reservation (Bug 8 fix — no check-then-deduct race)
-    const maxTokens = dto.maxTokens || 8192;
-    const estimatedInputTokens = Math.ceil((dto.message.length + 8000) / 4);
-    const reservationAmount = Math.max(1, Math.ceil((estimatedInputTokens + maxTokens) / 1000));
+    const estimatedInputTokens = Math.ceil((input.message.length + 8000) / 4);
+    const reservationAmount = Math.max(
+      1,
+      Math.ceil((estimatedInputTokens + input.maxTokens) / 1000)
+    );
     const reserved = await this.creditRepo.reserveCredits(userId, reservationAmount);
     if (!reserved) {
       throw new AppError(
@@ -60,30 +70,30 @@ export class StreamMessageUseCase {
     // 2. Resolve Dynamic Agent from Database (Zero Backend Restart)
     let agent: AiAgent | null = null;
     if (this.agentRepo) {
-      if (dto.agentId) {
-        agent = await this.agentRepo.findById(dto.agentId);
-      } else if (dto.model) {
-        agent = (await this.agentRepo.findById(dto.model)) || null;
+      if (input.agentId) {
+        agent = await this.agentRepo.findById(input.agentId);
+      } else if (input.model) {
+        agent = (await this.agentRepo.findById(input.model)) || null;
       }
       if (!agent) {
         agent = await this.agentRepo.findDefault();
       }
     }
 
-    const modelName = agent?.modelName || dto.model || this.defaultModel;
-    const taskType = agent?.taskType || dto.taskType || 'market_analysis';
-    const sessionId = dto.sessionId || randomUUID();
+    const modelName = agent?.modelName || input.model || this.defaultModel;
+    const taskType = agent?.taskType || input.taskType;
+    const sessionId = input.sessionId || randomUUID();
 
     // 3. Build Market Context (ADR-07, ADR-22, ADR-28)
     let marketContextBlock = '';
-    if (dto.marketContext) {
-      const injected = await this.contextInjectionService.buildMarketContext(dto.marketContext);
+    if (input.marketContext) {
+      const injected = await this.contextInjectionService.buildMarketContext(input.marketContext);
       marketContextBlock = injected.contextBlock;
     }
 
     // 4. System Prompt Construction
     const template = PromptTemplateRegistry.getTemplate(taskType);
-    let systemPromptContent = dto.systemPrompt || agent?.systemPrompt || template.systemPrompt;
+    let systemPromptContent = input.systemPrompt || agent?.systemPrompt || template.systemPrompt;
     if (marketContextBlock) {
       systemPromptContent += `\n\n${marketContextBlock}`;
     }
@@ -99,7 +109,7 @@ export class StreamMessageUseCase {
       messages.push({ role: 'assistant', content: item.reply });
     }
 
-    messages.push({ role: 'user', content: dto.message });
+    messages.push({ role: 'user', content: input.message });
 
     let fullReply = '';
     let pendingSettleCreditsSpent: number | null = null;
@@ -112,8 +122,8 @@ export class StreamMessageUseCase {
           model: modelName,
           messages,
           temperature:
-            agent?.temperature !== undefined ? agent.temperature / 100 : (dto.temperature ?? 0.7),
-          maxTokens: agent?.maxTokens || dto.maxTokens,
+            agent?.temperature !== undefined ? agent.temperature / 100 : input.temperature,
+          maxTokens: agent?.maxTokens || input.maxTokens,
           baseUrl: agent?.baseUrl || undefined,
           apiKey: agent?.apiKey || undefined
         },
@@ -165,7 +175,7 @@ export class StreamMessageUseCase {
               sessionId,
               taskType,
               model: agent?.id || modelName,
-              userMessage: dto.message,
+              userMessage: input.message,
               aiReply: fullReply,
               inputTokens: meta.inputTokens,
               outputTokens: meta.outputTokens,

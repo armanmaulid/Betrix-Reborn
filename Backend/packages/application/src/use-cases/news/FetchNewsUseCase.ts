@@ -1,6 +1,7 @@
+import { Value } from '@sinclair/typebox/value';
 import { NewsArticle, IAdminActionRepository, AdminAction } from '@betrix/domain';
 import { NewsService } from '../../services/NewsService.js';
-import { FetchNewsBodyDTO } from '../../schemas/news.schema.js';
+import { FetchNewsBodyDTO, FetchNewsBodySchema } from '../../schemas/news.schema.js';
 
 export class FetchNewsUseCase {
   constructor(
@@ -12,7 +13,9 @@ export class FetchNewsUseCase {
     dto?: FetchNewsBodyDTO,
     context?: { adminId?: string; ip?: string; userAgent?: string }
   ): Promise<NewsArticle[]> {
-    const category = dto?.category || 'general';
+    // A1 — schema is the source of truth; Default fills `category: 'general'`.
+    const input = Value.Default(FetchNewsBodySchema, dto ?? {}) as FetchNewsBodyDTO;
+    const category = input.category;
     const articles = await this.newsService.fetchAndStoreNews(category);
 
     if (articles.length > 0 && this.adminActionRepo && context?.adminId) {

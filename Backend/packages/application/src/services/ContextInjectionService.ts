@@ -1,7 +1,11 @@
+import { Value } from '@sinclair/typebox/value';
 import { IndicatorCalculator, RawCandle } from '@betrix/domain';
 import { MarketDataService } from './MarketDataService.js';
 import { NewsService } from './NewsService.js';
-import { MarketContextOptionsDTO } from '../schemas/chat.schema.js';
+import {
+  MarketContextOptionsDTO,
+  MarketContextOptionsSchema
+} from '../schemas/chat.schema.js';
 import { logger } from '../logger.js';
 
 export interface InjectedContextResult {
@@ -41,9 +45,11 @@ export class ContextInjectionService {
   public async buildMarketContext(
     options: MarketContextOptionsDTO
   ): Promise<InjectedContextResult> {
-    const symbol = options.symbol.toUpperCase();
-    const timeframe = (options.timeframe || 'h1').toLowerCase();
-    const candleCount = options.candleCount || 30;
+    // A1 — schema is the source of truth; Default fills `timeframe: 'h1'`, `candleCount: 30`.
+    const input = Value.Default(MarketContextOptionsSchema, options) as MarketContextOptionsDTO;
+    const symbol = input.symbol.toUpperCase();
+    const timeframe = (input.timeframe || 'h1').toLowerCase();
+    const candleCount = input.candleCount || 30;
 
     let candles: RawCandle[] = [];
     let marketFetchError: string | null = null;

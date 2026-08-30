@@ -28,13 +28,23 @@ export const SendMessageSchema = Type.Object({
   agentId: Type.Optional(Type.String()),
   taskType: Type.Optional(Type.String({ default: 'market_analysis' })),
   model: Type.Optional(Type.String()),
-  temperature: Type.Optional(Type.Number({ minimum: 0, maximum: 2 })),
-  maxTokens: Type.Optional(Type.Integer({ minimum: 256, maximum: 65536 })),
+  temperature: Type.Optional(Type.Number({ minimum: 0, maximum: 2, default: 0.7 })),
+  maxTokens: Type.Optional(Type.Integer({ minimum: 256, maximum: 65536, default: 8192 })),
   message: Type.String({ minLength: 1, maxLength: 8000 }),
   marketContext: Type.Optional(MarketContextOptionsSchema),
   systemPrompt: Type.Optional(Type.String({ maxLength: 2000 }))
 });
 export type SendMessageDTO = Static<typeof SendMessageSchema>;
+
+// A1 — narrow the static type so `Value.Decode(SendMessageSchema, ...)` callers
+// see `maxTokens: number`, not `number | undefined`. `Type.Optional + default`
+// keeps the base `SendMessageDTO` as `T | undefined` (TypeBox limitation), but
+// `Value.Decode` is guaranteed to apply the default at runtime.
+export type ResolvedSendMessageDTO = Omit<SendMessageDTO, 'maxTokens' | 'temperature' | 'taskType'> & {
+  maxTokens: number;
+  temperature: number;
+  taskType: string;
+};
 
 // Stream Message DTO (SSE streaming completion)
 export const StreamMessageSchema = Type.Object({
@@ -42,13 +52,18 @@ export const StreamMessageSchema = Type.Object({
   agentId: Type.Optional(Type.String()),
   taskType: Type.Optional(Type.String({ default: 'market_analysis' })),
   model: Type.Optional(Type.String()),
-  temperature: Type.Optional(Type.Number({ minimum: 0, maximum: 2 })),
-  maxTokens: Type.Optional(Type.Integer({ minimum: 256, maximum: 65536 })),
+  temperature: Type.Optional(Type.Number({ minimum: 0, maximum: 2, default: 0.7 })),
+  maxTokens: Type.Optional(Type.Integer({ minimum: 256, maximum: 65536, default: 8192 })),
   message: Type.String({ minLength: 1, maxLength: 8000 }),
   marketContext: Type.Optional(MarketContextOptionsSchema),
   systemPrompt: Type.Optional(Type.String({ maxLength: 2000 }))
 });
 export type StreamMessageDTO = Static<typeof StreamMessageSchema>;
+export type ResolvedStreamMessageDTO = Omit<StreamMessageDTO, 'maxTokens' | 'temperature' | 'taskType'> & {
+  maxTokens: number;
+  temperature: number;
+  taskType: string;
+};
 
 // Session ID Parameter
 export const SessionIdParamSchema = Type.Object({

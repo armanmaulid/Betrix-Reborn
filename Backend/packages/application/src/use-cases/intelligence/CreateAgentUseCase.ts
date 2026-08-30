@@ -1,3 +1,4 @@
+import { Value } from '@sinclair/typebox/value';
 import {
   IAiAgentRepository,
   AiAgent,
@@ -5,7 +6,7 @@ import {
   IAdminActionRepository,
   AdminAction
 } from '@betrix/domain';
-import { CreateAgentDto } from '../../schemas/agent.schema.js';
+import { CreateAgentDto, CreateAgentSchema } from '../../schemas/agent.schema.js';
 
 export class CreateAgentUseCase {
   constructor(
@@ -18,28 +19,30 @@ export class CreateAgentUseCase {
     adminId?: string,
     context?: { ip?: string; userAgent?: string }
   ): Promise<AiAgent> {
-    const existing = await this.agentRepo.findById(dto.id);
+    // A1 — schema is the source of truth; Default fills defaults (visibility, temperature, etc.)
+    const input = Value.Default(CreateAgentSchema, dto) as CreateAgentDto;
+    const existing = await this.agentRepo.findById(input.id);
     if (existing) {
       throw new ConflictError(`AI Agent with ID '${dto.id}' already exists`);
     }
 
     const agent = new AiAgent({
-      id: dto.id,
-      name: dto.name,
-      modelName: dto.modelName,
-      baseUrl: dto.baseUrl,
-      apiKey: dto.apiKey,
-      taskType: dto.taskType,
-      systemPrompt: dto.systemPrompt,
-      tier: dto.tier,
-      creditsPer1kTokens: dto.creditsPer1kTokens,
-      maxTokens: dto.maxTokens,
-      temperature: dto.temperature !== undefined ? Math.round(dto.temperature * 100) : 70,
-      supportsThinking: dto.supportsThinking,
-      isDefault: dto.isDefault,
-      isActive: dto.isActive,
-      visibility: dto.visibility ?? 'public',
-      description: dto.description
+      id: input.id,
+      name: input.name,
+      modelName: input.modelName,
+      baseUrl: input.baseUrl,
+      apiKey: input.apiKey,
+      taskType: input.taskType,
+      systemPrompt: input.systemPrompt,
+      tier: input.tier,
+      creditsPer1kTokens: input.creditsPer1kTokens,
+      maxTokens: input.maxTokens,
+      temperature: input.temperature !== undefined ? Math.round(input.temperature * 100) : 70,
+      supportsThinking: input.supportsThinking,
+      isDefault: input.isDefault,
+      isActive: input.isActive,
+      visibility: input.visibility,
+      description: input.description
     });
 
     const saved = await this.agentRepo.save(agent);

@@ -11,6 +11,13 @@ export const GetNewsQuerySchema = Type.Object({
 });
 export type GetNewsQueryDTO = Static<typeof GetNewsQuerySchema>;
 
+// A1 — narrow so `Value.Cast(GetNewsQuerySchema, ...)` callers see `page: number`
+// / `limit: number` (TypeBox keeps `Type.Optional + default` as `T | undefined`).
+export type ResolvedGetNewsQueryDTO = Omit<GetNewsQueryDTO, 'page' | 'limit'> & {
+  page: number;
+  limit: number;
+};
+
 // Trigger Fetch News Request
 export const FetchNewsBodySchema = Type.Object({
   category: Type.Optional(Type.String({ default: 'general' }))
