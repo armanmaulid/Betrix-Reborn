@@ -294,3 +294,29 @@ dedicated sprint). Build PASS, 28/28 app tests PASS.
 ## 11. D1 Phase 4 — D1 COMPLETE (commit 77a17e4)
 
 All legacy auth code removed. Better Auth is the sole auth path. 8 use-cases + AuthService + auth.routes + JWT decorate + `@fastify/jwt` + legacy schemas + legacy tests all deleted. Routes migrated to `request.authUser`. Build PASS, domain 44/44 PASS, api lint PASS. Soak + frontend `/api/auth/*` switch are the only remaining items. D1 (better-auth migration) is now 🟢 complete across Phases 0→4.
+
+---
+
+## 12. Phase 5 — Wave 2B / Wave 3 (2026-08-30, partial)
+
+**12.1 — Batch 1 (commit `8dc008b`):** I4 ✅, A4 ✅, W5 ✅, W6 ✅, W1 ⚠️ partial, W2 ✅, P21 ✅.
+- I4: removed `captchaLegacy`/`streamTicketLegacy`/`DUAL_READ_LEGACY` post-D1.
+- A4: RFC 4180 `escapeCsvField` + `toCsvRow` in `@betrix/core`; `ExportAuditLogsUseCase` uses them.
+- W5: anchored regex `/_([^_]+)_(\d{4}-\d{2}-\d{2})$/` for indicator extraction.
+- W6: `backoffDelay(attempt, baseMs, maxMs)` helper; `ws-worker.ts` uses it.
+- W1: shared `retry()` + `retrySleep()` in `apps/worker/src/shared/retry.ts` (sync-worker keeps custom-predicate loop — not a throw-retry; helper ready for future).
+- W2: `BrokerTimeCalculator.getUtcMonthEnd(year, month)`; `calendar-worker.ts` uses it.
+- P21: `forceCloseConnections: 'idle'` on Fastify options.
+
+**12.2 — Batch 2 (commit `3e72b78`):** P8 ⏸️ deferred, W7 ✅, P14 ✅.
+- P8: error handler already well-consolidated (5 branches); rate-limit `errorResponseBuilder` has a different shape (retryAfter in details). No safe dedup target.
+- W7: `DailyBudget` class (UTC-day rollover + `consume(n)` → boolean); `CalendarWorker` uses it.
+- P14: `admin.routes.ts` `overlayLiveHeartbeats` reuses `fastify.container.redis` + batches per-worker GETs into one `mget` round-trip.
+
+**12.3 — Batch 3 (commit `c163df5`):** P11 ✅, P13 ⏸️ deferred, P16 ⚠️ partial, I1 ✅.
+- P11: Redis rate-limit store uses one `pipeline()` for `incr+pttl` (was: 2 calls), returns real `pttl` for `retryAfter` (was: `windowMs`), and `child()` returns a NEW route-scoped store (was: `this` — buckets collided).
+- P13: deferred — sse plugin registers before container, so `fastify.container.redis` isn't available at boot. Real Redis-native budget needs a registration-order change (separate refactor).
+- P16: news relay replaces unbounded `Set<string>` of seen IDs with a `lastSeenAt` watermark + `newsRepo.findSince()`. Ops aggregator timer still uses `setInterval` + `clearInterval` in `onClose` (already cancellable); full cancellable-loop refactor is a separate effort.
+- I1: shared `createSseParser` helper (`packages/infra/src/external/sse-parser.ts`); used by `AiGatewayClient` (OpenAI-style `data: [DONE]` sentinel) and `FxMacroDataClient` (no sentinel, multi-line events). Event-delimiter-agnostic.
+
+**12.4 — Remaining (deferred or pending):** A3 (temperature ×100, needs migration), W3 (4 backfillers → 1 generic, high risk), P20 (health routes, unblocked after `api.test.ts` deletion but needs new tests), A6 (credit retry, keep or extract).
