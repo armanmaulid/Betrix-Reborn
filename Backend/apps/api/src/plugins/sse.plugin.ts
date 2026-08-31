@@ -356,7 +356,12 @@ const ssePluginCallback: FastifyPluginAsync = async (fastify) => {
   const sseHub = new SseHub(fastify.log.child({ plugin: 'sse' }));
   fastify.decorate('sseHub', sseHub);
 
-  fastify.addHook('onClose', async () => {
+  // F-1 + F-13 — preClose (not onClose) so active SSE clients end before
+  // Fastify tries to drain keep-alive connections. With onClose, Fastify
+  // waits up to `keepAliveTimeout` (default 72s in Node) for clients to
+  // disconnect, which defeats graceful shutdown. preClose fires before
+  // that, ending all SSE streams immediately so app.close() can return.
+  fastify.addHook('preClose', async () => {
     fastify.log.info('Closing all active SSE connections in SseHub...');
     sseHub.closeAll();
   });

@@ -104,7 +104,12 @@ export class DrizzleFxSpotPriceRepository implements IFxSpotPriceRepository {
       id: r.id,
       base: r.base,
       quote: r.quote,
-      tradeDate: String(r.tradeDate),
+      // D-5 (corrected): Drizzle's `date` column infers as `string` with the
+      // pg driver (no `mode: 'date'` was set), so `r.tradeDate` is already
+      // a `YYYY-MM-DD` string at the TS level. The original `String(...)`
+      // wrapper was a no-op (would re-emit the same string) — removed for
+      // "less code". See audit-library-applicability-2026-08-30.md §D-5.
+      tradeDate: r.tradeDate,
       open: r.open,
       high: r.high,
       low: r.low,
@@ -231,7 +236,12 @@ export class DrizzleCommodityPriceRepository implements ICommodityPriceRepositor
     return new CommodityPrice({
       id: r.id,
       indicator: r.indicator,
-      tradeDate: String(r.tradeDate),
+      // D-5 (corrected): Drizzle's `date` column infers as `string` with the
+      // pg driver (no `mode: 'date'` was set), so `r.tradeDate` is already
+      // a `YYYY-MM-DD` string at the TS level. The original `String(...)`
+      // wrapper was a no-op (would re-emit the same string) — removed for
+      // "less code". See audit-library-applicability-2026-08-30.md §D-5.
+      tradeDate: r.tradeDate,
       close: r.close,
       open: r.open,
       high: r.high,
@@ -246,6 +256,11 @@ export class DrizzleCommodityPriceRepository implements ICommodityPriceRepositor
     return {
       id: r.id,
       indicator: r.indicator,
+      // D-5 (corrected): Drizzle's `date` column infers as `string` with the
+      // pg driver (no `mode: 'date'` was set), so `r.tradeDate` is already
+      // a `YYYY-MM-DD` string at the TS level. The original `String(...)`
+      // wrapper was a no-op (would re-emit the same string) — removed for
+      // "less code". See audit-library-applicability-2026-08-30.md §D-5.
       tradeDate: r.tradeDate,
       close: r.close,
       open: r.open,
@@ -331,7 +346,12 @@ export class DrizzleCotPositionRepository implements ICotPositionRepository {
     return new CotPosition({
       id: r.id,
       currency: r.currency,
-      tradeDate: String(r.tradeDate),
+      // D-5 (corrected): Drizzle's `date` column infers as `string` with the
+      // pg driver (no `mode: 'date'` was set), so `r.tradeDate` is already
+      // a `YYYY-MM-DD` string at the TS level. The original `String(...)`
+      // wrapper was a no-op (would re-emit the same string) — removed for
+      // "less code". See audit-library-applicability-2026-08-30.md §D-5.
+      tradeDate: r.tradeDate,
       commercialLong: r.commercialLong,
       commercialShort: r.commercialShort,
       commercialNet: r.commercialNet,
@@ -348,6 +368,11 @@ export class DrizzleCotPositionRepository implements ICotPositionRepository {
     return {
       id: r.id,
       currency: r.currency,
+      // D-5 (corrected): Drizzle's `date` column infers as `string` with the
+      // pg driver (no `mode: 'date'` was set), so `r.tradeDate` is already
+      // a `YYYY-MM-DD` string at the TS level. The original `String(...)`
+      // wrapper was a no-op (would re-emit the same string) — removed for
+      // "less code". See audit-library-applicability-2026-08-30.md §D-5.
       tradeDate: r.tradeDate,
       commercialLong: r.commercialLong,
       commercialShort: r.commercialShort,

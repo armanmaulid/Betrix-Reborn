@@ -219,6 +219,7 @@ type AppCradle = InferCradleFromResolvers<typeof repoResolvers> &
   InferCradleFromResolvers<typeof useCaseResolvers> & {
     pgPool: ReturnType<typeof createPgPool>;
     db: DrizzleDb;
+    moneyPgPool: ReturnType<typeof createPgPool> | undefined;
     moneyDb: DrizzleDb;
     redis: ReturnType<typeof createRedisClient>;
     appConfig: AppConfig;
@@ -243,6 +244,7 @@ type AppContainer = Pick<
   | 'useCases'
   | 'pgPool'
   | 'db'
+  | 'moneyPgPool'
   | 'redis'
   | 'eventDispatcher'
 >;
@@ -362,13 +364,21 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
     useCases: c.useCases,
     pgPool: c.pgPool,
     db: c.db,
+    moneyPgPool: c.moneyPgPool,
     redis: c.redis,
     eventDispatcher: c.eventDispatcher
   } satisfies AppContainer);
 
   fastify.addHook('onClose', async () => {
-    fastify.log.info('Closing PostgreSQL pool and disconnecting Redis...');
-    await Promise.allSettled([diContainer.cradle.pgPool.end()]);
+    fastify.log.info('Closing PostgreSQL pools and disconnecting Redis...');
+    // D-3 — close the (optional) money pool too. pgPool.end() drains in-flight
+    // queries before resolving; preClose would race with handlers still
+    // resolving. onClose is the right hook.
+    const closers: Promise<unknown>[] = [diContainer.cradle.pgPool.end()];
+    if (diContainer.cradle.moneyPgPool) {
+      closers.push(diContainer.cradle.moneyPgPool.end());
+    }
+    await Promise.allSettled(closers);
   });
 };
 
@@ -377,8 +387,21 @@ const infraResolvers = {
   db: asFunction(({ pgPool }: { pgPool: ReturnType<typeof createPgPool> }) =>
     createDrizzleClient(pgPool)
   ),
-  moneyDb: asFunction(({ db }: { db: DrizzleDb }) =>
-    env.DATABASE_URL_MONEY ? createDrizzleClient(createPgPool(env.DATABASE_URL_MONEY, 6)) : db
+  // D-3 — moneyDb pool split into moneyPgPool + moneyDb so the pool
+  // can be .end()-ed in onClose. When DATABASE_URL_MONEY is unset,
+  // moneyPgPool is undefined, moneyDb falls back to the primary pool,
+  // and we skip end() in shutdown (the primary pool already closes).
+  moneyPgPool: asFunction((): ReturnType<typeof createPgPool> | undefined =>
+    env.DATABASE_URL_MONEY ? createPgPool(env.DATABASE_URL_MONEY, 6) : undefined
+  ),
+  moneyDb: asFunction(
+    ({
+      moneyPgPool,
+      db
+    }: {
+      moneyPgPool: ReturnType<typeof createPgPool> | undefined;
+      db: DrizzleDb;
+    }) => (moneyPgPool ? createDrizzleClient(moneyPgPool) : db)
   ),
   redis: asFunction(() =>
     createRedisClient(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN)
