@@ -418,3 +418,13 @@ Applied 3 of the 4 top-priority fixes from `docs/audit-library-applicability-202
 - **B-1** — `admin()` plugin removed from `packages/infra/src/auth/better-auth.ts`; `isAdmin` removed from `additionalFields` (legacy `userRepo.isAdmin` is now the sole source of truth for `requireAdmin`).
 - **U-1** — `apps/worker/src/shared/ManagedWorkerBase.ts` sets `isShuttingDownLease = true` at the top of `releaseLeaderLease()` + defensive short-circuit in `runAsLeaderOrStandby()`.
 - **T-1** — **False positive.** Verified that `typebox@1.3.15` (used by `@fastify/type-provider-typebox@6.1.0`) enforces `format: 'email' / 'uuid'` via its default `Format` namespace, no ajv-formats wiring needed.
+
+---
+
+## 15. Doc sync (2026-08-31)
+
+Metadata refresh only — historical content untouched.
+
+- `docs/CONTEXT.md` updated to `HEAD: e2024f1`, `Date: 2026-08-31`. Phase 5 row in §1 changed from `⬜` to `✅ Batch 1+2+3+4 done`. Added Phase 7 row for the audit follow-up (`e2024f1`). Test-counts section corrected: `application 28 pass` → `worker 7 pass` (D1 Phase 4 removed `application.test.ts`). `JWT_SECRET` no longer required (D1 Phase 4 removed `@fastify/jwt`). Reference §7 updated to note that 3/4 audit fixes applied + T-1 false positive.
+- `docs/audit-library-applicability-2026-08-30.md` — added "Last updated: 2026-08-31" + status note pointing to §9.
+- This document's date header (`**Date:** 2026-08-30`) is preserved (records when Phase 5 was done); §14 + this §15 record the subsequent fixes.

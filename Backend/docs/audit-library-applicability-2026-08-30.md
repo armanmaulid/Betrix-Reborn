@@ -1,5 +1,7 @@
 # Library Applicability Audit (2026-08-30)
 
+**Last updated:** 2026-08-31 — 3 of 4 top-priority fixes applied (commit `e2024f1`); T-1 confirmed false positive. See §9.
+
 > **Role:** Current SSOT for **library compliance** (whether each library
 > the backend depends on is applied per its current official documentation).
 > Complements `docs/backend-native-vs-complex-review.md` (which tracks
@@ -15,13 +17,12 @@
 > review cross-referenced with official docs (via websearch/webfetch). Agents
 > **did not modify code** — output is analysis only.
 >
-> **Status (2026-08-30, post-fix):** 3 of the 4 top-priority fixes applied
+> **Status (2026-08-31, post-fix):** 3 of the 4 top-priority fixes applied
 > (D-1 + B-7 BA migration + columns, B-1 admin plugin removed, U-1
 > isShuttingDownLease). T-1 was verified as a false positive
 > (typebox@1.3.15 enforces `format: 'email' / 'uuid'` out of the box via
-> the default `Format` namespace — no ajv-formats needed). See
-> `docs/CONTEXT.md` §3.3 for the live status table and the commit log
-> (`Phase 5 Batch 1+2+3+4` + these audit fixes).
+> the default `Format` namespace — no ajv-formats needed). See §9
+> for the resolution table and `git log` (commit `e2024f1`).
 >
 > **Build status at audit time:** `pnpm -r build` PASS (7 packages).
 > **Domain tests:** 44/44 PASS.

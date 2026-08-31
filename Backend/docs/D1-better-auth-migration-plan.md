@@ -1,7 +1,9 @@
 # D1 — Better Auth Migration Plan (RESEARCH-ONLY)
 
-**Date:** 2026-08-30
-**Status:** Research complete (4 parallel research agents). **No code written.** Awaiting user go/no-go + scope decision.
+**Date:** 2026-08-30 (research written 2026-08-30; status as of that date below)
+**Current status (2026-08-31):** 🟢 **D1 COMPLETE** — Phases 0–4 all implemented. See `docs/CONTEXT.md` §1 (Phase 6 row) + §3.2 for the live commit log (`d06677f` → `7af3616` → `c6d9564` → `466819f` → `0578588` → `77a17e4`). All 6 open questions answered in §7 below.
+
+**Status (as of 2026-08-30, when this research was written):** Research complete (4 parallel research agents). **No code written.** Awaiting user go/no-go + scope decision.
 **Stack:** Fastify 5 + Drizzle (Postgres) + TypeBox + `@fastify/jwt` + `pg` + `@upstash/redis`. TypeScript 7.
 **Goal:** Replace the hand-rolled auth surface (8 use-cases, 4 routes, 4 Drizzle tables, custom JWT decorate, captcha/voucher/device/rate-limit flows) with Better Auth.
 
