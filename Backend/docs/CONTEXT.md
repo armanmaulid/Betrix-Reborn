@@ -271,3 +271,5 @@ Commits:
 Build: PASS (7 pkgs). Domain: 44/44 PASS. Worker: 7/7 PASS. tsc + ESLint + Prettier: clean.
 
 **Audit round 4 fixes applied (`a953678`):** B-2 (createAuthMiddleware wrapper), T-4 (12 worker loggers → shared `logger.child({ worker })`), T-6 (pino-pretty → devDeps + transport gated on `NODE_ENV !== 'production'`), D-4 (`findRecent` → `selectDistinctOn([headline])` single round-trip). 0 new npm deps. U-5/U-7/U-8 verified as non-issues (already addressed in round 2 or were non-issues). See `docs/audit-library-applicability-2026-08-30.md` §12.
+
+**Audit round 5 fixes applied (`99716e4`):** B-4 (rateLimit storage='database'), B-5 (session hook ctx.body → adapter lookup; widens captcha-clear to all session creations), B-6 (Fastify integration — dropped `toNodeHandler` for BA's official `auth.handler` + `Request` pattern; honors x-forwarded-proto). 0 new deps. The subagent caught a subtlety: B-6's "drop the await" was wrong (`toNodeHandler` is async — it awaits `setResponse` which streams the body). See `docs/audit-library-applicability-2026-08-30.md` §13.
