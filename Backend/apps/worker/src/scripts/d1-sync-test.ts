@@ -16,14 +16,10 @@
  * pass through the same logic the cron would run, for every symbol
  * currently marked active in the ohlc_symbols table.
  */
-import pino from 'pino';
-import { env } from '@betrix/config';
+import { logger as baseLogger } from '@betrix/application';
 import { SyncWorker } from '../sync-worker.js';
 
-const logger = pino({
-  level: env.LOG_LEVEL || 'info',
-  transport: { target: 'pino-pretty', options: { colorize: true } }
-});
+const logger = baseLogger.child({ worker: 'd1-sync-test' });
 
 async function main(): Promise<void> {
   const now = new Date();

@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import pino from 'pino';
+import { logger as baseLogger } from '@betrix/application';
 import { env } from '@betrix/config';
 import {
   createPgPool,
@@ -15,13 +15,7 @@ import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
 import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
 import { backoffDelay } from './shared/retry.js';
 
-const logger = pino({
-  level: env.LOG_LEVEL || 'info',
-  transport: {
-    target: 'pino-pretty',
-    options: { colorize: true }
-  }
-});
+const logger = baseLogger.child({ worker: 'finnhub-ws' });
 
 const RELOAD_INTERVAL_MS = 60_000;
 const MAX_CONCURRENT_SUBSCRIPTIONS = 45; // Finnhub free limit is 50

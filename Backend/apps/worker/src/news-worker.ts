@@ -1,4 +1,4 @@
-import pino from 'pino';
+import { logger as baseLogger } from '@betrix/application';
 import { env } from '@betrix/config';
 import {
   createPgPool,
@@ -12,13 +12,7 @@ import { NewsArticle, NewsTagging } from '@betrix/domain';
 import type { IManagedWorker, WorkerHealthSnapshot } from '@betrix/application';
 import { ManagedWorkerBase } from './shared/ManagedWorkerBase.js';
 
-const logger = pino({
-  level: env.LOG_LEVEL || 'info',
-  transport: {
-    target: 'pino-pretty',
-    options: { colorize: true }
-  }
-});
+const logger = baseLogger.child({ worker: 'news' });
 
 export function detectSmartCategory(tags: string[]): string {
   if (tags.includes('btc') || tags.includes('eth')) return 'crypto';

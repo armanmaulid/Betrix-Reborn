@@ -17,15 +17,11 @@
  * and onConflictDoNothing for schedule rows, so already-backfilled rows are
  * simply skipped/overwritten.
  */
-import pino from 'pino';
-import { env } from '@betrix/config';
+import { logger as baseLogger } from '@betrix/application';
 import { BackfillableCalendarSync } from './calendar-backfill-lib.js';
 import { activeCalendarCurrencies } from '../shared/fxmacrodata-helpers.js';
 
-const logger = pino({
-  level: env.LOG_LEVEL || 'info',
-  transport: { target: 'pino-pretty', options: { colorize: true } }
-});
+const logger = baseLogger.child({ worker: 'calendar-backfill' });
 
 // Previous calendar year (e.g. in 2026 -> 2025-01-01..2025-12-31), computed
 // dynamically so it never goes stale. Driven by /v1/announcements because

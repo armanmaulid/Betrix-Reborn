@@ -1,4 +1,4 @@
-import { APIError } from 'better-auth';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { env } from '@betrix/config';
 import { ConflictError, hashString } from '@betrix/core';
 import type {
@@ -151,8 +151,12 @@ export function buildBetterAuthHooks(deps: BetterAuthHookDeps) {
 
   // 2 — progressive captcha gate on email sign-in.
   const hooks = {
-    before: async (ctx: any) => {
-      if (ctx?.path !== '/sign-in/email') return;
+    // B-2 — wrap in createAuthMiddleware (per BA 1.7.2 docs) to get the typed
+    // ctx with `ctx.json`/`ctx.redirect` helpers and the standardized
+    // error contract. Drop the `: any` (inferred from the middleware's
+    // generic) and the `?.` on ctx.path (typed non-nullable).
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== '/sign-in/email') return;
       const body = (ctx.body ?? {}) as {
         email?: string;
         captchaId?: string;
@@ -180,7 +184,7 @@ export function buildBetterAuthHooks(deps: BetterAuthHookDeps) {
       if (delayMs > 0) {
         await new Promise((r) => setTimeout(r, delayMs));
       }
-    }
+    })
   };
 
   return { databaseHooks: { user: userDatabaseHooks, session: sessionDatabaseHooks }, hooks };

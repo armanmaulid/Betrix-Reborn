@@ -1,5 +1,5 @@
 import cron, { ScheduledTask } from 'node-cron';
-import pino from 'pino';
+import { logger as baseLogger } from '@betrix/application';
 import { env } from '@betrix/config';
 import { BrokerTimeCalculator, CalendarEvent } from '@betrix/domain';
 import {
@@ -24,13 +24,7 @@ import {
 } from './shared/calendar-mapping.js';
 import { activeCalendarCurrencies } from './shared/fxmacrodata-helpers.js';
 
-const logger = pino({
-  level: env.LOG_LEVEL || 'info',
-  transport: {
-    target: 'pino-pretty',
-    options: { colorize: true }
-  }
-});
+const logger = baseLogger.child({ worker: 'calendar' });
 
 export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker {
   private dailyCronJob: ScheduledTask | null = null;

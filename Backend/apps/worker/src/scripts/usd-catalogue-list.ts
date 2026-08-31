@@ -7,14 +7,10 @@
  * Gated on FXMACRODATA_API_KEY (USD catalogue is free but we still gate to
  * keep behaviour consistent and avoid burning the 365-day window in CI).
  */
-import pino from 'pino';
-import { env } from '@betrix/config';
+import { logger as baseLogger } from '@betrix/application';
 import { UsdCatalogueBackfiller } from './marketdata/marketdata-backfill-lib.js';
 
-const logger = pino({
-  level: env.LOG_LEVEL || 'info',
-  transport: { target: 'pino-pretty', options: { colorize: true } }
-});
+const logger = baseLogger.child({ worker: 'usd-catalogue' });
 
 import { premiumEnvDiagnostic } from './marketdata/marketdata-backfill-lib.js';
 premiumEnvDiagnostic(logger, 'USD CATALOGUE');

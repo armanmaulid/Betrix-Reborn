@@ -1,4 +1,5 @@
 import { and, arrayContains, asc, desc, eq, gt, ilike, inArray, lt, or, sql } from 'drizzle-orm';
+import { getTableColumns } from 'drizzle-orm/utils';
 import {
   INewsRepository,
   NewsArticle,
@@ -108,27 +109,20 @@ export class DrizzleNewsRepository implements INewsRepository {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    // Fetch extra rows to ensure distinct headlines
+    // D-4 — `DISTINCT ON (headline)` returns the first row per headline in
+    // ORDER BY order. Single round-trip, no JS-side over-fetch. Postgres
+    // applies LIMIT after dedup so the result is always <= limit.
+    // Note: dedup keys the raw `headline` text (matches `findAll` parity);
+    // the prior JS loop normalized case/whitespace which is no longer
+    // needed here because the SQL returns one row per distinct headline.
     const rows = await this.db
-      .select()
+      .selectDistinctOn([newsArticles.headline], getTableColumns(newsArticles))
       .from(newsArticles)
       .where(whereClause)
-      .orderBy(desc(newsArticles.datetime))
-      .limit(limit * 5);
+      .orderBy(newsArticles.headline, desc(newsArticles.datetime))
+      .limit(limit);
 
-    const seenHeadlines = new Set<string>();
-    const uniqueArticles: NewsArticle[] = [];
-
-    for (const r of rows) {
-      const normalizedHeadline = r.headline.trim().toLowerCase();
-      if (!seenHeadlines.has(normalizedHeadline)) {
-        seenHeadlines.add(normalizedHeadline);
-        uniqueArticles.push(this.mapToDomain(r));
-        if (uniqueArticles.length >= limit) break;
-      }
-    }
-
-    return uniqueArticles;
+    return rows.map((r) => this.mapToDomain(r));
   }
 
   async findSince(since: number, limit: number = 25, category?: string): Promise<NewsArticle[]> {

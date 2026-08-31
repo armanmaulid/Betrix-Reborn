@@ -1,6 +1,9 @@
 // Configuration Interface
 export * from './config/index.js';
 
+// T-4 — shared logger primitive (T-6: transport gated on NODE_ENV).
+export { logger } from './logger.js';
+
 // Schemas & DTOs
 export * from './schemas/index.js';
 

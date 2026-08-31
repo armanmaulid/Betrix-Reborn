@@ -455,3 +455,19 @@ Build PASS (7 pkgs). Domain 44/44 PASS. Worker 7/7 PASS. tsc + ESLint + Prettier
 - **D-5** — removed the redundant `String(r.tradeDate)` wrapper in `packages/infra/src/persistence/pg/DrizzleMarketDataRepositories.ts` (3 sites). Drizzle's `date()` column with `node-postgres` infers as `string` (mode: 'string' default), so the wrapper was a no-op. Replaced with a documenting comment. No behavior change; format was already correct.
 
 Build PASS (7 pkgs). Domain 44/44 PASS. Worker 7/7 PASS. tsc + ESLint + Prettier clean.
+
+---
+
+## 18. Audit follow-up round 4 (2026-08-31)
+
+4 of the 33 audit minor findings fixed. 1 trio (U-5/U-7/U-8) verified as non-issues.
+
+- **B-2** — `packages/infra/src/auth/hooks.ts:154` — `async (ctx: any)` → `createAuthMiddleware(async (ctx))` (imported from `better-auth/api`). Drops the `any`, drops the optional-chain on `ctx.path`, enables typed response helpers. Zero behavior change.
+- **T-4** — All 12 worker entry points (8 main + 4 scripts) now use `logger.child({ worker: '...' })` from `@betrix/application`. The shared `logger` is re-exported from `packages/application/src/index.ts`. Each log line carries a `worker` binding.
+- **T-6** — Moved `pino-pretty` from `dependencies` → `devDependencies` in both `apps/api/package.json` and `apps/worker/package.json`. The shared `logger` in `packages/application/src/logger.ts` now gates the `pino-pretty` transport on `env.NODE_ENV !== 'production'`. Production workers no longer carry the unused dev tool.
+- **D-4** — `packages/infra/src/persistence/pg/DrizzleNewsRepository.ts:100-123` — `findRecent` now uses `selectDistinctOn([headline])` (single round-trip, no JS dedup loop). 1 query instead of 1 oversize + JS dedup.
+- **U-5/U-7/U-8** — Round 2 already addressed U-5 (heartbeat). U-7 opsLock uses atomic `SET NX PX`. U-8 `getdel<T>` is used in `RedisEphemeralStores.ts`. No further fix needed.
+
+Per "less code" principle: 0 new npm dependencies. All fixes use existing native library features (BA `createAuthMiddleware`, pino's child binding, Drizzle's `selectDistinctOn`, postgres `DISTINCT ON`).
+
+Build PASS (7 pkgs). Domain 44/44 PASS. Worker 7/7 PASS. tsc + ESLint + Prettier clean.

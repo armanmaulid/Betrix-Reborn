@@ -1,6 +1,5 @@
-import pino from 'pino';
+import { logger as baseLogger } from '@betrix/application';
 import { setTimeout } from 'node:timers/promises';
-import { env } from '@betrix/config';
 import { FinnhubWsWorker } from './ws-worker.js';
 import { NewsWorker } from './news-worker.js';
 import { SyncWorker } from './sync-worker.js';
@@ -8,13 +7,7 @@ import { CleanupWorker } from './cleanup-worker.js';
 import { CalendarWorker } from './calendar-worker.js';
 import { CalendarSeederWorker } from './calendar-seeder-worker.js';
 
-const logger = pino({
-  level: env.LOG_LEVEL || 'info',
-  transport: {
-    target: 'pino-pretty',
-    options: { colorize: true }
-  }
-});
+const logger = baseLogger.child({ worker: 'master' });
 
 async function startMasterWorker() {
   logger.info('═══════════════════════════════════════════════════════════════');

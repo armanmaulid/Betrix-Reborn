@@ -1,13 +1,6 @@
-import pino from 'pino';
-import { env } from '@betrix/config';
+import { logger as baseLogger } from '@betrix/application';
 
-const logger = pino({
-  level: env.LOG_LEVEL || 'info',
-  transport: {
-    target: 'pino-pretty',
-    options: { colorize: true, translateTime: 'HH:MM:ss Z' }
-  }
-});
+const logger = baseLogger.child({ worker: 'template' });
 
 /**
  * ══════════════════════════════════════════════════════════════════════════════

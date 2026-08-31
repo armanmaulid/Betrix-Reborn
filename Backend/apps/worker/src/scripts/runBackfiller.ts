@@ -1,5 +1,5 @@
-import pino from 'pino';
-import { env } from '@betrix/config';
+import { logger as baseLogger } from '@betrix/application';
+import type { Logger as PinoLogger } from 'pino';
 import { premiumEnvDiagnostic } from './marketdata/marketdata-backfill-lib.js';
 
 /**
@@ -17,7 +17,7 @@ export interface RunBackfillerOptions<T, R extends { close(): Promise<unknown> }
   /** Short label used in the env-diagnostic + completion log line. */
   label: string;
   /** Construct the backfiller (called once with the logger). */
-  factory: (logger: pino.Logger) => R;
+  factory: (logger: PinoLogger) => R;
   /** Build the backfill call from the resolved year span + script input. */
   run: (backfiller: R, args: { startYear: number; endYear: number; input: T }) => Promise<unknown>;
   /** Script input (e.g. currencies / pairs / indicators). */
@@ -29,10 +29,7 @@ export interface RunBackfillerOptions<T, R extends { close(): Promise<unknown> }
 export async function runBackfiller<T, R extends { close(): Promise<unknown> }>(
   opts: RunBackfillerOptions<T, R>
 ): Promise<void> {
-  const logger = pino({
-    level: env.LOG_LEVEL || 'info',
-    transport: { target: 'pino-pretty', options: { colorize: true } }
-  });
+  const logger = baseLogger.child({ worker: 'backfill-runner' });
   premiumEnvDiagnostic(logger, opts.label);
 
   const currentYear = new Date().getUTCFullYear();
