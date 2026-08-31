@@ -3,7 +3,7 @@
 > **Role:** Current SSOT for **library compliance** (whether each library
 > the backend depends on is applied per its current official documentation).
 > Complements `docs/backend-native-vs-complex-review.md` (which tracks
-> *what* was refactored; this one tracks *how well* the chosen libraries
+> _what_ was refactored; this one tracks _how well_ the chosen libraries
 > are applied).
 >
 > **Scope:** End-to-end check that every library the backend depends on is
@@ -14,6 +14,14 @@
 > **Method:** 5 parallel audit agents. Each agent did a focused file-by-file
 > review cross-referenced with official docs (via websearch/webfetch). Agents
 > **did not modify code** — output is analysis only.
+>
+> **Status (2026-08-30, post-fix):** 3 of the 4 top-priority fixes applied
+> (D-1 + B-7 BA migration + columns, B-1 admin plugin removed, U-1
+> isShuttingDownLease). T-1 was verified as a false positive
+> (typebox@1.3.15 enforces `format: 'email' / 'uuid'` out of the box via
+> the default `Format` namespace — no ajv-formats needed). See
+> `docs/CONTEXT.md` §3.3 for the live status table and the commit log
+> (`Phase 5 Batch 1+2+3+4` + these audit fixes).
 >
 > **Build status at audit time:** `pnpm -r build` PASS (7 packages).
 > **Domain tests:** 44/44 PASS.
@@ -460,3 +468,20 @@ These themes appeared across multiple library audits:
 ---
 
 _Report generated 2026-08-30 by 5 parallel audit agents. No code was modified._
+
+---
+
+## §9 — Resolution status (2026-08-30)
+
+Of the 37 findings, the 4 top-priority items have been addressed. See the
+commit log in `docs/CONTEXT.md` §3.3 for SHA refs.
+
+| ID | Severity | Status | Notes |
+|---|---|---|---|
+| **B-1** (BA admin plugin vs isAdmin mismatch) | MAJOR | ✅ FIXED | `admin()` removed from `plugins: []`; `isAdmin` removed from `additionalFields`. Legacy `userRepo.isAdmin` remains the sole source of truth for `requireAdmin`. Commit pending. |
+| **U-1** (isShuttingDownLease never set) | MOD | ✅ FIXED | Set flag at top of `releaseLeaderLease()` in `apps/worker/src/shared/ManagedWorkerBase.ts`; added defensive short-circuit in `runAsLeaderOrStandby()`. Commit pending. |
+| **D-1** (missing BA migration) | HIGH | ✅ FIXED | Hand-written `packages/infra/drizzle/0015_auth_user_additional_fields.sql` + journal entry (idx 15). Run `pnpm db:migrate` to apply. |
+| **B-7** (missing BA columns in `auth.user`) | MED-HIGH | ✅ FIXED | Added `credits`/`tier`/`status` to `packages/infra/src/auth/schemas.ts`; migration above creates the columns. `isAdmin` deliberately excluded (B-1). |
+| **T-1** (Ajv formats) | MED | ✅ FALSE POSITIVE | Verified: `@fastify/type-provider-typebox@6.1.0` uses `typebox/compile` (not Ajv). `typebox@1.3.15`'s default `Format` namespace has built-in `IsEmail`/`IsUuid`/`IsDateTime` formatters. `format: 'email' / 'uuid'` are **enforced at the HTTP boundary** with no extra wiring needed. The `FormatRegistry.Set` calls in `common.schema.ts` use the older `@sinclair/typebox@0.34.52` API and continue to work for any `Value.Check` callers (none in production today). |
+| **B-2, B-3, B-4, B-5, B-6, B-8, F-1, F-13, U-9, T-2, T-3, T-4, T-5, T-6, T-7, T-8, T-9, T-10, U-3, U-4, U-5, U-6, U-7, U-8, U-10, U-11, U-12, U-13, D-2, D-3, D-4, D-5, D-6, D-7, D-8, D-9, D-10, F-2, F-3, F-4, F-5, F-6, F-7, F-8, F-9, F-10, F-11, F-12, F-14, F-15, F-16, F-17, F-18, F-19, F-20, P-7, P-9, P-10, P-12, P-17, P-18, P-19, P-21, P-22, A-2, A-5, C-1, C-2, I-2, I-3, I-4, I-5, Q-1..Q-7, W-4, W-8, W-9** | various | (not fixed) | Documented; backlog for future work. |
+| **P-8, P-13, A-3, A-6** | — | (explicit deferral / kept) | Documented in the finding body. |

@@ -6,6 +6,7 @@
 **HEAD:** `eb4e09d` (pushed)
 
 > **Read this file first if context is lost.** Two reference docs:
+>
 > 1. `docs/backend-native-vs-complex-review.md` — **historical SSOT** of
 >    native-vs-complex findings + their resolution status (Q1–Q7, A1–A6,
 >    I1–I5, P1–P22, W1–W9, C1–C2, D1–D4). Marked read-only as of 2026-08-30;
@@ -262,3 +263,11 @@ Commits:
 **Phase 5 status:** 🟢 ALL items either done, partially done, or explicitly kept/deferred with rationale. P8 + P13 are the only items with a real deferral (separate refactor); the rest are completed or kept-by-design. See SSOT §12.4-§12.5 for per-batch breakdown.
 
 **Net Phase 5 diff (code only, 4 batches):** 18 files, +264/-284, +8 new helpers (`escapeCsvField`, `toCsvRow`, `BrokerTimeCalculator.getUtcMonthEnd`, `createSseParser`, `backoffDelay`/`retry`/`retrySleep`, `DailyBudget`, `runBackfiller`). Build PASS (7 pkgs), domain 44/44 PASS.
+
+**Audit top-4 fixes applied (commits in `git log`):**
+- **B-1** ✅ MAJOR — `admin()` removed + `isAdmin` removed from `additionalFields`. Legacy `userRepo.isAdmin` is now the sole admin source.
+- **U-1** ✅ MOD — `isShuttingDownLease = true` in `releaseLeaderLease()` + `runAsLeaderOrStandby()` short-circuit.
+- **D-1 + B-7** ✅ — Hand-written `0015_auth_user_additional_fields.sql` + journal idx 15 + `auth.user` columns (`credits`, `tier`, `status`).
+- **T-1** ✅ FALSE POSITIVE — Verified `typebox@1.3.15` enforces `format:` out of the box (default `Format` namespace). No ajv-formats needed.
+
+Build: PASS (7 pkgs). Domain: 44/44 PASS. Worker: 7/7 PASS. tsc + ESLint + Prettier: clean.

@@ -65,6 +65,10 @@ export abstract class ManagedWorkerBase {
    * Fire-and-forget by design: callers must not block on standby polling.
    */
   protected runAsLeaderOrStandby(): void {
+    // U-1 — short-circuit if shutdown already started (the renew-loop
+    // self-step-down path at line 152 may re-enter this after releaseLeaderLease
+    // flipped the flag; prevents a redundant 30s acquisition attempt).
+    if (this.isShuttingDownLease) return;
     void this.acquireThenRun();
   }
 
@@ -169,6 +173,12 @@ export abstract class ManagedWorkerBase {
    * already expired and been taken over by another instance.
    */
   protected async releaseLeaderLease(): Promise<void> {
+    // U-1 — signal the standby poll loop in acquireThenRun() to exit ASAP.
+    // Without this, a follower mid-setTimeout(LEASE_POLL_MS=30s) at SIGTERM
+    // keeps polling, may re-acquire a lease the leader just released, and
+    // then runs doStart() on a worker whose pool/end listeners are torn down
+    // (real crash risk during graceful shutdown).
+    this.isShuttingDownLease = true;
     if (!this.leaseAcquired && !this.leaseRenewTimer) return;
     this.stopRenewLoop();
     this.leaseAcquired = false;

@@ -1,6 +1,5 @@
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { admin } from 'better-auth/plugins';
 import { bcrypt } from '../external/auth/bcrypt.js';
 import { buildBetterAuthHooks, type BetterAuthHookDeps } from './hooks.js';
 import type { DrizzleDb } from '../persistence/drizzle/client.js';
@@ -82,15 +81,20 @@ export function createAuth(
     },
     // Slice 2 — user.additionalFields mirrors identity.users so the BA `user`
     // row carries the same authoritative fields the legacy path reads.
+    // B-1: `isAdmin` was removed — the BA admin() plugin does NOT consult
+    // it (only reads `user.role`), and Q1 (parallel-run) + the absence of
+    // any `auth.api.setRole/listUsers/banUser/...` callers mean the admin
+    // plugin is dead weight. Legacy `userRepo.isAdmin` is the sole source
+    // of truth (see apps/api/src/plugins/auth.plugin.ts:requireAdmin).
     user: {
       additionalFields: {
-        isAdmin: { type: 'boolean', defaultValue: false, input: false },
         credits: { type: 'number', defaultValue: 100, input: false },
         tier: { type: 'string', defaultValue: 'free', input: false },
         status: { type: 'string', defaultValue: 'active', input: false }
       }
     },
-    plugins: [admin()],
+    // B-1: removed `admin()` plugin (no consumers; see comment above).
+    plugins: [],
     rateLimit: {
       window: 60,
       max: Number(process.env.RATE_LIMIT_MAX) || 120,

@@ -1,4 +1,13 @@
-import { pgSchema, uuid, text, boolean, timestamp, index } from 'drizzle-orm/pg-core';
+import {
+  pgSchema,
+  uuid,
+  text,
+  boolean,
+  timestamp,
+  integer,
+  varchar,
+  index
+} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 /**
@@ -28,7 +37,14 @@ export const user = authSchema.table('user', {
   emailVerified: boolean('email_verified').default(false).notNull(),
   image: text('image'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  // B-7 — mirror the 3 remaining `additionalFields` credits/tier/status (the
+  // `isAdmin` field was removed in B-1; see better-auth.ts:user.additionalFields).
+  // `input: false` in the BA config means these are server-managed only; the
+  // Drizzle columns are the authoritative storage.
+  credits: integer('credits').default(100).notNull(),
+  tier: varchar('tier', { length: 50 }).default('free').notNull(),
+  status: varchar('status', { length: 50 }).default('active').notNull()
 });
 
 export const session = authSchema.table(

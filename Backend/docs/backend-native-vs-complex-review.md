@@ -17,7 +17,7 @@
 > 1. **Audit trail** — every refactor decision and the rationale behind it
 >    is captured here (Why was W1 partial? Why is P8 deferred? Why was
 >    `autoSignIn: false` chosen? etc.). Future contributors can see
->    *why* a particular design choice was made.
+>    _why_ a particular design choice was made.
 > 2. **Cross-reference** — the new library-applicability audit
 >    (`docs/audit-library-applicability-2026-08-30.md`) references findings
 >    here (B-1 admin mismatch, F-1 preClose hook, U-1 isShuttingDownLease,
@@ -25,6 +25,7 @@
 >    notes would have no anchor.
 >
 > **For current status**, prefer:
+>
 > - `docs/CONTEXT.md` — single entry point for the next agent.
 > - `docs/audit-library-applicability-2026-08-30.md` — library compliance.
 > - `docs/D1-better-auth-migration-plan.md` — better-auth D1 (COMPLETE).
@@ -406,3 +407,14 @@ All legacy auth code removed. Better Auth is the sole auth path. 8 use-cases + A
 4. **T-1** — Wire `ajv-formats` into `@fastify/type-provider-typebox` (HTTP-boundary format validation is silently bypassed today).
 
 **Build:** `pnpm -r build` PASS (7 pkgs). **Domain tests:** 44/44 PASS. No code was modified by the audit.
+
+---
+
+## 14. Audit follow-up (2026-08-30)
+
+Applied 3 of the 4 top-priority fixes from `docs/audit-library-applicability-2026-08-30.md` (see §9 of that doc for full status):
+
+- **D-1 + B-7** — `packages/infra/drizzle/0015_auth_user_additional_fields.sql` written by hand; `packages/infra/src/auth/schemas.ts` extended with `credits`/`tier`/`status` on `auth.user`. Journal idx 15 added.
+- **B-1** — `admin()` plugin removed from `packages/infra/src/auth/better-auth.ts`; `isAdmin` removed from `additionalFields` (legacy `userRepo.isAdmin` is now the sole source of truth for `requireAdmin`).
+- **U-1** — `apps/worker/src/shared/ManagedWorkerBase.ts` sets `isShuttingDownLease = true` at the top of `releaseLeaderLease()` + defensive short-circuit in `runAsLeaderOrStandby()`.
+- **T-1** — **False positive.** Verified that `typebox@1.3.15` (used by `@fastify/type-provider-typebox@6.1.0`) enforces `format: 'email' / 'uuid'` via its default `Format` namespace, no ajv-formats wiring needed.
