@@ -80,11 +80,15 @@ export class CleanupWorker extends ManagedWorkerBase implements IManagedWorker {
     await this.runCleanup();
 
     // Schedule hourly cleanup at top of every hour (0 * * * *)
-    this.cronJob = cron.schedule('0 * * * *', async () => {
-      if (this.isPaused) return;
-      logger.info('[CRON] Executing Scheduled Hourly Maintenance Cleanup...');
-      await this.runCleanup();
-    });
+    this.cronJob = cron.schedule(
+      '0 * * * *',
+      async () => {
+        if (this.isPaused) return;
+        logger.info('[CRON] Executing Scheduled Hourly Maintenance Cleanup...');
+        await this.runCleanup();
+      },
+      { timezone: 'UTC' }
+    );
 
     this.attachCommandListener();
     logger.info('Maintenance Cleanup Worker scheduled to run hourly (0 * * * *).');

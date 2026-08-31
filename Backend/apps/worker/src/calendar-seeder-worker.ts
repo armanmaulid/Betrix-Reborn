@@ -98,10 +98,14 @@ export class CalendarSeederWorker extends ManagedWorkerBase implements IManagedW
     await this.seedStartupYears();
 
     // Task 2 — daily guard: "does THIS month have data? skip : seed".
-    this.dailyCronJob = cron.schedule(cronExpr, async () => {
-      if (this.isPaused) return;
-      await this.seedCurrentMonthIfMissing();
-    });
+    this.dailyCronJob = cron.schedule(
+      cronExpr,
+      async () => {
+        if (this.isPaused) return;
+        await this.seedCurrentMonthIfMissing();
+      },
+      { timezone: 'UTC' }
+    );
 
     this.attachCommandListener();
   }

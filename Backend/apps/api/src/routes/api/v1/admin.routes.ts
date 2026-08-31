@@ -47,25 +47,28 @@ export const adminRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
   const overlayLiveHeartbeats = async <T extends HeartbeatOverlayable>(rows: T[]) => {
     if (rows.length === 0) return rows;
     const keys = rows.map((r) => redisKeys.workerHeartbeat(r.workerId));
-    const raws = await fastify.container.redis.mget<string[]>(...keys);
+    // U-5 — @upstash/redis REST auto-deserializes JSON; mget returns the
+    // parsed object directly. No manual JSON.parse needed (matches the
+    // U-5 change in writeHeartbeat() — pass plain object, read plain object).
+    const raws = (await fastify.container.redis.mget<unknown[]>(...keys)) as Array<{
+      processedCount?: number;
+      errorCount?: number;
+      lastError?: string | null;
+      ts?: number;
+    } | null>;
     const now = Date.now();
     return rows.map((row, i) => {
-      const raw = raws[i];
-      if (!raw) return row;
-      try {
-        const hb = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        const ts = Number(hb?.ts) || 0;
-        if (!ts || now - ts >= 90_000) return row;
-        return {
-          ...row,
-          processedCount: hb.processedCount ?? row.processedCount,
-          errorCount: hb.errorCount ?? row.errorCount,
-          lastError: hb.lastError ?? row.lastError,
-          lastReportAt: new Date(ts)
-        };
-      } catch {
-        return row;
-      }
+      const hb = raws[i];
+      if (!hb) return row;
+      const ts = Number(hb.ts) || 0;
+      if (!ts || now - ts >= 90_000) return row;
+      return {
+        ...row,
+        processedCount: hb.processedCount ?? row.processedCount,
+        errorCount: hb.errorCount ?? row.errorCount,
+        lastError: hb.lastError ?? row.lastError,
+        lastReportAt: new Date(ts)
+      };
     });
   };
 

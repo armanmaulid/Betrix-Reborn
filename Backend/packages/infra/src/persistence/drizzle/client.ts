@@ -45,7 +45,15 @@ export function createPgPool(connectionString: string, maxPoolSize: number = 20)
   return new Pool({
     connectionString,
     max: maxPoolSize,
-    ssl: resolveSsl(connectionString)
+    ssl: resolveSsl(connectionString),
+    // D-2 — pg.Pool production timeouts. Native pg-pool options, no new deps.
+    // Defaults below are conservative for a stateless API behind a load balancer
+    // (NAT/firewall idle-kill is 5–30 min, so 30s idle + 5s connect avoids
+    // hitting stale sockets while still reusing warm connections). Lifetime
+    // 30 min cycles each socket past any lingering firewall state.
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 5_000,
+    maxLifetimeSeconds: 30 * 60
   });
 }
 

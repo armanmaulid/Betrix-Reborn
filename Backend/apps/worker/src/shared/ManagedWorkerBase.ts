@@ -120,14 +120,16 @@ export abstract class ManagedWorkerBase {
     try {
       this.leaseRedis ??= createRedisClient();
       const h = this.getHealth();
+      // U-5 — pass plain object; @upstash/redis REST auto-serializes JSON
+      // (consistent with DrizzleAdminRepositories / RedisMarketDataRepository).
       await this.leaseRedis.set(
         redisKeys.workerHeartbeat(this.workerId),
-        JSON.stringify({
+        {
           processedCount: h.processedCount,
           errorCount: h.errorCount,
           lastError: h.lastError,
           ts: Date.now()
-        }),
+        },
         { ex: 90 }
       );
     } catch {

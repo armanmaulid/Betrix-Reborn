@@ -106,20 +106,28 @@ export class SyncWorker extends ManagedWorkerBase implements IManagedWorker {
     await this.syncD1Baselines();
 
     // 3. Schedule Daily D1 Baseline Sync at exact Broker Midnight Rollover (ADR-47)
-    this.dailyCronJob = cron.schedule(cronExpr, async () => {
-      if (this.isPaused) return;
-      logger.info(
-        `[CRON] Executing Daily D1 Baseline Sync at Broker Midnight Rollover (${rolloverUtcHour}:00 UTC / 00:00 Broker Time)...`
-      );
-      await this.syncD1Baselines();
-    });
+    this.dailyCronJob = cron.schedule(
+      cronExpr,
+      async () => {
+        if (this.isPaused) return;
+        logger.info(
+          `[CRON] Executing Daily D1 Baseline Sync at Broker Midnight Rollover (${rolloverUtcHour}:00 UTC / 00:00 Broker Time)...`
+        );
+        await this.syncD1Baselines();
+      },
+      { timezone: 'UTC' }
+    );
 
     // 4. Schedule Weekly Full Broker Symbol Catalog Sync (Every Sunday at 20:00 UTC before market open)
-    this.weeklyCatalogCronJob = cron.schedule('0 20 * * 0', async () => {
-      if (this.isPaused) return;
-      logger.info('[CRON] Executing Weekly Full Broker Symbol Catalog Synchronization...');
-      await this.syncBrokerCatalog();
-    });
+    this.weeklyCatalogCronJob = cron.schedule(
+      '0 20 * * 0',
+      async () => {
+        if (this.isPaused) return;
+        logger.info('[CRON] Executing Weekly Full Broker Symbol Catalog Synchronization...');
+        await this.syncBrokerCatalog();
+      },
+      { timezone: 'UTC' }
+    );
 
     this.attachCommandListener();
     logger.info(

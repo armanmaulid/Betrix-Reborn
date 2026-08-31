@@ -1,5 +1,6 @@
 import { betterAuth, type BetterAuthOptions } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { env } from '@betrix/config';
 import { bcrypt } from '../external/auth/bcrypt.js';
 import { buildBetterAuthHooks, type BetterAuthHookDeps } from './hooks.js';
 import type { DrizzleDb } from '../persistence/drizzle/client.js';
@@ -106,6 +107,19 @@ export function createAuth(
     advanced: {
       database: {
         generateId: () => crypto.randomUUID()
+      },
+      // B-3 — cookie config for cross-origin / Safari ITP compat.
+      // In dev (http://localhost) the BA default is `secure: false`;
+      // in prod (https) secure is required so Safari/Chrome accept
+      // the session cookie. `sameSite: 'lax'` is BA's default and
+      // keeps OAuth redirect flows working; if you ever embed BA in an
+      // iframe on a different origin, switch to `'none'` and require
+      // `secure: true` explicitly.
+      useSecureCookies: env.NODE_ENV === 'production',
+      defaultCookieAttributes: {
+        secure: env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'lax'
       }
     }
   };

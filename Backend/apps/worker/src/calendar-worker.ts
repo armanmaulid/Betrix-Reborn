@@ -97,20 +97,28 @@ export class CalendarWorker extends ManagedWorkerBase implements IManagedWorker 
       logger.error({ err: err.message }, '[CALENDAR YEAR SYNC] Startup year-coverage pass failed');
     });
 
-    this.dailyCronJob = cron.schedule(cronExpr, async () => {
-      if (this.isPaused) return;
-      logger.info('[CRON] Executing daily calendar sync check...');
-      await this.syncIfMonthMissing();
-    });
+    this.dailyCronJob = cron.schedule(
+      cronExpr,
+      async () => {
+        if (this.isPaused) return;
+        logger.info('[CRON] Executing daily calendar sync check...');
+        await this.syncIfMonthMissing();
+      },
+      { timezone: 'UTC' }
+    );
 
     // Periodic value-refresh pass: fills Actual for events that released and
     // re-pulls Forecast for upcoming ones. Costs ZERO FXMacroData calls on a
     // tick with nothing to refresh, and a bounded, budgeted number otherwise —
     // so the REST-only setup (no paid SSE key) stays self-healing.
-    this.refreshCronJob = cron.schedule(env.CALENDAR_REFRESH_CRON, async () => {
-      if (this.isPaused) return;
-      await this.refreshRecentValues();
-    });
+    this.refreshCronJob = cron.schedule(
+      env.CALENDAR_REFRESH_CRON,
+      async () => {
+        if (this.isPaused) return;
+        await this.refreshRecentValues();
+      },
+      { timezone: 'UTC' }
+    );
     logger.info(`[CRON] Value-refresh schedule: '${env.CALENDAR_REFRESH_CRON}'`);
 
     this.connectSSE();
