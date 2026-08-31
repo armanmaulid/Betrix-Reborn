@@ -1,5 +1,11 @@
 # Library Applicability Audit (2026-08-30)
 
+> **Role:** Current SSOT for **library compliance** (whether each library
+> the backend depends on is applied per its current official documentation).
+> Complements `docs/backend-native-vs-complex-review.md` (which tracks
+> *what* was refactored; this one tracks *how well* the chosen libraries
+> are applied).
+>
 > **Scope:** End-to-end check that every library the backend depends on is
 > applied per its current official documentation. Covers **better-auth 1.7.2**,
 > **Fastify v5**, **Drizzle ORM 0.45+**, **TypeBox 0.34 + Pino 9**,

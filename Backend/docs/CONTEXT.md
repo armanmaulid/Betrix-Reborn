@@ -5,9 +5,20 @@
 **Branch:** `session/agent_3e8f767d-86a4-4ebc-824b-ab97de21a28b`
 **HEAD:** `eb4e09d` (pushed)
 
-> **Read this file first if context is lost.** Full review in
-> `docs/backend-native-vs-complex-review.md` (SSOT). This file is the
-> _starting point_ — what was just done, what's next, what to NOT re-explore.
+> **Read this file first if context is lost.** Two reference docs:
+> 1. `docs/backend-native-vs-complex-review.md` — **historical SSOT** of
+>    native-vs-complex findings + their resolution status (Q1–Q7, A1–A6,
+>    I1–I5, P1–P22, W1–W9, C1–C2, D1–D4). Marked read-only as of 2026-08-30;
+>    the banner at the top explains why it's kept.
+> 2. `docs/audit-library-applicability-2026-08-30.md` — **library
+>    compliance audit** (better-auth 1.7.2, Fastify v5, Drizzle 0.45+,
+>    TypeBox + Pino, @upstash/redis + node-cron). 37 findings (1 major +
+>    1 mod bug + 33 minor).
+> 3. `docs/D1-better-auth-migration-plan.md` — better-auth D1 plan (✅
+>    COMPLETE).
+>
+> This file is the _starting point_ — what was just done, what's next,
+> what to NOT re-explore.
 
 ---
 
@@ -179,7 +190,9 @@ rg "as any" apps/api/src/ packages/
 
 ## 7. Reference
 
-- **SSOT review (full):** `docs/backend-native-vs-complex-review.md` (277 lines)
+- **SSOT review (historical, read-only as of 2026-08-30):** `docs/backend-native-vs-complex-review.md` (377 lines, 13 sections) — native-vs-complex findings + their resolution status through Phase 5.
+- **Library compliance audit:** `docs/audit-library-applicability-2026-08-30.md` — 5 parallel agents, 37 findings (1 major: BA `admin()` vs `isAdmin` mismatch; 1 mod bug: `isShuttingDownLease`; 33 minor).
+- **D1 plan (COMPLETE):** `docs/D1-better-auth-migration-plan.md` (9 sections).
 - **Pre-D2 commit (what D2 replaced):** `30093be` (reverted) and the original
   798-line `container.plugin.ts` is preserved in git history (`999d6e5`).
 - **Repo:** `git@github.com:armanmaulid/Betrix-Reborn.git` (origin)

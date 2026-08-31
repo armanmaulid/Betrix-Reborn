@@ -7,6 +7,37 @@
 
 ---
 
+> ## ⚠️ Historical reference (read-only)
+>
+> **This document is now a **historical record** of native-vs-complex findings
+> (Q1–Q7 quick wins, A1–A6 application findings, I1–I5 infra, P1–P22 api,
+> W1–W9 worker, C1–C2 config, D1–D4 decisions) and their resolution status
+> through Phase 5 (2026-08-30). Kept for **two reasons**:
+>
+> 1. **Audit trail** — every refactor decision and the rationale behind it
+>    is captured here (Why was W1 partial? Why is P8 deferred? Why was
+>    `autoSignIn: false` chosen? etc.). Future contributors can see
+>    *why* a particular design choice was made.
+> 2. **Cross-reference** — the new library-applicability audit
+>    (`docs/audit-library-applicability-2026-08-30.md`) references findings
+>    here (B-1 admin mismatch, F-1 preClose hook, U-1 isShuttingDownLease,
+>    T-1 ajv-formats, etc.). Without this doc, the audit's "out-of-scope"
+>    notes would have no anchor.
+>
+> **For current status**, prefer:
+> - `docs/CONTEXT.md` — single entry point for the next agent.
+> - `docs/audit-library-applicability-2026-08-30.md` — library compliance.
+> - `docs/D1-better-auth-migration-plan.md` — better-auth D1 (COMPLETE).
+>
+> **Do NOT** update this document for new work. Append new sections here
+> only as addendums (like the existing §10–§13) that record history
+> (e.g., "Batch 4 of Phase 5 was completed; see CONTEXT §3.3 for the
+> status table"). The live status lives in CONTEXT.md.
+
+---
+
+---
+
 ## 0. Where We Are (Roadmap & Current Position)
 
 > **Read this first if context is lost.** This section is the entry point.
