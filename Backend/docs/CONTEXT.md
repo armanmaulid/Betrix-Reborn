@@ -3,7 +3,7 @@
 **Date:** 2026-08-31
 **Workspace:** `Backend/` (Fastify 5 + Drizzle + Pino + TypeBox + @upstash/redis + node-cron + dukascopy-node + ws)
 **Branch:** `session/agent_3e8f767d-86a4-4ebc-824b-ab97de21a28b`
-**HEAD:** `6b23a21` (pushed)
+**HEAD:** `a953678` (pushed)
 
 > **Read this file first if context is lost.** Two reference docs:
 >
@@ -269,3 +269,5 @@ Commits:
 - **T-1** ✅ FALSE POSITIVE — Verified `typebox@1.3.15` enforces `format:` out of the box (default `Format` namespace). No ajv-formats needed.
 
 Build: PASS (7 pkgs). Domain: 44/44 PASS. Worker: 7/7 PASS. tsc + ESLint + Prettier: clean.
+
+**Audit round 4 fixes applied (`a953678`):** B-2 (createAuthMiddleware wrapper), T-4 (12 worker loggers → shared `logger.child({ worker })`), T-6 (pino-pretty → devDeps + transport gated on `NODE_ENV !== 'production'`), D-4 (`findRecent` → `selectDistinctOn([headline])` single round-trip). 0 new npm deps. U-5/U-7/U-8 verified as non-issues (already addressed in round 2 or were non-issues). See `docs/audit-library-applicability-2026-08-30.md` §12.
