@@ -124,9 +124,27 @@ export function buildBetterAuthHooks(deps: BetterAuthHookDeps) {
   // 1 + 4 — login side effects (1:1 device enforce, updateLastSeen, LOGIN audit).
   const sessionDatabaseHooks = {
     create: {
+      // B-5 — drop the fragile `ctx.body?.email` read (only populated for
+      // the sign-in/email endpoint, not for OAuth-callback / token-refresh
+      // session creations). Resolve the email via BA's adapter (or
+      // newSession.user.email when present) so the captcha-clear branch
+      // runs for ALL session.create.after invocations, not just email/password.
       after: async (session: { userId: string } & Record<string, unknown>, ctx: any) => {
-        const { ip, userAgent } = clientIpAndUa(ctx?.context ?? ctx ?? {});
-        const email = String((ctx?.body as any)?.email ?? '');
+        const innerCtx = ctx?.context ?? ctx ?? {};
+        const { ip, userAgent } = clientIpAndUa(innerCtx);
+        const adapter = innerCtx.adapter;
+        const email =
+          ctx?.context?.newSession?.user?.email ||
+          (adapter && typeof adapter.findOne === 'function'
+            ? String(
+                (
+                  await adapter.findOne({
+                    model: 'user',
+                    where: [{ field: 'id', value: session.userId }]
+                  })
+                )?.email ?? ''
+              )
+            : '');
         try {
           if (env.DEVICE_ENFORCEMENT) {
             const fp = serverFingerprint(ip, userAgent);

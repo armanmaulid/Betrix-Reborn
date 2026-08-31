@@ -471,3 +471,15 @@ Build PASS (7 pkgs). Domain 44/44 PASS. Worker 7/7 PASS. tsc + ESLint + Prettier
 Per "less code" principle: 0 new npm dependencies. All fixes use existing native library features (BA `createAuthMiddleware`, pino's child binding, Drizzle's `selectDistinctOn`, postgres `DISTINCT ON`).
 
 Build PASS (7 pkgs). Domain 44/44 PASS. Worker 7/7 PASS. tsc + ESLint + Prettier clean.
+
+---
+
+## 19. Audit follow-up round 5 (2026-08-31)
+
+3 minor findings fixed. B-6 reframed (drop-await was wrong; used official pattern instead).
+
+- **B-4** — `packages/infra/src/auth/better-auth.ts:99-108` — added `storage: 'database'` + `modelName: 'rateLimit'` so the rate-limit counter is shared across pods. Per-pod in-memory counters multiplied the effective limit by replica count.
+- **B-5** — `packages/infra/src/auth/hooks.ts:127-131` — drop the fragile `ctx?.body?.email` (only populated for sign-in/email). Use `ctx.context.newSession?.user?.email` or `ctx.context.adapter.findOne('user', where id=session.userId)`. Captcha-clear now runs for ALL session creations, not just password.
+- **B-6** — `apps/api/src/plugins/betterAuth.plugin.ts:48-69` — replaced `toNodeHandler` (writes directly to `reply.raw` and races with Fastify response lifecycle) with BA's canonical Fastify pattern: build a `Request`, call `authInstance.handler(req)`, forward to Fastify. Honors `x-forwarded-proto` for redirect URLs.
+
+Build PASS (7 pkgs). Domain 44/44 PASS. Worker 7/7 PASS. tsc + ESLint + Prettier clean.

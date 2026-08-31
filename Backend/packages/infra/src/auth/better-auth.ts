@@ -99,7 +99,15 @@ export function createAuth(
     rateLimit: {
       window: 60,
       max: Number(process.env.RATE_LIMIT_MAX) || 120,
-      enabled: true
+      enabled: true,
+      // B-4 — multi-instance prod: share the counter across pods by
+      // persisting in the same Drizzle DB as the rest of `auth.*`. Without
+      // this, each pod has its own (max/window) budget, multiplying the
+      // effective limit by replica count and weakening brute-force defense.
+      // `modelName` defaults to 'rateLimit' per BA 1.7.2 docs; set
+      // explicitly so the table is grep-able in the Drizzle schema.
+      storage: 'database',
+      modelName: 'rateLimit'
     },
     trustedOrigins,
     ...(slice2 ? { databaseHooks: slice2.databaseHooks } : {}),
