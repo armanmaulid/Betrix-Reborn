@@ -50,6 +50,11 @@ export class ContextInjectionService {
     const input = Value.Default(
       MarketContextOptionsSchema,
       options
+      // T-5 —  returns ; the  is
+      // a controlled widening because the schema is static and all defaults
+      // are produced by TypeBox from that same schema. A type-level
+      //  guard would not add runtime safety here.
+      // Intentional, do not "fix".
     ) as ResolvedMarketContextOptionsDTO;
     const symbol = input.symbol.toUpperCase();
     const timeframe = input.timeframe.toLowerCase();

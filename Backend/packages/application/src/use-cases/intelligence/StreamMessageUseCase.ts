@@ -50,6 +50,11 @@ export class StreamMessageUseCase {
     signal?: AbortSignal
   ): Promise<void> {
     // A1 — schema is the source of truth (Default applies schema defaults; input is already Ajv-validated by the route).
+    // T-5 — `Value.Default` returns `unknown`; the `as ResolvedStreamMessageDTO` is
+    // a controlled widening because the schema is static and all defaults
+    // are produced by TypeBox from that same schema. A type-level
+    // `Static<typeof Schema>` guard would not add runtime safety here.
+    // Intentional, do not "fix".
     const input = Value.Default(StreamMessageSchema, dto) as ResolvedStreamMessageDTO;
 
     // 1. Atomic credit reservation (Bug 8 fix — no check-then-deduct race)

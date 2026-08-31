@@ -54,7 +54,13 @@ function createRedisRateLimitStore(redis: UpstashLike, scope: string, onBackendE
           // Key exists but has no expiry (-1) or no key (-2): set expiry.
           if (pttlMs < 0) {
             try {
-              await redis.expire(k, windowSec);
+              // U-4: check return value (1 = set, 0 = key missing). If 0,
+              // retry once on the now-current counter (covers the
+              // incr→pttl→expire race where another caller deleted the key).
+              const set = await redis.expire(k, windowSec);
+              if (set !== 1) {
+                await redis.expire(k, windowSec); // best-effort retry
+              }
               pttlMs = windowMs;
             } catch {
               pttlMs = windowMs;

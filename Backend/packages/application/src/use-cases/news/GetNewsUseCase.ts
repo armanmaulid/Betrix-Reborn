@@ -13,6 +13,11 @@ export class GetNewsUseCase {
 
   public async execute(query?: GetNewsQueryDTO): Promise<PaginatedResult<NewsArticle>> {
     // A1 — schema is the source of truth; Default fills `page: 1`, `limit: 20`.
+    // T-5 — `Value.Default` returns `unknown`; the `as ResolvedGetNewsQueryDTO` is
+    // a controlled widening because the schema is static and all defaults
+    // are produced by TypeBox from that same schema. A type-level
+    // `Static<typeof Schema>` guard would not add runtime safety here.
+    // Intentional, do not "fix".
     const input = Value.Default(GetNewsQuerySchema, query ?? {}) as ResolvedGetNewsQueryDTO;
 
     return this.newsService.getNewsPaginated(

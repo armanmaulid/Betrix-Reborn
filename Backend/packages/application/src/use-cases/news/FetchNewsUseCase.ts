@@ -14,6 +14,11 @@ export class FetchNewsUseCase {
     context?: { adminId?: string; ip?: string; userAgent?: string }
   ): Promise<NewsArticle[]> {
     // A1 — schema is the source of truth; Default fills `category: 'general'`.
+    // T-5 — `Value.Default` returns `unknown`; the `as FetchNewsBodyDTO` is
+    // a controlled widening because the schema is static and all defaults
+    // are produced by TypeBox from that same schema. A type-level
+    // `Static<typeof Schema>` guard would not add runtime safety here.
+    // Intentional, do not "fix".
     const input = Value.Default(FetchNewsBodySchema, dto ?? {}) as FetchNewsBodyDTO;
     const category = input.category;
     const articles = await this.newsService.fetchAndStoreNews(category);

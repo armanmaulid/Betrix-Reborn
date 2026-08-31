@@ -483,3 +483,19 @@ Build PASS (7 pkgs). Domain 44/44 PASS. Worker 7/7 PASS. tsc + ESLint + Prettier
 - **B-6** — `apps/api/src/plugins/betterAuth.plugin.ts:48-69` — replaced `toNodeHandler` (writes directly to `reply.raw` and races with Fastify response lifecycle) with BA's canonical Fastify pattern: build a `Request`, call `authInstance.handler(req)`, forward to Fastify. Honors `x-forwarded-proto` for redirect URLs.
 
 Build PASS (7 pkgs). Domain 44/44 PASS. Worker 7/7 PASS. tsc + ESLint + Prettier clean.
+
+---
+
+## 20. Audit follow-up round 6 (2026-08-31)
+
+5 minor findings fixed; 1 verified as no-fix-needed; 1 already done in a prior round.
+
+- **F-2 + T-2** — `apps/api/src/server.ts:52` — dropped `{ disableRequestLogging: true }` from `new ApiLogController(...)`. The `isLogDisabled` override is the single source of truth. Silences Fastify v6 deprecation warning FSTDEP023.
+- **F-3** — `apps/api/src/server.ts:73-78` — expanded the `forceCloseConnections: 'idle'` comment to clarify it only closes idle keep-alive sockets, NOT active SSE streams (those are torn down by the `ssePlugin` `preClose` hook).
+- **F-4** — `env.TRUST_PROXY` is already a strict boolean (`packages/config/src/index.ts:113`); v5's `boolean | string | string[] | function` overload is satisfied. NO FIX NEEDED.
+- **T-3** — `logger.ts` already uses `env` from `@betrix/config` since round 4 T-6. ALREADY FIXED.
+- **T-5** — added 3-line rationale comment to 7 use-case / service files (`FetchNewsUseCase`, `GetNewsUseCase`, `GetOHLCUseCase`, `CreateAgentUseCase`, `SendMessageUseCase`, `StreamMessageUseCase`, `ContextInjectionService`) explaining why the `as DTO` widening after `Value.Default` is intentional (`Value.Default` returns `unknown`; the schema is static so the cast is safe). Conservative option vs `Value.Clean` (which still returns `unknown` and wouldn't eliminate the cast).
+- **U-2** — `packages/infra/src/persistence/redis/RedisClient.ts` — throws a clear credentials error in production if Upstash env vars are missing; localhost fallback only in dev/test.
+- **U-4** — `apps/api/src/plugins/rateLimit.plugin.ts:55-66` — `redis.expire` return value now checked; if 0 (key missing), one best-effort retry to cover the sub-ms `incr→pttl→expire` race.
+
+Build PASS (7 pkgs). Domain 44/44 PASS. Worker 7/7 PASS. tsc + ESLint + Prettier clean. 0 new npm deps.

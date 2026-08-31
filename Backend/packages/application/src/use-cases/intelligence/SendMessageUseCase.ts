@@ -51,6 +51,11 @@ export class SendMessageUseCase {
     // narrows the static type so `maxTokens`/`temperature`/`taskType` are
     // non-optional here (TypeBox keeps `Type.Optional + default` as
     // `T | undefined` at the type level — see SSOT §3 C1 note).
+    // T-5 — `Value.Default` returns `unknown`; the `as ResolvedSendMessageDTO` is
+    // a controlled widening because the schema is static and all defaults
+    // are produced by TypeBox from that same schema. A type-level
+    // `Static<typeof Schema>` guard would not add runtime safety here.
+    // Intentional, do not "fix".
     const input = Value.Default(SendMessageSchema, dto) as ResolvedSendMessageDTO;
 
     // 1. Atomic credit reservation (Bug 8 fix — no check-then-deduct race)

@@ -46,7 +46,12 @@ export async function createServer() {
   const isDev = env.NODE_ENV === 'development' || env.NODE_ENV === 'test';
 
   const app = Fastify({
-    logController: new ApiLogController({ disableRequestLogging: true }),
+    // F-2 — removed `disableRequestLogging: true` from the LogController
+    // options. The `isLogDisabled` override on the same class (line 27-29)
+    // already gates the only log we suppress (`/health`), so the inherited
+    // boolean was a no-op for our code path. Dropping it also silences
+    // the Fastify v6 deprecation warning FSTDEP023.
+    logController: new ApiLogController(),
     logger: {
       level: env.LOG_LEVEL || 'info',
       transport: isDev
@@ -64,8 +69,15 @@ export async function createServer() {
     // request.ip reflects X-Forwarded-For (correct rate-limit buckets and
     // server-side device fingerprints). Never enable when directly exposed.
     trustProxy: env.TRUST_PROXY,
-    // P21 — close idle (keep-alive) connections on shutdown so SSE clients
-    // and any stuck keep-alive sockets cannot delay a clean restart.
+    // P21 — close idle (keep-alive) connections on shutdown so stuck
+    // keep-alive sockets cannot delay a clean restart.
+    //
+    // F-3 — `'idle'` only closes sockets that are NOT currently sending
+    // a request or waiting for a response. Active SSE streams hold the
+    // socket busy, so this option does NOT terminate live SSE clients —
+    // those are torn down by `ssePlugin`'s `preClose` hook, which calls
+    // `sseHub.closeAll()` and ends each stream with a final `event: close`
+    // frame before Fastify begins draining connections.
     forceCloseConnections: 'idle'
   }).withTypeProvider<TypeBoxTypeProvider>();
 
