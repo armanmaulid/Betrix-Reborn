@@ -472,16 +472,16 @@ _Report generated 2026-08-30 by 5 parallel audit agents. No code was modified._
 
 ---
 
-## §9 — Resolution status (2026-08-30)
+## §9 — Resolution status (2026-08-31)
 
 Of the 37 findings, the 4 top-priority items have been addressed. See the
-commit log in `docs/CONTEXT.md` §3.3 for SHA refs.
+commit log in `docs/CONTEXT.md` §1 (Phase 7 row) for SHA refs.
 
 | ID | Severity | Status | Notes |
 |---|---|---|---|
-| **B-1** (BA admin plugin vs isAdmin mismatch) | MAJOR | ✅ FIXED | `admin()` removed from `plugins: []`; `isAdmin` removed from `additionalFields`. Legacy `userRepo.isAdmin` remains the sole source of truth for `requireAdmin`. Commit pending. |
-| **U-1** (isShuttingDownLease never set) | MOD | ✅ FIXED | Set flag at top of `releaseLeaderLease()` in `apps/worker/src/shared/ManagedWorkerBase.ts`; added defensive short-circuit in `runAsLeaderOrStandby()`. Commit pending. |
-| **D-1** (missing BA migration) | HIGH | ✅ FIXED | Hand-written `packages/infra/drizzle/0015_auth_user_additional_fields.sql` + journal entry (idx 15). Run `pnpm db:migrate` to apply. |
+| **B-1** (BA admin plugin vs isAdmin mismatch) | MAJOR | ✅ FIXED (`e2024f1`) | `admin()` removed from `plugins: []`; `isAdmin` removed from `additionalFields`. Legacy `userRepo.isAdmin` remains the sole source of truth for `requireAdmin`. |
+| **U-1** (isShuttingDownLease never set) | MOD | ✅ FIXED (`e2024f1`) | Set flag at top of `releaseLeaderLease()` in `apps/worker/src/shared/ManagedWorkerBase.ts`; added defensive short-circuit in `runAsLeaderOrStandby()`. |
+| **D-1** (missing BA migration) | HIGH | ✅ FIXED (`e2024f1`) | Hand-written `packages/infra/drizzle/0015_auth_user_additional_fields.sql` + journal entry (idx 15). Run `pnpm db:migrate` to apply. |
 | **B-7** (missing BA columns in `auth.user`) | MED-HIGH | ✅ FIXED | Added `credits`/`tier`/`status` to `packages/infra/src/auth/schemas.ts`; migration above creates the columns. `isAdmin` deliberately excluded (B-1). |
 | **T-1** (Ajv formats) | MED | ✅ FALSE POSITIVE | Verified: `@fastify/type-provider-typebox@6.1.0` uses `typebox/compile` (not Ajv). `typebox@1.3.15`'s default `Format` namespace has built-in `IsEmail`/`IsUuid`/`IsDateTime` formatters. `format: 'email' / 'uuid'` are **enforced at the HTTP boundary** with no extra wiring needed. The `FormatRegistry.Set` calls in `common.schema.ts` use the older `@sinclair/typebox@0.34.52` API and continue to work for any `Value.Check` callers (none in production today). |
 | **B-2, B-3, B-4, B-5, B-6, B-8, F-1, F-13, U-9, T-2, T-3, T-4, T-5, T-6, T-7, T-8, T-9, T-10, U-3, U-4, U-5, U-6, U-7, U-8, U-10, U-11, U-12, U-13, D-2, D-3, D-4, D-5, D-6, D-7, D-8, D-9, D-10, F-2, F-3, F-4, F-5, F-6, F-7, F-8, F-9, F-10, F-11, F-12, F-14, F-15, F-16, F-17, F-18, F-19, F-20, P-7, P-9, P-10, P-12, P-17, P-18, P-19, P-21, P-22, A-2, A-5, C-1, C-2, I-2, I-3, I-4, I-5, Q-1..Q-7, W-4, W-8, W-9** | various | (not fixed) | Documented; backlog for future work. |
