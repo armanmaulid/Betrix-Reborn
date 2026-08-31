@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, bigint, timestamp, index } from 'drizzle-orm/pg-core';
+import { varchar, text, bigint, timestamp, index } from 'drizzle-orm/pg-core';
 import { content as contentSchema } from './schemas.js';
 
 export const newsArticles = contentSchema.table(

@@ -43,13 +43,19 @@ export async function runD1CutoverInvalidate(connectionString?: string): Promise
   const pool = createPgPool(conn, 1);
   const db = createDrizzleClient(pool);
   try {
-    const sessions = await db.execute(sql`TRUNCATE TABLE identity.sessions RESTART IDENTITY CASCADE`);
+    const sessions = await db.execute(
+      sql`TRUNCATE TABLE identity.sessions RESTART IDENTITY CASCADE`
+    );
     console.log('[D1] Truncated identity.sessions');
-    const attempts = await db.execute(sql`TRUNCATE TABLE identity.failed_login_attempts RESTART IDENTITY CASCADE`);
+    const attempts = await db.execute(
+      sql`TRUNCATE TABLE identity.failed_login_attempts RESTART IDENTITY CASCADE`
+    );
     console.log('[D1] Truncated identity.failed_login_attempts');
     void sessions;
     void attempts;
-    console.log('[D1] Cutover invalidation complete. Legacy sessions + login-attempt counters cleared.');
+    console.log(
+      '[D1] Cutover invalidation complete. Legacy sessions + login-attempt counters cleared.'
+    );
   } finally {
     await pool.end();
   }

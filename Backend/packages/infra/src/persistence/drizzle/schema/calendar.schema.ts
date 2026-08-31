@@ -1,6 +1,4 @@
 import {
-  pgSchema,
-  pgTable,
   varchar,
   text,
   integer,

@@ -21,7 +21,10 @@ export interface RetryOptions {
   onRetry?: (err: unknown, attempt: number) => void;
 }
 
-export async function retry<T>(fn: (attempt: number) => Promise<T>, opts: RetryOptions): Promise<T> {
+export async function retry<T>(
+  fn: (attempt: number) => Promise<T>,
+  opts: RetryOptions
+): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 1; attempt <= opts.times; attempt++) {
     try {

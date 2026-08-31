@@ -42,12 +42,17 @@ export interface BetterAuthHookDeps {
   activityLogRepo: IActivityLogRepository;
   /** Structural subset of CaptchaService used by the captcha gate. */
   captchaService: {
-    generateChallenge(ttlSeconds?: number): Promise<{ id: string; question: string; expiresInSeconds: number }>;
+    generateChallenge(
+      ttlSeconds?: number
+    ): Promise<{ id: string; question: string; expiresInSeconds: number }>;
     verify(challengeId: string, answer: string): Promise<boolean>;
   };
 }
 
-function clientIpAndUa(ctx: { headers?: Record<string, any> }): { ip?: string; userAgent?: string } {
+function clientIpAndUa(ctx: { headers?: Record<string, any> }): {
+  ip?: string;
+  userAgent?: string;
+} {
   const h = ctx.headers ?? {};
   const xff = h['x-forwarded-for'];
   const ip =
@@ -65,9 +70,7 @@ function serverFingerprint(ip?: string, userAgent?: string): string {
   return hashString(`${normalizedIp}|${normalizedUa}`);
 }
 
-function captchaRequiredError(
-  captchaService: BetterAuthHookDeps['captchaService']
-): APIError {
+function captchaRequiredError(captchaService: BetterAuthHookDeps['captchaService']): APIError {
   const challenge = captchaService.generateChallenge();
   return new APIError(428, {
     message: 'CAPTCHA verification required due to recent failed login attempts.',
@@ -93,7 +96,9 @@ export function buildBetterAuthHooks(deps: BetterAuthHookDeps) {
             const fp = serverFingerprint(ip, userAgent);
             const existing = await deviceRepo.findByFingerprint(fp);
             if (existing && existing.userId !== user.id) {
-              throw new ConflictError('This physical device is already bound to an existing account.');
+              throw new ConflictError(
+                'This physical device is already bound to an existing account.'
+              );
             }
             if (!existing) {
               await deviceRepo.save({
@@ -127,7 +132,9 @@ export function buildBetterAuthHooks(deps: BetterAuthHookDeps) {
             const fp = serverFingerprint(ip, userAgent);
             const existing = await deviceRepo.findByFingerprint(fp);
             if (existing && existing.userId !== session.userId) {
-              throw new ConflictError('This physical device is already associated with another account.');
+              throw new ConflictError(
+                'This physical device is already associated with another account.'
+              );
             }
             await deviceRepo.updateLastSeen(fp);
           }
@@ -146,7 +153,11 @@ export function buildBetterAuthHooks(deps: BetterAuthHookDeps) {
   const hooks = {
     before: async (ctx: any) => {
       if (ctx?.path !== '/sign-in/email') return;
-      const body = (ctx.body ?? {}) as { email?: string; captchaId?: string; captchaAnswer?: string };
+      const body = (ctx.body ?? {}) as {
+        email?: string;
+        captchaId?: string;
+        captchaAnswer?: string;
+      };
       const email = typeof body.email === 'string' ? body.email.toLowerCase().trim() : '';
       if (!email) return;
 

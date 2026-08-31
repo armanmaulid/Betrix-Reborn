@@ -14,7 +14,10 @@ export class DailyBudget {
   private dayUtc: number;
   private used: number;
 
-  constructor(private readonly maxPerDay: number, now: Date = new Date()) {
+  constructor(
+    private readonly maxPerDay: number,
+    now: Date = new Date()
+  ) {
     this.dayUtc = now.getUTCDate();
     this.used = 0;
   }

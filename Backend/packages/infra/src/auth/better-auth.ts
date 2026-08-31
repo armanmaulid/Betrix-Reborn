@@ -36,7 +36,8 @@ export function createAuth(
   db: DrizzleDb,
   opts?: { secret?: string; baseURL?: string; hooks?: BetterAuthHookDeps }
 ): BetterAuthInstance {
-  const secret = opts?.secret ?? process.env.BETTER_AUTH_SECRET ?? 'dev-phase2-better-auth-secret-change-me';
+  const secret =
+    opts?.secret ?? process.env.BETTER_AUTH_SECRET ?? 'dev-phase2-better-auth-secret-change-me';
   const baseURL = opts?.baseURL ?? process.env.BETTER_AUTH_URL ?? 'http://localhost:3000';
 
   const trustedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:3000')
@@ -75,7 +76,7 @@ export function createAuth(
       // use) so we do not fail construction in dev.
       google: {
         clientId: process.env.GOOGLE_CLIENT_ID ?? 'placeholder-google-client-id',
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? 'placeholder-google-client-secret',
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? 'placeholder-google-client-secret'
         // redirectURI is derived from baseURL by BA; override if needed.
       }
     },

@@ -1,7 +1,5 @@
 import { sql } from 'drizzle-orm';
 import {
-  pgSchema,
-  pgTable,
   uuid,
   varchar,
   text,

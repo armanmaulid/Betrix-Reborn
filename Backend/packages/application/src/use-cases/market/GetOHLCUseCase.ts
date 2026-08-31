@@ -1,7 +1,11 @@
 import { Value } from '@sinclair/typebox/value';
 import { OHLCBar } from '@betrix/domain';
 import { MarketDataService } from '../../services/MarketDataService.js';
-import { GetOHLCParamsDTO, GetOHLCQueryDTO, GetOHLCQuerySchema } from '../../schemas/market.schema.js';
+import {
+  GetOHLCParamsDTO,
+  GetOHLCQueryDTO,
+  GetOHLCQuerySchema
+} from '../../schemas/market.schema.js';
 
 export class GetOHLCUseCase {
   constructor(private readonly marketDataService: MarketDataService) {}

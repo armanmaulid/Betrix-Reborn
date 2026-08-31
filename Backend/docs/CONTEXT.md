@@ -7,22 +7,22 @@
 
 > **Read this file first if context is lost.** Full review in
 > `docs/backend-native-vs-complex-review.md` (SSOT). This file is the
-> *starting point* — what was just done, what's next, what to NOT re-explore.
+> _starting point_ — what was just done, what's next, what to NOT re-explore.
 
 ---
 
 ## 1. Where we are
 
-| Phase | Status | Commit | What |
-|-------|--------|--------|------|
-| 1 — Native/stdlib quick wins (Q1–Q7) | ✅ | `b5180aa` | `setTimeout`, `AbortSignal.timeout`, `@upstash/redis` auto-serialize, `Intl.DateTimeFormat` date keys, `randomUUID` client IDs, `pino` logger, per-route rate-limit |
-| 2 — Wave 1 (security + correctness) | ✅ | `5710525` | P1/P2/P3/P6/P9/P10; P13 Redis-native budget deferred |
-| 3 — Wave 2A (quick dedup) | ✅ | `f25668f` | A2/A5/I3/W4/P7/P12/P17/P18/P19 |
-| 4 — D3 `@fastify/env` + `Value.Parse` | ✅ | `b80a193` | Config C1/C2 — schema defaults applied at boot, `env.PORT` typed `number` |
-| 5 — Wave 2B / Wave 3 | ⬜ | — | A1, I1, W3, P8/P11/P14, A3–A6, W1/W2/W5–W7, I4, P13, P16 |
-| 6 — D2 `@fastify/awilix` | ✅ | `b5af856` + `e54bb2f` + `9b8bd36` | P15 — container 798 → 407 lines (-49%) |
-| 6 — D4 `@betrix/application` A1 `Value.Default` | ✅ | `0c40e88` | 7 use-case boundaries: schema is single source of truth for `\|\| default`; 28/28 app tests PASS |
-| 6 — D1 `better-auth` | 🟢 COMPLETE (Phase 0 ✅ Phase 1 ✅ Phase 2 Slice 1 ✅ Slice 2 ✅ Phase 3 ✅ Phase 4 ✅) | `d06677f` Phase 0 (env flag + dep + 4 BA tables + stub + DDL doc). `7af3616` Phase 1 (identity schema +updatedAt/image + d1-backfill-accounts.ts). `c6d9564` Phase 2 Slice 1 (full BA config + betterAuth.plugin.ts flag-gated mount + auth.plugin.ts flag-gated hook). `466819f` Phase 2 Slice 2 (buildBetterAuthHooks: device 1:1, progressive captcha, credit default 100, REGISTER/LOGIN audit). `0578588` Phase 3 (USE_BETTER_AUTH default=true → BA LIVE; d1-cutover-invalidate.ts). `77a17e4` Phase 4 (all legacy auth removed: 8 use-cases, AuthService, auth.routes, @fastify/jwt, JWT decorate, legacy schemas/tests; routes migrated request.user → request.authUser). 6 open questions answered (D1 plan §7). See `docs/D1-better-auth-migration-plan.md`. |
+| Phase                                           | Status                                                                                  | Commit                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | What                                                                                                                                                                |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 — Native/stdlib quick wins (Q1–Q7)            | ✅                                                                                      | `b5180aa`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | `setTimeout`, `AbortSignal.timeout`, `@upstash/redis` auto-serialize, `Intl.DateTimeFormat` date keys, `randomUUID` client IDs, `pino` logger, per-route rate-limit |
+| 2 — Wave 1 (security + correctness)             | ✅                                                                                      | `5710525`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | P1/P2/P3/P6/P9/P10; P13 Redis-native budget deferred                                                                                                                |
+| 3 — Wave 2A (quick dedup)                       | ✅                                                                                      | `f25668f`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | A2/A5/I3/W4/P7/P12/P17/P18/P19                                                                                                                                      |
+| 4 — D3 `@fastify/env` + `Value.Parse`           | ✅                                                                                      | `b80a193`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Config C1/C2 — schema defaults applied at boot, `env.PORT` typed `number`                                                                                           |
+| 5 — Wave 2B / Wave 3                            | ⬜                                                                                      | —                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | A1, I1, W3, P8/P11/P14, A3–A6, W1/W2/W5–W7, I4, P13, P16                                                                                                            |
+| 6 — D2 `@fastify/awilix`                        | ✅                                                                                      | `b5af856` + `e54bb2f` + `9b8bd36`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | P15 — container 798 → 407 lines (-49%)                                                                                                                              |
+| 6 — D4 `@betrix/application` A1 `Value.Default` | ✅                                                                                      | `0c40e88`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 7 use-case boundaries: schema is single source of truth for `\|\| default`; 28/28 app tests PASS                                                                    |
+| 6 — D1 `better-auth`                            | 🟢 COMPLETE (Phase 0 ✅ Phase 1 ✅ Phase 2 Slice 1 ✅ Slice 2 ✅ Phase 3 ✅ Phase 4 ✅) | `d06677f` Phase 0 (env flag + dep + 4 BA tables + stub + DDL doc). `7af3616` Phase 1 (identity schema +updatedAt/image + d1-backfill-accounts.ts). `c6d9564` Phase 2 Slice 1 (full BA config + betterAuth.plugin.ts flag-gated mount + auth.plugin.ts flag-gated hook). `466819f` Phase 2 Slice 2 (buildBetterAuthHooks: device 1:1, progressive captcha, credit default 100, REGISTER/LOGIN audit). `0578588` Phase 3 (USE_BETTER_AUTH default=true → BA LIVE; d1-cutover-invalidate.ts). `77a17e4` Phase 4 (all legacy auth removed: 8 use-cases, AuthService, auth.routes, @fastify/jwt, JWT decorate, legacy schemas/tests; routes migrated request.user → request.authUser). 6 open questions answered (D1 plan §7). See `docs/D1-better-auth-migration-plan.md`. |
 
 **Net code removed (Phases 1–3):** ~250 lines. **Phase 6 (D2 + D4):** D2 -391 lines (798→407), D4 -76 lines net (9 files, 141 insertions / 76 deletions in the main commit; plus the ContextInjectionService `Resolved` follow-up).
 **Build:** `pnpm -r build` PASS (all 7 packages).
@@ -106,27 +106,27 @@ execution plan, and 6 open questions for the user. **No code written.**
 
 ### 3.3 Phase 5 / Wave 2B / Wave 3 — Batch 1+2+3+4 done (commits `8dc008b`+`3e72b78`+`c163df5`+`dfd887b`)
 
-| ID | Status | Commit | Note |
-|----|--------|--------|------|
-| I4 | ✅ | `8dc008b` | `captchaLegacy`/`streamTicketLegacy`/`DUAL_READ_LEGACY` removed (post-D1) |
-| A4 | ✅ | `8dc008b` | `escapeCsvField` + `toCsvRow` in `@betrix/core`; `ExportAuditLogsUseCase` uses them |
-| W5 | ✅ | `8dc008b` | anchored regex `/_([^_]+)_(\d{4}-\d{2}-\d{2})$/` in `calendar-mapping.ts` |
-| W6 | ✅ | `8dc008b` | `backoffDelay(attempt, baseMs, maxMs)` in `apps/worker/src/shared/retry.ts`; `ws-worker.ts` uses it |
-| W1 | ⚠️ partial | `8dc008b` | shared `retry()` + `retrySleep()` helpers; `sync-worker.ts` keeps its custom-predicate loop (retry until bar date matches — not a throw-retry) |
-| W2 | ✅ | `8dc008b` | `BrokerTimeCalculator.getUtcMonthEnd(year, month)`; `calendar-worker.ts` uses it |
-| P21 | ✅ | `8dc008b` | `forceCloseConnections: 'idle'` on Fastify options (SSE backstop) |
-| P8 | ⏸️ deferred | — | error handler already well-consolidated (5 branches); rate-limit `errorResponseBuilder` has a different shape (retryAfter in details) so the global 429 branch is a fallback only. No safe dedup target. |
-| W7 | ✅ | `3e72b78` | `DailyBudget` class (UTC-day rollover + `consume(n)` → boolean); `CalendarWorker` uses it |
-| P14 | ✅ | `3e72b78` | `admin.routes.ts` `overlayLiveHeartbeats` reuses `fastify.container.redis` + `mget` (1 round-trip) |
-| P11 | ✅ | `c163df5` | rate-limit Redis store: one `pipeline()` for `incr+pttl` (was 2 calls), real `pttl` (was `windowMs`), `child()` returns route-scoped new store (was `this`) |
-| P13 | ⏸️ deferred | — | sse plugin registers before container, so `fastify.container.redis` isn't available at boot. Needs a registration-order change (move sse after container) — separate refactor. |
-| P16 | ⚠️ partial | `c163df5` | news relay uses `lastSeenAt` watermark + `newsRepo.findSince()` (no unbounded `Set`). Ops aggregator timer still uses `setInterval` + `clearInterval` in `onClose` (already cancellable). |
-| I1 | ✅ | `c163df5` | `createSseParser` helper in `packages/infra/src/external/sse-parser.ts`; used by `AiGatewayClient` + `FxMacroDataClient` |
-| A3 | ⏸️ kept | — | temperature ×100 encoding works; fixing requires a stored-value migration across AI agent configs. |
-| W3 | ✅ | `dfd887b` | `runBackfiller()` helper in `apps/worker/src/scripts/runBackfiller.ts`; `cot-backfill` / `fx-backfill` / `commodities-backfill` now declarative (5-line call each). Net: -60 lines of boilerplate. |
-| P20 | ✅ | `dfd887b` | health routes moved from `/api/v1/health/{,deep}` to root `/health` + `/health/deep`. Duplicate static `app.get('/health', …)` removed. |
-| A6 | ⏸️ kept | — | "settle exactly once" pattern in `StreamMessageUseCase` is already well-commented + named; no safe refactor target. |
-| P16 | news relay watermark (replace unbounded Set) | Med |
+| ID  | Status                                       | Commit    | Note                                                                                                                                                                                                     |
+| --- | -------------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| I4  | ✅                                           | `8dc008b` | `captchaLegacy`/`streamTicketLegacy`/`DUAL_READ_LEGACY` removed (post-D1)                                                                                                                                |
+| A4  | ✅                                           | `8dc008b` | `escapeCsvField` + `toCsvRow` in `@betrix/core`; `ExportAuditLogsUseCase` uses them                                                                                                                      |
+| W5  | ✅                                           | `8dc008b` | anchored regex `/_([^_]+)_(\d{4}-\d{2}-\d{2})$/` in `calendar-mapping.ts`                                                                                                                                |
+| W6  | ✅                                           | `8dc008b` | `backoffDelay(attempt, baseMs, maxMs)` in `apps/worker/src/shared/retry.ts`; `ws-worker.ts` uses it                                                                                                      |
+| W1  | ⚠️ partial                                   | `8dc008b` | shared `retry()` + `retrySleep()` helpers; `sync-worker.ts` keeps its custom-predicate loop (retry until bar date matches — not a throw-retry)                                                           |
+| W2  | ✅                                           | `8dc008b` | `BrokerTimeCalculator.getUtcMonthEnd(year, month)`; `calendar-worker.ts` uses it                                                                                                                         |
+| P21 | ✅                                           | `8dc008b` | `forceCloseConnections: 'idle'` on Fastify options (SSE backstop)                                                                                                                                        |
+| P8  | ⏸️ deferred                                  | —         | error handler already well-consolidated (5 branches); rate-limit `errorResponseBuilder` has a different shape (retryAfter in details) so the global 429 branch is a fallback only. No safe dedup target. |
+| W7  | ✅                                           | `3e72b78` | `DailyBudget` class (UTC-day rollover + `consume(n)` → boolean); `CalendarWorker` uses it                                                                                                                |
+| P14 | ✅                                           | `3e72b78` | `admin.routes.ts` `overlayLiveHeartbeats` reuses `fastify.container.redis` + `mget` (1 round-trip)                                                                                                       |
+| P11 | ✅                                           | `c163df5` | rate-limit Redis store: one `pipeline()` for `incr+pttl` (was 2 calls), real `pttl` (was `windowMs`), `child()` returns route-scoped new store (was `this`)                                              |
+| P13 | ⏸️ deferred                                  | —         | sse plugin registers before container, so `fastify.container.redis` isn't available at boot. Needs a registration-order change (move sse after container) — separate refactor.                           |
+| P16 | ⚠️ partial                                   | `c163df5` | news relay uses `lastSeenAt` watermark + `newsRepo.findSince()` (no unbounded `Set`). Ops aggregator timer still uses `setInterval` + `clearInterval` in `onClose` (already cancellable).                |
+| I1  | ✅                                           | `c163df5` | `createSseParser` helper in `packages/infra/src/external/sse-parser.ts`; used by `AiGatewayClient` + `FxMacroDataClient`                                                                                 |
+| A3  | ⏸️ kept                                      | —         | temperature ×100 encoding works; fixing requires a stored-value migration across AI agent configs.                                                                                                       |
+| W3  | ✅                                           | `dfd887b` | `runBackfiller()` helper in `apps/worker/src/scripts/runBackfiller.ts`; `cot-backfill` / `fx-backfill` / `commodities-backfill` now declarative (5-line call each). Net: -60 lines of boilerplate.       |
+| P20 | ✅                                           | `dfd887b` | health routes moved from `/api/v1/health/{,deep}` to root `/health` + `/health/deep`. Duplicate static `app.get('/health', …)` removed.                                                                  |
+| A6  | ⏸️ kept                                      | —         | "settle exactly once" pattern in `StreamMessageUseCase` is already well-commented + named; no safe refactor target.                                                                                      |
+| P16 | news relay watermark (replace unbounded Set) | Med       |
 
 ---
 
@@ -189,6 +189,7 @@ rg "as any" apps/api/src/ packages/
 ## 8. D1 Phase 4 addendum (2026-08-30) — D1 COMPLETE
 
 Commit `77a17e4` ("refactor(auth): migrate to better-auth and remove legacy identity use-cases") deletes:
+
 - 8 legacy use-cases (Register, Login, GoogleOAuth, VerifyEmail, ResendVerification, ForgotPassword, ResetPassword, ChangePassword)
 - `AuthService` (hashPassword/verifyPassword inlined via `@betrix/core` for survivors)
 - `auth.routes.ts` (legacy `/api/v1/auth/*`)
@@ -207,11 +208,13 @@ Commit `77a17e4` ("refactor(auth): migrate to better-auth and remove legacy iden
 **13 items done, 2 deferred (P8, P13), 2 partial (W1, P16), 2 kept (A3, A6).**
 
 Commits:
+
 - `8dc008b` — Batch 1: I4, A4, W1 (partial), W2, W5, W6, P21.
 - `3e72b78` — Batch 2: P8 (deferred), W7, P14.
 - `c163df5` — Batch 3: P11, P13 (deferred), P16 (partial), I1.
 
 **Key new helpers:**
+
 - `@betrix/core`: `escapeCsvField`, `toCsvRow` (A4).
 - `packages/domain`: `BrokerTimeCalculator.getUtcMonthEnd(year, month)` (W2).
 - `packages/infra/src/external/sse-parser.ts`: `createSseParser(opts)` (I1).
@@ -228,12 +231,14 @@ Commits:
 - `packages/infra/src/external/ai/AiGatewayClient.ts` + `fxmacrodata/FxMacroDataClient.ts`: `createSseParser` (I1).
 
 **Deferred/partial rationale:**
+
 - **P8** — error handler already has 5 well-separated branches (AppError, validation, rate-limit, HTTP 4xx, 500); rate-limit `errorResponseBuilder` has a different response shape (`retryAfter` in `details`) so the global 429 branch is a fallback. No safe dedup target.
 - **P13** — sse plugin registers before container in `server.ts`, so `fastify.container.redis` isn't available at plugin boot. Real Redis-native budget needs a registration-order change (move sse after container) — separate refactor.
 - **W1 partial** — `sync-worker.ts` retry loop is custom-predicate (retry until bar date matches, not "no throw"); the shared `retry()` helper assumes throw-retry and doesn't fit. Future throw-retry call sites can use it.
 - **P16 partial** — news relay watermark done (eliminates unbounded `Set` memory leak). Ops aggregator timer still uses `setInterval` + `clearInterval` in `onClose` (already cancellable on shutdown). A fully cancellable loop with `node:timers/promises` is a separate refactor.
 
 **Remaining (kept by design):**
+
 - A3 (temperature ×100) — ⏸️ kept; fixing requires a stored-value migration across AI agent configs.
 - A6 (credit settle-retry) — ⏸️ kept; "settle exactly once" pattern in `StreamMessageUseCase` is already well-commented + named; no safe refactor target.
 

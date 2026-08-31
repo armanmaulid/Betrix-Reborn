@@ -1,6 +1,6 @@
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
-import { fromNodeHeaders, toNodeHandler } from 'better-auth/node';
+import { toNodeHandler } from 'better-auth/node';
 import { env } from '@betrix/config';
 import { createAuth, type BetterAuthInstance } from '@betrix/infra';
 
@@ -25,7 +25,9 @@ declare module 'fastify' {
  */
 const betterAuthPluginCallback: FastifyPluginAsync = async (fastify) => {
   if (!env.USE_BETTER_AUTH) {
-    fastify.log.info('[better-auth] USE_BETTER_AUTH=false — legacy auth path active, BA handler not mounted.');
+    fastify.log.info(
+      '[better-auth] USE_BETTER_AUTH=false — legacy auth path active, BA handler not mounted.'
+    );
     return;
   }
 

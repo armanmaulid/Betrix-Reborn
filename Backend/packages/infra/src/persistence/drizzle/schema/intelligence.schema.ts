@@ -1,8 +1,5 @@
 import { sql } from 'drizzle-orm';
-import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import {
-  pgSchema,
-  pgTable,
   uuid,
   varchar,
   text,

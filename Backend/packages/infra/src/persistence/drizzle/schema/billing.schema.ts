@@ -1,14 +1,5 @@
 import { sql } from 'drizzle-orm';
-import {
-  pgTable,
-  uuid,
-  varchar,
-  integer,
-  boolean,
-  timestamp,
-  index,
-  check
-} from 'drizzle-orm/pg-core';
+import { uuid, varchar, integer, boolean, timestamp, index, check } from 'drizzle-orm/pg-core';
 import { money as moneySchema } from './schemas.js';
 import { users } from './identity.schema.js';
 

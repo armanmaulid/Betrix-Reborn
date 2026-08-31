@@ -30,11 +30,7 @@ type UpstashLike = ReturnType<typeof createRedisClient>;
  * instance, and not a bare counter. This factory returns a class matching that
  * contract.
  */
-function createRedisRateLimitStore(
-  redis: UpstashLike,
-  scope: string,
-  onBackendError: () => void
-) {
+function createRedisRateLimitStore(redis: UpstashLike, scope: string, onBackendError: () => void) {
   return class RedisRateLimitStore {
     constructor(private readonly localScope: string = scope) {}
 

@@ -106,7 +106,11 @@ const adapterResolvers = {
   emailService: asClass(SmtpEmailService),
   workerCommandBus: asClass(RedisWorkerCommandBus),
   workerCommandPublisher: asFunction(
-    ({ workerCommandBus }: { workerCommandBus: RedisWorkerCommandBus }): IWorkerCommandPublisher => ({
+    ({
+      workerCommandBus
+    }: {
+      workerCommandBus: RedisWorkerCommandBus;
+    }): IWorkerCommandPublisher => ({
       async publishCommand(workerId, action, adminId) {
         await workerCommandBus.publishCommand(workerId, { action, adminId, timestamp: Date.now() });
       }
@@ -194,9 +198,7 @@ const useCaseResolvers = {
 };
 type UseCaseCradle = InferCradleFromResolvers<typeof useCaseResolvers>;
 
-const pickGroup = <R extends Record<string, Resolver<any>>>(
-  source: R
-) =>
+const pickGroup = <R extends Record<string, Resolver<any>>>(source: R) =>
   asFunction(
     (c: InferCradleFromResolvers<R>) =>
       Object.fromEntries(
@@ -232,10 +234,26 @@ type AppCradle = InferCradleFromResolvers<typeof repoResolvers> &
     useCases: UseCaseCradle;
   };
 
-type AppContainer = Pick<AppCradle, 'repositories' | 'stores' | 'adapters' | 'services' | 'useCases' | 'pgPool' | 'db' | 'redis' | 'eventDispatcher'>;
+type AppContainer = Pick<
+  AppCradle,
+  | 'repositories'
+  | 'stores'
+  | 'adapters'
+  | 'services'
+  | 'useCases'
+  | 'pgPool'
+  | 'db'
+  | 'redis'
+  | 'eventDispatcher'
+>;
 
 declare module '@fastify/awilix' {
-  interface Cradle extends AppCradle {}
+  // @fastify/awilix auto-injects our resolvers into FastifyRequest.diScope
+  // via `InferCradleFromResolvers<typeof repoResolvers>`. The empty augmentation
+  // here was suppressed (it produced an `interface Cradle` identical to the
+  // base, which ESLint's `no-empty-object-type` flags). `AppCradle` is the
+  // authoritative type used below.
+  interface Cradle extends AppCradle {} // eslint-disable-line @typescript-eslint/no-empty-object-type
 }
 
 const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
@@ -298,17 +316,16 @@ const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
     const newsRelayTimer = setInterval(async () => {
       if (!fastify.sseHub.hasClientsFor('news')) return;
       try {
-        const fresh = await diContainer.cradle.repositories.newsRepo.findSince(
-          newsWatermark,
-          25
-        );
+        const fresh = await diContainer.cradle.repositories.newsRepo.findSince(newsWatermark, 25);
         if (fresh.length > 0) {
           newsWatermark = fresh[fresh.length - 1].datetime;
           for (const article of fresh) {
             fastify.sseHub.broadcastNews(article.toJSON ? article.toJSON() : article);
           }
         }
-      } catch {}
+      } catch {
+        // SSE news-relay is best-effort; errors are logged elsewhere.
+      }
     }, 15_000);
     fastify.addHook('onClose', async () => clearInterval(newsRelayTimer));
   }
@@ -360,23 +377,20 @@ const infraResolvers = {
   db: asFunction(({ pgPool }: { pgPool: ReturnType<typeof createPgPool> }) =>
     createDrizzleClient(pgPool)
   ),
-  moneyDb: asFunction(
-    ({ pgPool, db }: { pgPool: ReturnType<typeof createPgPool>; db: DrizzleDb }) =>
-      env.DATABASE_URL_MONEY ? createDrizzleClient(createPgPool(env.DATABASE_URL_MONEY, 6)) : db
+  moneyDb: asFunction(({ db }: { db: DrizzleDb }) =>
+    env.DATABASE_URL_MONEY ? createDrizzleClient(createPgPool(env.DATABASE_URL_MONEY, 6)) : db
   ),
   redis: asFunction(() =>
     createRedisClient(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN)
   ),
   appConfig: asFunction(() => createAppConfig(env)),
-  notifier: asFunction(
-    ({ sseHub }: { sseHub: any }): INotifier => ({
-      broadcastGlobal: (channel, _event, payload) => {
-        if (channel === 'market') sseHub.broadcastMarketTick(payload);
-        else if (channel === 'news') sseHub.broadcastNews(payload);
-      },
-      broadcastToUser: (userId, event, payload) => sseHub.broadcastToUser(userId, event, payload)
-    })
-  )
+  notifier: asFunction(({ sseHub }: { sseHub: any }): INotifier => ({
+    broadcastGlobal: (channel, _event, payload) => {
+      if (channel === 'market') sseHub.broadcastMarketTick(payload);
+      else if (channel === 'news') sseHub.broadcastNews(payload);
+    },
+    broadcastToUser: (userId, event, payload) => sseHub.broadcastToUser(userId, event, payload)
+  }))
 };
 
 export const containerPlugin = fp(containerPluginCallback, { name: 'app-container' });

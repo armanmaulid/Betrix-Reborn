@@ -1,12 +1,4 @@
-import {
-  pgSchema,
-  pgTable,
-  uuid,
-  text,
-  boolean,
-  timestamp,
-  index
-} from 'drizzle-orm/pg-core';
+import { pgSchema, uuid, text, boolean, timestamp, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 /**
@@ -94,7 +86,10 @@ export const verification = authSchema.table(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
   },
-  (t) => [index('verification_identifier_idx').on(t.identifier), index('verification_expires_at_idx').on(t.expiresAt)]
+  (t) => [
+    index('verification_identifier_idx').on(t.identifier),
+    index('verification_expires_at_idx').on(t.expiresAt)
+  ]
 );
 
 // Relations — BA's drizzleAdapter walks these to resolve hasMany joins.

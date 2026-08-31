@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, boolean, timestamp } from 'drizzle-orm/pg-core';
+import { varchar, text, boolean, timestamp } from 'drizzle-orm/pg-core';
 import { trading as tradingSchema } from './schemas.js';
 
 export const symbols = tradingSchema.table('symbols', {

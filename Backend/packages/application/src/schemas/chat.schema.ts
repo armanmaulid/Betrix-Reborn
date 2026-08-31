@@ -53,7 +53,10 @@ export type SendMessageDTO = Static<typeof SendMessageSchema>;
 // see `maxTokens: number`, not `number | undefined`. `Type.Optional + default`
 // keeps the base `SendMessageDTO` as `T | undefined` (TypeBox limitation), but
 // `Value.Decode` is guaranteed to apply the default at runtime.
-export type ResolvedSendMessageDTO = Omit<SendMessageDTO, 'maxTokens' | 'temperature' | 'taskType'> & {
+export type ResolvedSendMessageDTO = Omit<
+  SendMessageDTO,
+  'maxTokens' | 'temperature' | 'taskType'
+> & {
   maxTokens: number;
   temperature: number;
   taskType: string;
@@ -72,7 +75,10 @@ export const StreamMessageSchema = Type.Object({
   systemPrompt: Type.Optional(Type.String({ maxLength: 2000 }))
 });
 export type StreamMessageDTO = Static<typeof StreamMessageSchema>;
-export type ResolvedStreamMessageDTO = Omit<StreamMessageDTO, 'maxTokens' | 'temperature' | 'taskType'> & {
+export type ResolvedStreamMessageDTO = Omit<
+  StreamMessageDTO,
+  'maxTokens' | 'temperature' | 'taskType'
+> & {
   maxTokens: number;
   temperature: number;
   taskType: string;

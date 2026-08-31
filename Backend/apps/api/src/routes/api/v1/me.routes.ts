@@ -90,7 +90,10 @@ export const meRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
       }
     },
     async (request, reply) => {
-      const result = await useCases.redeemVoucherUseCase.execute(request.authUser!.id, request.body);
+      const result = await useCases.redeemVoucherUseCase.execute(
+        request.authUser!.id,
+        request.body
+      );
       return reply.send({
         success: true,
         data: result

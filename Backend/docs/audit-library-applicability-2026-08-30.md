@@ -16,14 +16,14 @@
 
 ## TL;DR
 
-| Library | Verdict | Majors | Minors | Deferred / Latent |
-|---|---|---:|---:|---:|
-| **better-auth 1.7.2** | ⚠️ MAJOR ISSUES | 1 | 7 | 3 |
-| **Fastify v5** | MINOR ISSUES | 0 | 9 | 0 |
-| **Drizzle ORM 0.45+** | MINOR ISSUES | 0 | 4 | 1 (latent) |
-| **TypeBox 0.34 + Pino 9** | MINOR ISSUES | 0 | 7 | 0 |
-| **@upstash/redis 1.38 + node-cron v4** | MINOR ISSUES (1 mod bug) | 0 | 6 | 0 |
-| **TOTAL** | — | **1** | **33** | **4** |
+| Library                                | Verdict                  | Majors | Minors | Deferred / Latent |
+| -------------------------------------- | ------------------------ | -----: | -----: | ----------------: |
+| **better-auth 1.7.2**                  | ⚠️ MAJOR ISSUES          |      1 |      7 |                 3 |
+| **Fastify v5**                         | MINOR ISSUES             |      0 |      9 |                 0 |
+| **Drizzle ORM 0.45+**                  | MINOR ISSUES             |      0 |      4 |        1 (latent) |
+| **TypeBox 0.34 + Pino 9**              | MINOR ISSUES             |      0 |      7 |                 0 |
+| **@upstash/redis 1.38 + node-cron v4** | MINOR ISSUES (1 mod bug) |      0 |      6 |                 0 |
+| **TOTAL**                              | —                        |  **1** | **33** |             **4** |
 
 **Headline:** 1 major design mismatch (better-auth `admin()` ↔ `isAdmin` field),
 1 moderate correctness bug (`isShuttingDownLease` never set), 33 minor issues
@@ -326,7 +326,7 @@ consistency/maintenance hazards.
 
 - **U-1 — `isShuttingDownLease` is declared but never set — standby polling loop cannot be cancelled on shutdown.**
   - **Location:** `apps/worker/src/shared/ManagedWorkerBase.ts:46,73`
-  - **Issue:** Initialized `false` and only *read* inside `acquireThenRun` to early-exit the standby poll. Nothing in the codebase ever sets it to `true`. The doc-comment explicitly says "Set true by stop paths so standby polling stops promptly." A follower mid-`setTimeout(LEASE_POLL_MS)` (30s) when SIGTERM hits will continue polling and may re-acquire a released lease, then `doStart()` runs on a worker whose `pool.end()` and listeners were already torn down — **real crash risk**.
+  - **Issue:** Initialized `false` and only _read_ inside `acquireThenRun` to early-exit the standby poll. Nothing in the codebase ever sets it to `true`. The doc-comment explicitly says "Set true by stop paths so standby polling stops promptly." A follower mid-`setTimeout(LEASE_POLL_MS)` (30s) when SIGTERM hits will continue polling and may re-acquire a released lease, then `doStart()` runs on a worker whose `pool.end()` and listeners were already torn down — **real crash risk**.
   - **Fix:** Set `this.isShuttingDownLease = true` at the top of each worker's `stop()` (or inside `releaseLeaderLease()`) before awaiting the lease release.
   - **Risk:** **MEDIUM — moderate correctness bug** (race between SIGTERM and standby poll).
   - **Confidence:** HIGH.
@@ -418,12 +418,14 @@ These themes appeared across multiple library audits:
 ## §7 — Recommended fix order (by impact/risk)
 
 ### High priority (production-blocking risk)
+
 1. **D-1** — Generate the BA auth-schema migration (`pnpm --filter @betrix/infra db:generate`). Without this, `auth.user` etc. do not exist in DB.
 2. **B-7** — Add `isAdmin`/`credits`/`tier`/`status` columns to `auth.user` Drizzle schema (and to the generated migration).
 3. **B-1** — Resolve the admin plugin vs `isAdmin` design mismatch. Pick one source of truth.
 4. **U-1** — Set `isShuttingDownLease = true` in worker `stop()` to prevent post-shutdown `doStart()` crash.
 
 ### Medium priority (correctness / prod-readiness)
+
 5. **T-1** — Wire `ajv-formats` into the TypeBox provider so `format: 'email' / 'uuid' / 'date-time'` are enforced at the HTTP boundary.
 6. **U-9** — Add `{ timezone: 'UTC' }` to every `cron.schedule(...)` call.
 7. **D-5** — Fix `tradeDate` String() → ISO date in market data repos.
@@ -432,6 +434,7 @@ These themes appeared across multiple library audits:
 10. **B-3** — Add cross-origin cookie config for prod (Safari ITP).
 
 ### Low priority (consistency / cleanup)
+
 11. **D-3** — Push `moneyDb` pool into cradle; `pool.end()` in `onClose`.
 12. **D-4** — Replace news `findRecent` overscan with windowed query.
 13. **U-5** — Standardize JSON.stringify-or-not across all Redis writers.
@@ -450,4 +453,4 @@ These themes appeared across multiple library audits:
 
 ---
 
-*Report generated 2026-08-30 by 5 parallel audit agents. No code was modified.*
+_Report generated 2026-08-30 by 5 parallel audit agents. No code was modified._

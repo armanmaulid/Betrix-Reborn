@@ -47,7 +47,10 @@ export class ContextInjectionService {
     options: MarketContextOptionsDTO
   ): Promise<InjectedContextResult> {
     // A1 — schema is the source of truth; Default fills `timeframe: 'h1'`, `candleCount: 30`.
-    const input = Value.Default(MarketContextOptionsSchema, options) as ResolvedMarketContextOptionsDTO;
+    const input = Value.Default(
+      MarketContextOptionsSchema,
+      options
+    ) as ResolvedMarketContextOptionsDTO;
     const symbol = input.symbol.toUpperCase();
     const timeframe = input.timeframe.toLowerCase();
     const candleCount = input.candleCount;
