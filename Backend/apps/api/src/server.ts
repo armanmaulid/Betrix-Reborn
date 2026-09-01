@@ -58,7 +58,8 @@ export async function createServer() {
         ? {
             target: 'pino-pretty',
             options: {
-              colorize: true,
+              // colorize follows the real TTY state (see logger.ts note).
+              colorize: !!process.stdout.isTTY,
               translateTime: 'HH:MM:ss Z',
               ignore: 'pid,hostname'
             }
@@ -109,7 +110,7 @@ export async function createServer() {
   // the error handler, which sends { success: false, error }) pass through
   // untouched; SSE streams and root probes (/health, /docs) are skipped so
   // their contracts stay stable.
-  app.addHook('preSerialization', (request, reply, payload) => {
+  app.addHook('preSerialization', async (request, reply, payload) => {
     if (
       typeof payload !== 'object' ||
       payload === null ||

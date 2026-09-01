@@ -99,11 +99,34 @@ type StoreCradle = InferCradleFromResolvers<typeof storeResolvers>;
 const adapterResolvers = {
   workerStateRepo: asClass(DrizzleWorkerStateRepository),
   calendarRepo: asClass(DrizzleCalendarRepository),
-  dukascopyProvider: asClass(DukascopyHistoryClient),
-  historicalProvider: asClass(CachedMarketDataProvider),
-  newsProvider: asClass(FinnhubNewsAdapter),
-  aiGateway: asClass(AiGatewayClient),
-  emailService: asClass(SmtpEmailService),
+  // DukascopyHistoryClient's only ctor param is an optional `customMap`
+  // (no default in the compiled output), so under CLASSIC resolution it would
+  // otherwise try to resolve a `customMap` registration and fail.
+  dukascopyProvider: asClass(DukascopyHistoryClient).inject(() => ({ customMap: undefined })),
+  // CachedMarketDataProvider wraps the raw Dukascopy client + the Redis cache
+  // store. Its `historicalProvider` param would otherwise resolve to *itself*
+  // (same key) and cycle; `cacheStore` maps to `marketDataRepo`.
+  historicalProvider: asClass(CachedMarketDataProvider).inject((c) => ({
+    historicalProvider: c.resolve<DukascopyHistoryClient>('dukascopyProvider'),
+    cacheStore: c.resolve<RedisMarketCacheStore>('marketDataRepo')
+  })),
+  newsProvider: asClass(FinnhubNewsAdapter).inject(() => ({
+    apiKey: env.FINNHUB_API_KEY || 'sandbox',
+    pollingIntervalSec: 10
+  })),
+  aiGateway: asClass(AiGatewayClient).inject(() => ({
+    baseUrl: env.AI_BASE_URL || 'http://localhost:20128/v1',
+    apiKey: env.AI_API_KEY || 'dev_key'
+  })),
+  emailService: asClass(SmtpEmailService).inject(() => ({
+    options: {
+      host: env.SMTP_HOST,
+      port: env.SMTP_PORT,
+      user: env.SMTP_USER || 'dev@betrix.io',
+      pass: env.SMTP_PASS || 'devpass',
+      from: env.SMTP_FROM
+    }
+  })),
   workerCommandBus: asClass(RedisWorkerCommandBus),
   workerCommandPublisher: asFunction(
     ({
@@ -115,16 +138,26 @@ const adapterResolvers = {
         await workerCommandBus.publishCommand(workerId, { action, adminId, timestamp: Date.now() });
       }
     })
-  )
+  ).proxy()
 };
 type AdapterCradle = InferCradleFromResolvers<typeof adapterResolvers>;
 
 const serviceResolvers = {
   captchaService: asClass(CaptchaService),
-  marketDataService: asClass(MarketDataService),
+  // MarketDataService's `cacheStore` param maps to the `marketDataRepo` key;
+  // `symbolRepo` and `historicalProvider` resolve by name.
+  marketDataService: asClass(MarketDataService).inject((c) => ({
+    cacheStore: c.resolve<RedisMarketCacheStore>('marketDataRepo')
+  })),
   newsService: asClass(NewsService),
   contextInjectionService: asClass(ContextInjectionService),
-  workerManagerService: asClass(WorkerManagerService)
+  // WorkerManagerService's first param `initialDefinitions` has a default, and
+  // its `workerStateRepo`/`commandPublisher` params map to the registered keys.
+  workerManagerService: asClass(WorkerManagerService).inject((c) => ({
+    initialDefinitions: undefined,
+    workerStateRepo: c.resolve('workerStateRepo'),
+    commandPublisher: c.resolve('workerCommandPublisher')
+  }))
 };
 type ServiceCradle = InferCradleFromResolvers<typeof serviceResolvers>;
 
@@ -136,12 +169,18 @@ const useCaseResolvers = {
   getProfileUseCase: asClass(UC.GetProfileUseCase),
   updateProfileUseCase: asClass(UC.UpdateProfileUseCase),
   redeemVoucherUseCase: asClass(UC.RedeemVoucherUseCase),
-  sendMessageUseCase: asClass(UC.SendMessageUseCase),
-  streamMessageUseCase: asClass(UC.StreamMessageUseCase),
+  sendMessageUseCase: asClass(UC.SendMessageUseCase).inject((c) => ({
+    defaultModel: c.resolve<AppConfig>('appConfig').defaultModel
+  })),
+  streamMessageUseCase: asClass(UC.StreamMessageUseCase).inject((c) => ({
+    defaultModel: c.resolve<AppConfig>('appConfig').defaultModel
+  })),
   getChatHistoryUseCase: asClass(UC.GetChatHistoryUseCase),
   deleteChatSessionUseCase: asClass(UC.DeleteChatSessionUseCase),
   exportChatUseCase: asClass(UC.ExportChatUseCase),
-  listModelsUseCase: asClass(UC.ListModelsUseCase),
+  listModelsUseCase: asClass(UC.ListModelsUseCase).inject((c) => ({
+    defaultModel: c.resolve<AppConfig>('appConfig').defaultModel
+  })),
   listAgentsUseCase: asClass(UC.ListAgentsUseCase),
   getAgentUseCase: asClass(UC.GetAgentUseCase),
   createAgentUseCase: asClass(UC.CreateAgentUseCase),
@@ -180,8 +219,12 @@ const useCaseResolvers = {
   broadcastMessageUseCase: asClass(UC.BroadcastMessageUseCase),
   systemCleanupUseCase: asClass(UC.SystemCleanupUseCase),
   getAdminUserChatHistoryUseCase: asClass(UC.GetAdminUserChatHistoryUseCase),
-  listWorkersUseCase: asClass(UC.ListWorkersUseCase),
-  controlWorkerUseCase: asClass(UC.ControlWorkerUseCase),
+  listWorkersUseCase: asClass(UC.ListWorkersUseCase).inject((c) => ({
+    workerManager: c.resolve('workerManagerService')
+  })),
+  controlWorkerUseCase: asClass(UC.ControlWorkerUseCase).inject((c) => ({
+    workerManager: c.resolve('workerManagerService')
+  })),
   saveSymbolUseCase: asClass(UC.SaveSymbolUseCase),
   deleteSymbolUseCase: asClass(UC.DeleteSymbolUseCase),
   getStreamSymbolsUseCase: asClass(UC.GetStreamSymbolsUseCase),
@@ -204,7 +247,7 @@ const pickGroup = <R extends Record<string, Resolver<any>>>(source: R) =>
       Object.fromEntries(
         Object.keys(source).map((k) => [k, c[k as keyof InferCradleFromResolvers<R>]])
       ) as InferCradleFromResolvers<R>
-  );
+  ).proxy();
 
 const repositoriesGrouping = pickGroup(repoResolvers);
 const storesGrouping = pickGroup(storeResolvers);
@@ -259,7 +302,13 @@ declare module '@fastify/awilix' {
 }
 
 const containerPluginCallback: FastifyPluginAsync = async (fastify) => {
-  const diContainer: AwilixContainer<AppCradle> = createContainer({ injectionMode: 'PROXY' });
+  // CLASSIC mode so `asClass` resolves constructor parameters by name (the
+  // class constructors take positional deps like `db`, `symbolRepo`, etc.).
+  // PROXY mode instead passes the whole cradle as a single argument, which
+  // breaks every parameterized `asClass` (they get the cradle proxy or
+  // `undefined`, and `DukascopyHistoryClient`'s spread triggers a self-cycle).
+  // Destructuring `asFunction` factories need `.proxy()` under CLASSIC.
+  const diContainer: AwilixContainer<AppCradle> = createContainer({ injectionMode: 'CLASSIC' });
   const isNotTest = () => env.NODE_ENV !== 'test' && !process.env.VITEST;
 
   diContainer.register(infraResolvers);
@@ -386,7 +435,7 @@ const infraResolvers = {
   pgPool: asFunction(() => createPgPool(env.DATABASE_URL, 20)),
   db: asFunction(({ pgPool }: { pgPool: ReturnType<typeof createPgPool> }) =>
     createDrizzleClient(pgPool)
-  ),
+  ).proxy(),
   // D-3 — moneyDb pool split into moneyPgPool + moneyDb so the pool
   // can be .end()-ed in onClose. When DATABASE_URL_MONEY is unset,
   // moneyPgPool is undefined, moneyDb falls back to the primary pool,
@@ -402,7 +451,7 @@ const infraResolvers = {
       moneyPgPool: ReturnType<typeof createPgPool> | undefined;
       db: DrizzleDb;
     }) => (moneyPgPool ? createDrizzleClient(moneyPgPool) : db)
-  ),
+  ).proxy(),
   redis: asFunction(() =>
     createRedisClient(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN)
   ),
@@ -413,7 +462,7 @@ const infraResolvers = {
       else if (channel === 'news') sseHub.broadcastNews(payload);
     },
     broadcastToUser: (userId, event, payload) => sseHub.broadcastToUser(userId, event, payload)
-  }))
+  })).proxy()
 };
 
 export const containerPlugin = fp(containerPluginCallback, { name: 'app-container' });

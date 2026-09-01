@@ -17,7 +17,9 @@ export const logger = pino({
     ? {
         transport: {
           target: 'pino-pretty',
-          options: { colorize: true, translateTime: 'HH:MM:ss Z' }
+          // colorize follows the real TTY state, not colorette's win32 default
+          // (which forces color even when piped, producing raw `[32m` garbage).
+          options: { colorize: !!process.stdout.isTTY, translateTime: 'HH:MM:ss Z' }
         }
       }
     : {})
