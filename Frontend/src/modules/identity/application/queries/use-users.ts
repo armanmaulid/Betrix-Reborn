@@ -100,3 +100,17 @@ export function useUserChatHistoryQuery(userId: string, params: AdminChatHistory
     enabled: Boolean(userId)
   });
 }
+
+/**
+ * Read the current admin's credit balance via the session endpoint. Used for
+ * the chat-test credit audit (balance before/after a streamed completion).
+ */
+export function useCurrentUserCreditsQuery() {
+  return useQuery<number | null>({
+    queryKey: identityKeys.currentCredits(),
+    queryFn: () => userRepository.getCurrentUserCredits(),
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+    retry: false
+  });
+}

@@ -106,6 +106,13 @@
       "when": 1787770000000,
       "tag": "0014_market_data",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1787780000000,
+      "tag": "0015_messages_schema_fix",
+      "breakpoints": true
     }
   ]
 }

@@ -37,6 +37,14 @@ export class HttpUserRepository implements IUserRepository {
     return UserMapper.toDomain(userData);
   }
 
+  async getCurrentUserCredits(): Promise<number | null> {
+    const res = await this.client.get<{ data?: { user?: { credits?: number } } }>(
+      '/api/auth/session'
+    );
+    const credits = res.data?.user?.credits;
+    return typeof credits === 'number' ? credits : null;
+  }
+
   async getUserDetail(id: string): Promise<AdminUserDetail> {
     const res = await this.client.get<{ data: AdminUserDetail }>(
       `/api/admin/users/${encodeURIComponent(id)}`

@@ -51,7 +51,11 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
 
       const writeEvent = (event: string, data: unknown) => {
         try {
-          const payload = typeof data === 'string' ? data : JSON.stringify(data);
+          // Always JSON-encode the payload so text chunks that contain literal
+          // newlines (markdown reply/reasoning) stay on a single `data:` line
+          // instead of breaking the SSE frame into bare continuation lines the
+          // client would otherwise drop.
+          const payload = JSON.stringify(data);
           reply.raw.write(`event: ${event}\ndata: ${payload}\n\n`);
         } catch {
           // Stream interrupted
@@ -75,6 +79,9 @@ export const chatRoutes: FastifyPluginAsyncTypebox = async (fastify) => {
             },
             onDelta: (chunk: string) => {
               writeEvent('delta', chunk);
+            },
+            onContext: (context) => {
+              writeEvent('context', context);
             },
             onDone: (meta) => {
               writeEvent('done', meta);

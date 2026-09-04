@@ -17,6 +17,7 @@ import {
 import { useTestAgentMutation } from '@/modules/intelligence/application/queries/use-agents';
 import { TestAgentSchema } from '@/modules/intelligence/application/schemas/agent.schema';
 import { useToast } from '@/shared/presentation/ui/terminal-toast';
+import { Markdown } from '@/shared/presentation/ui/markdown';
 import { formatFinancialNumber } from '@/shared/utils';
 import { useCopyFeedback } from '@/shared/presentation/hooks/use-copy-feedback';
 import type { AiAgent, AgentDetail } from '@/modules/intelligence/domain/entities/AiAgent';
@@ -416,8 +417,8 @@ export function AgentTestConsole({ agent }: AgentTestConsoleProps) {
               </button>
 
               {showThinking && (
-                <div className="p-3 border-t border-border/40 text-[11px] text-muted-foreground/90 font-mono whitespace-pre-wrap leading-relaxed bg-black/40">
-                  {testResult.thinking}
+                <div className="p-3 border-t border-border/40 text-[11px] text-muted-foreground/90 leading-relaxed bg-black/40">
+                  <Markdown>{testResult.thinking}</Markdown>
                 </div>
               )}
             </div>
@@ -428,8 +429,8 @@ export function AgentTestConsole({ agent }: AgentTestConsoleProps) {
             <div className="text-[10px] uppercase text-muted-foreground tracking-wider font-bold">
               AGENT RESPONSE OUTPUT
             </div>
-            <div className="border border-border bg-black p-4 text-xs font-mono text-foreground whitespace-pre-wrap leading-relaxed select-text">
-              {testResult.reply}
+            <div className="border border-border bg-black p-4 text-xs font-mono text-foreground break-words leading-relaxed select-text">
+              <Markdown>{testResult.reply}</Markdown>
             </div>
           </div>
         </div>

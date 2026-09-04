@@ -37,7 +37,7 @@ export function NewAgentContainer() {
   };
 
   return (
-    <div className="space-y-3 font-mono max-w-4xl mx-auto">
+    <div className="space-y-3 font-mono">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-4">
         <Link

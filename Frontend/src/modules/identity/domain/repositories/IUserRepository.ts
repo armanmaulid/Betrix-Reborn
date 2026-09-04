@@ -38,6 +38,7 @@ export interface UpdateUserInput {
 export interface IUserRepository {
   getUsers(params?: UserQueryParams): Promise<PaginatedResult<User>>;
   getUserById(id: string): Promise<User>;
+  getCurrentUserCredits(): Promise<number | null>;
   getUserDetail(id: string): Promise<AdminUserDetail>;
   getUserChatHistory(
     id: string,

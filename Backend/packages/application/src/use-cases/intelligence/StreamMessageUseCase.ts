@@ -24,6 +24,19 @@ export interface StreamMessageCallbacks {
     latencyMs: number;
     creditsSpent: number;
   }) => void;
+  onContext?: (context: {
+    metadata: {
+      symbol: string;
+      timeframe: string;
+      candlesLoaded: number;
+      lastPrice?: number;
+      indicatorsComputed: boolean;
+      newsIncluded: number;
+    };
+    contextBlock: string;
+    candles: { time: number; open: number; high: number; low: number; close: number; volume: number }[];
+    news: { headline: string; summary: string; time: string }[];
+  }) => void;
   onError?: (error: Error) => void;
 }
 
@@ -79,6 +92,12 @@ export class StreamMessageUseCase {
     if (dto.marketContext) {
       const injected = await this.contextInjectionService.buildMarketContext(dto.marketContext);
       marketContextBlock = injected.contextBlock;
+      callbacks.onContext?.({
+        metadata: injected.metadata,
+        contextBlock: injected.contextBlock,
+        candles: injected.candles,
+        news: injected.news
+      });
     }
 
     // 4. System Prompt Construction

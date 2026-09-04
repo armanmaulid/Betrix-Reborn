@@ -16,6 +16,7 @@ import { useUserChatHistoryQuery } from '@/modules/identity/application/queries/
 import { PaginationBar } from '@/shared/presentation/ui/pagination-bar';
 import { formatFinancialNumber } from '@/shared/utils';
 import { formatDateTime } from '@/shared/utils/formatters';
+import { Markdown } from '@/shared/presentation/ui/markdown';
 import type { AdminChatMessage } from '@/modules/identity/domain/entities/User';
 
 interface UserChatHistoryProps {
@@ -254,8 +255,8 @@ export function UserChatHistory({ userId, userEmail }: UserChatHistoryProps) {
                             OUTPUT: {formatFinancialNumber(item.outputTokens || 0)} TOKENS
                           </span>
                         </div>
-                        <div className="text-foreground whitespace-pre-wrap select-all font-sans leading-relaxed text-xs">
-                          {item.reply}
+                        <div className="text-foreground select-text font-mono leading-relaxed text-xs">
+                          <Markdown>{item.reply}</Markdown>
                         </div>
                       </div>
 

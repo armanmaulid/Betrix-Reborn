@@ -143,7 +143,7 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
       <div className="p-3 border-t border-border bg-surface/40 font-mono text-[10px] space-y-2 text-muted-foreground">
         <div className="flex items-center justify-between text-[9px]">
           <span className="text-muted-foreground/80">SHORTCUTS:</span>
-          <span className="text-foreground font-mono">[1-0 o c] ROUTE JUMP</span>
+          <span className="text-foreground font-mono">[a-m] ROUTE JUMP</span>
         </div>
         <div className="pt-2 border-t border-border/40 flex items-center justify-between text-[9px]">
           <span className="text-muted-foreground/80">NAVRAIL MODE:</span>

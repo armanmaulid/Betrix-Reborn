@@ -1,0 +1,18 @@
+-- Fix: "messages" table schema mismatch.
+--
+-- Root cause: migration 0012_schema_separation.sql moved "messages" from
+-- "public" to "content" (see its ALTER TABLE "messages" SET SCHEMA
+-- "content" line). But packages/infra/src/persistence/drizzle/schema/
+-- operations.schema.ts defines `messages` under opsSchema ("ops"), and no
+-- migration after 0012 ever moved it there — so the code and the actual
+-- database table have been pointing at two different schemas ever since.
+-- Confirmed via `SELECT table_schema, table_name FROM information_schema.tables
+-- WHERE table_name = 'messages'` returning exactly one row: content.messages.
+--
+-- SET SCHEMA is a metadata-only operation (same as 0012's own comment notes)
+-- — no data loss, and any existing rows in content.messages move with the
+-- table. FK references (from_user_id/to_user_id -> identity.users) and the
+-- three indexes (messages_to_created_idx, messages_from_created_idx,
+-- messages_thread_idx) all move automatically with the table; nothing else
+-- to recreate.
+ALTER TABLE "content"."messages" SET SCHEMA "ops";

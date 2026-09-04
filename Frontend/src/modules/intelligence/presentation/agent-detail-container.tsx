@@ -31,7 +31,7 @@ export function AgentDetailContainer({ agentId }: AgentDetailContainerProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-3 font-mono max-w-4xl mx-auto animate-pulse">
+      <div className="space-y-3 font-mono animate-pulse">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
           <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -48,7 +48,7 @@ export function AgentDetailContainer({ agentId }: AgentDetailContainerProps) {
 
   if (isError || !agent) {
     return (
-      <div className="space-y-3 font-mono max-w-4xl mx-auto">
+      <div className="space-y-3 font-mono">
         <Link
           href="/agents"
           className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-accent transition-colors"
@@ -107,7 +107,7 @@ export function AgentDetailContainer({ agentId }: AgentDetailContainerProps) {
   };
 
   return (
-    <div className="space-y-3 font-mono max-w-4xl mx-auto">
+    <div className="space-y-3 font-mono">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
         <Link

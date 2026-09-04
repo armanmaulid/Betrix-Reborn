@@ -17,6 +17,8 @@ export const MarketContextOptionsSchema = Type.Object({
   timeframe: Type.Optional(Type.String({ default: 'h1' })),
   candleCount: Type.Optional(Type.Integer({ minimum: 5, maximum: 200, default: 30 })),
   indicators: Type.Optional(TechnicalIndicatorsConfigSchema),
+  includeCandles: Type.Optional(Type.Boolean({ default: true })),
+  includeIndicators: Type.Optional(Type.Boolean({ default: true })),
   includeNews: Type.Optional(Type.Boolean({ default: true })),
   newsLimit: Type.Optional(Type.Integer({ minimum: 1, maximum: 10, default: 3 }))
 });

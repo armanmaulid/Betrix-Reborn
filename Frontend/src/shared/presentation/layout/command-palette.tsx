@@ -100,7 +100,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       <span>{route.description}</span>
                     </div>
                     <kbd className="text-[9px] text-muted-foreground border border-border px-1">
-                      {route.href}
+                      [{route.shortcutKey?.toUpperCase()}]
                     </kbd>
                   </Command.Item>
                 );

@@ -386,6 +386,35 @@ describe('Betrix-Reborn — Phase 4 Application Layer Tests', () => {
       expect(fallbackResult.contextBlock).toContain(
         'Notice: Live/Historical candle data for XAUUSD is currently unavailable'
       );
+
+      // includeCandles:false skips the fetch entirely and disables indicators
+      mockMarketDataService.getOHLC.mockClear();
+      const noCandlesResult = await contextService.buildMarketContext({
+        symbol: 'EURUSD',
+        timeframe: 'h1',
+        candleCount: 30,
+        includeCandles: false,
+        includeNews: false
+      });
+      expect(mockMarketDataService.getOHLC).not.toHaveBeenCalled();
+      expect(noCandlesResult.metadata.candlesLoaded).toBe(0);
+      expect(noCandlesResult.metadata.indicatorsComputed).toBe(false);
+      expect(noCandlesResult.contextBlock).toContain('candle & indicator injection disabled');
+
+      // includeIndicators:false keeps candles but skips indicators
+      const noIndicatorsResult = await contextService.buildMarketContext({
+        symbol: 'EURUSD',
+        timeframe: 'h1',
+        candleCount: 30,
+        includeCandles: true,
+        includeIndicators: false,
+        includeNews: false
+      });
+      expect(noIndicatorsResult.metadata.candlesLoaded).toBe(40);
+      expect(noIndicatorsResult.metadata.indicatorsComputed).toBe(false);
+      expect(noIndicatorsResult.contextBlock).not.toContain('RSI(14)');
+      expect(noIndicatorsResult.contextBlock).not.toContain('SMA(20)');
+      expect(noIndicatorsResult.contextBlock).toContain('indicators disabled');
     });
 
     it('WorkerManagerService auto-discovers and controls modular background workers', async () => {
