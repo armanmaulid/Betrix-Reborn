@@ -73,6 +73,9 @@ export function TopModelsChart({ data = [], isLoading }: TopModelsChartProps) {
                 stroke={CHART_COLORS.mutedText}
                 fontSize={10}
                 tickLine={false}
+                interval={0}
+                minTickGap={16}
+                tickMargin={4}
                 axisLine={{ stroke: CHART_COLORS.border }}
               />
               <YAxis

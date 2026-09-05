@@ -12,12 +12,28 @@ const NAV_ITEMS: RouteDefinition[] = ADMIN_ROUTES;
 export interface SidebarProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  /**
+   * `desktop` renders the static in-flow rail (w-60 expanded / w-14 navrail).
+   * `drawer` renders a fixed slide-over panel (always expanded, full labels)
+   * used below the `md` breakpoint.
+   */
+  variant?: 'desktop' | 'drawer';
+  /** Called when a nav link is clicked — lets the drawer close itself. */
+  onNavigate?: () => void;
 }
 
-export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps) {
+export function Sidebar({
+  isCollapsed = false,
+  onToggleCollapse,
+  variant = 'desktop',
+  onNavigate
+}: SidebarProps) {
   const pathname = usePathname();
 
-  if (isCollapsed) {
+  // In drawer mode we always show full labels; the icon navrail is desktop-only.
+  const collapsed = variant === 'desktop' && isCollapsed;
+
+  if (collapsed) {
     return (
       <aside className="w-14 border-r border-border bg-black flex flex-col justify-between shrink-0 select-none transition-all duration-150">
         {/* Navrail Header */}
@@ -26,7 +42,7 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
             <button
               onClick={onToggleCollapse}
               title="Expand Sidebar ([)"
-              className="p-1.5 text-muted-foreground hover:text-accent hover:bg-surface border border-transparent hover:border-border transition-colors cursor-pointer"
+              className="p-1.5 pointer-coarse:min-h-11 pointer-coarse:min-w-11 text-muted-foreground hover:text-accent hover:bg-surface border border-transparent hover:border-border transition-colors cursor-pointer"
             >
               <PanelLeftOpen className="w-4 h-4" />
             </button>
@@ -58,7 +74,7 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
                   />
 
                   {/* Floating Navrail Tooltip */}
-                  <div className="absolute left-full ml-2 z-50 whitespace-nowrap bg-black border border-border px-2.5 py-1 text-[11px] text-foreground font-mono shadow-xl hidden group-hover:flex items-center gap-1.5 pointer-events-none">
+                  <div className="absolute left-full ml-2 z-50 whitespace-nowrap bg-black border border-border px-2.5 py-1 text-[11px] text-foreground font-mono shadow-xl hidden group-hover:flex group-focus-visible:flex items-center gap-1.5 pointer-events-none">
                     <span className="text-accent font-bold">[{item.num}]</span>
                     <span className="tracking-wider">{item.name}</span>
                   </div>
@@ -73,7 +89,7 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
           <button
             onClick={onToggleCollapse}
             title="Expand Sidebar ([)"
-            className="p-1 text-muted-foreground hover:text-accent flex items-center justify-center cursor-pointer"
+            className="p-1 pointer-coarse:min-h-11 pointer-coarse:min-w-11 text-muted-foreground hover:text-accent flex items-center justify-center cursor-pointer"
           >
             <span className="text-[9px] font-mono font-bold text-accent hover:underline">
               [EXP]
@@ -84,21 +100,36 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
     );
   }
 
+  const base =
+    'border-r border-border bg-black flex flex-col justify-between shrink-0 select-none transition-all duration-150';
+  const positioning = variant === 'drawer' ? 'fixed inset-y-0 left-0 z-40 w-60 pt-safe' : 'w-60';
+
   return (
-    <aside className="w-60 border-r border-border bg-black flex flex-col justify-between shrink-0 select-none transition-all duration-150">
+    <aside className={`${base} ${positioning}`}>
       {/* Navigation Links */}
       <div className="py-3">
         <div className="px-3 pb-2 flex items-center justify-between border-b border-border/50 mb-2">
           <span className="text-[10px] font-mono tracking-widest text-muted-foreground uppercase">
             OPERATIONAL DIRECTORY
           </span>
-          <button
-            onClick={onToggleCollapse}
-            title="Collapse to Navrail ([)"
-            className="p-1 text-muted-foreground hover:text-accent hover:bg-surface border border-transparent hover:border-border transition-colors cursor-pointer"
-          >
-            <PanelLeftClose className="w-3.5 h-3.5" />
-          </button>
+          {variant === 'desktop' ? (
+            <button
+              onClick={onToggleCollapse}
+              title="Collapse to Navrail ([)"
+              className="p-1 pointer-coarse:min-h-11 pointer-coarse:min-w-11 text-muted-foreground hover:text-accent hover:bg-surface border border-transparent hover:border-border transition-colors cursor-pointer"
+            >
+              <PanelLeftClose className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              onClick={onNavigate}
+              title="Close Navigation Menu"
+              aria-label="Close navigation menu"
+              className="p-1 pointer-coarse:min-h-11 pointer-coarse:min-w-11 text-muted-foreground hover:text-accent hover:bg-surface border border-transparent hover:border-border transition-colors cursor-pointer"
+            >
+              <PanelLeftClose className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         <nav className="space-y-0.5 px-1.5">
@@ -113,6 +144,7 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={onNavigate}
                 aria-current={isActive ? 'page' : undefined}
                 className={`group flex items-center justify-between px-2.5 py-2 font-mono text-xs transition-colors border-l-2 ${
                   isActive
@@ -145,15 +177,17 @@ export function Sidebar({ isCollapsed = false, onToggleCollapse }: SidebarProps)
           <span className="text-muted-foreground/80">SHORTCUTS:</span>
           <span className="text-foreground font-mono">[a-m] ROUTE JUMP</span>
         </div>
-        <div className="pt-2 border-t border-border/40 flex items-center justify-between text-[9px]">
-          <span className="text-muted-foreground/80">NAVRAIL MODE:</span>
-          <button
-            onClick={onToggleCollapse}
-            className="text-accent hover:underline flex items-center gap-1 font-bold cursor-pointer"
-          >
-            COLLAPSE [
-          </button>
-        </div>
+        {variant === 'desktop' && (
+          <div className="pt-2 border-t border-border/40 flex items-center justify-between text-[9px]">
+            <span className="text-muted-foreground/80">NAVRAIL MODE:</span>
+            <button
+              onClick={onToggleCollapse}
+              className="text-accent hover:underline flex items-center gap-1 font-bold cursor-pointer"
+            >
+              COLLAPSE [
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   );

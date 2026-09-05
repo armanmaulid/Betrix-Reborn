@@ -33,6 +33,14 @@ export interface TableShellProps {
   children?: React.ReactNode;
   stickyHeader?: boolean;
   wrapperClassName?: string;
+  /**
+   * Minimum table width in pixels. Combined with the wrapper's
+   * `overflow-x-auto`, this turns narrow (mobile) viewports into a real
+   * horizontal scroll container instead of letting the browser squish every
+   * column into unreadable slivers. Default 640px keeps 6–8 column terminals
+   * legible; pass a smaller value for genuinely narrow tables.
+   */
+  minWidth?: number;
   /** Escape hatch for pages that scroll programmatically (e.g. calendar). */
   wrapperRef?: React.Ref<HTMLDivElement>;
 }
@@ -84,6 +92,7 @@ export function TableShell({
   children,
   stickyHeader = false,
   wrapperClassName = '',
+  minWidth = 640,
   wrapperRef
 }: TableShellProps) {
   const colSpan = Math.max(1, columns.length);
@@ -93,7 +102,7 @@ export function TableShell({
       ref={wrapperRef}
       className={`border border-border bg-surface overflow-x-auto ${wrapperClassName}`}
     >
-      <table className="w-full text-left text-xs border-collapse">
+      <table className="w-full text-left text-xs border-collapse" style={{ minWidth }}>
         <thead className={stickyHeader ? 'sticky top-0 z-10' : undefined}>
           <tr className="border-b border-border bg-black/80 text-[10px] uppercase tracking-wider text-muted-foreground">
             {columns.map((column) => (

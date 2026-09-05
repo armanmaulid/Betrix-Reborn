@@ -102,7 +102,7 @@ export function UsersContainer() {
       <FilterBar className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex flex-1 flex-wrap items-center gap-2">
           {/* Search Input */}
-          <div className="relative min-w-[200px] flex-1 max-w-sm">
+          <div className="relative min-w-0 w-full sm:min-w-[200px] flex-1 max-w-sm">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"

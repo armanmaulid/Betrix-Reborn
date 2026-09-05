@@ -152,7 +152,7 @@ export function BroadcastContainer() {
               <div className="text-[11px] text-muted-foreground uppercase font-bold tracking-wider">
                 TARGET AUDIENCE SCOPE
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setTargetMode('ALL')}

@@ -247,7 +247,7 @@ export function NewsContainer() {
 
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
             {/* Search Box */}
-            <div className="relative min-w-[200px] flex-1 max-w-xs">
+            <div className="relative min-w-0 w-full sm:min-w-[200px] flex-1 max-w-xs">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
@@ -451,11 +451,11 @@ export function NewsContainer() {
           variant="accent"
           maxWidth="2xl"
           footer={
-            <div className="flex items-center justify-between w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full gap-2">
               <span className="text-[10px] text-muted-foreground tabular-nums">
                 ID: {selectedArticle.id}
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -463,7 +463,7 @@ export function NewsContainer() {
                     setSelectedArticle(null);
                     setArticleToDelete(art);
                   }}
-                  className="px-3 py-1.5 border border-border bg-black hover:border-negative hover:text-negative text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer text-muted-foreground flex items-center gap-1"
+                  className="px-3 py-1.5 pointer-coarse:min-h-11 border border-border bg-black hover:border-negative hover:text-negative text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer text-muted-foreground flex items-center gap-1"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>DELETE</span>
@@ -472,7 +472,7 @@ export function NewsContainer() {
                   href={selectedArticle.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 border border-accent bg-accent text-black hover:bg-accent/90 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 pointer-coarse:min-h-11 border border-accent bg-accent text-black hover:bg-accent/90 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>READ ORIGINAL SOURCE</span>

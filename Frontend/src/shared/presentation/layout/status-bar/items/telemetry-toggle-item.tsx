@@ -15,7 +15,7 @@ export const TelemetryToggleItem = React.memo(function TelemetryToggleItem({
   return (
     <button
       onClick={onToggle}
-      className="flex items-center space-x-1 border border-border bg-surface hover:border-accent hover:text-accent text-muted-foreground px-1.5 py-0.5 transition-colors font-bold uppercase"
+      className="flex items-center space-x-1 border border-border bg-surface hover:border-accent hover:text-accent text-muted-foreground px-1.5 py-0.5 pointer-coarse:min-h-11 transition-colors font-bold uppercase"
       title="Toggle Live System Telemetry Hub"
     >
       {isOpen ? (

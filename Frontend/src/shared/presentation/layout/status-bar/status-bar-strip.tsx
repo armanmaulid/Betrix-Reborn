@@ -23,7 +23,7 @@ export const StatusBarStrip = React.memo(function StatusBarStrip({
   onToggleDrawer
 }: StatusBarStripProps) {
   return (
-    <footer className="h-7 border-t border-border bg-black px-3 flex items-center justify-between font-mono text-[10px] select-none shrink-0 z-30">
+    <footer className="min-h-7 pointer-coarse:min-h-11 border-t border-border bg-black px-3 pb-safe flex items-center justify-between font-mono text-[10px] select-none shrink-0 z-30">
       {/* Left Section: Live Gateway, Stream, Resources & Operational Status (Hierarchical P0 -> P2) */}
       <div className="flex items-center space-x-3 overflow-x-auto no-scrollbar py-0.5">
         {/* 1. API Health & Latency (P0 - Critical Gateway) */}

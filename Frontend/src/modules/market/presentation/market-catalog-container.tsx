@@ -145,7 +145,7 @@ export function MarketCatalogContainer() {
       {/* Filter / Search Bar */}
       <FilterBar className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 flex-1">
-          <div className="relative min-w-[200px] flex-1 max-w-xs">
+          <div className="relative min-w-0 w-full sm:min-w-[200px] flex-1 max-w-xs">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"

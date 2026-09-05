@@ -58,7 +58,7 @@ export function PaginationBar({
               value={limit}
               onChange={(e) => onLimitChange(Number(e.target.value))}
               disabled={isLoading}
-              className="bg-surface border border-border px-2 py-0.5 text-xs text-foreground focus:outline-none focus:border-accent disabled:opacity-50"
+              className="bg-surface border border-border px-2 py-0.5 pointer-coarse:min-h-11 text-xs text-foreground focus:outline-none focus:border-accent disabled:opacity-50"
             >
               {limitOptions.map((opt) => (
                 <option key={opt} value={opt}>
@@ -88,7 +88,7 @@ export function PaginationBar({
             type="button"
             onClick={() => onPageChange(Math.max(1, page - 1))}
             disabled={page <= 1 || isLoading}
-            className="p-1 border border-border bg-surface hover:bg-surface-hover text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-1 pointer-coarse:min-h-11 pointer-coarse:min-w-11 border border-border bg-surface hover:bg-surface-hover text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             aria-label="Previous Page"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
@@ -97,7 +97,7 @@ export function PaginationBar({
             type="button"
             onClick={() => onPageChange(Math.min(effectiveTotalPages, page + 1))}
             disabled={page >= effectiveTotalPages || isLoading}
-            className="p-1 border border-border bg-surface hover:bg-surface-hover text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className="p-1 pointer-coarse:min-h-11 pointer-coarse:min-w-11 border border-border bg-surface hover:bg-surface-hover text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             aria-label="Next Page"
           >
             <ChevronRight className="w-3.5 h-3.5" />

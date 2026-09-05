@@ -167,6 +167,9 @@ export function TokenUsageChart({
                 stroke={CHART_COLORS.mutedText}
                 fontSize={10}
                 tickLine={false}
+                interval="preserveStartEnd"
+                minTickGap={24}
+                tickMargin={4}
                 axisLine={{ stroke: CHART_COLORS.border }}
               />
               <YAxis

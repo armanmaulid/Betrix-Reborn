@@ -179,7 +179,7 @@ export function TerminalModal({
 
         {/* Optional Footer */}
         {footer && (
-          <div className="border-t border-border bg-surface px-4 py-2.5 flex items-center justify-between shrink-0">
+          <div className="border-t border-border bg-surface px-4 py-2.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0">
             {footer}
           </div>
         )}
